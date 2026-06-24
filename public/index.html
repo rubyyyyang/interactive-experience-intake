@@ -193,37 +193,8 @@
     .review-banner-warning { background: #fffbeb; border: 1px solid #fde68a; }
     .review-banner-alert { background: #fef2f2; border: 1px solid #fecaca; }
 
-    .review-banner-header { padding: 16px 20px 0; }
-    .review-banner-title { font-weight: 700; font-size: 14px; color: #1f1f1f; margin: 0; }
-    .review-banner-subtitle { font-size: 13px; color: #6b7280; margin: 2px 0 0; }
-
-    .review-banner-legend {
-      display: flex; flex-wrap: wrap; gap: 14px; align-items: center;
-      padding: 12px 20px 0; font-size: 13px; color: #374151;
-    }
-    .review-banner-legend-item { display: inline-flex; align-items: center; gap: 5px; }
-    .review-banner-legend-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
-    .review-banner-legend-count { font-weight: 700; }
-
-    .review-banner-required-note {
-      display: flex; align-items: center; gap: 6px;
-      padding: 6px 20px 0; font-size: 12px; color: #6b7280;
-    }
-    .review-banner-required-swatch {
-      width: 12px; height: 12px; background: #fefce8;
-      border: 1px solid #e5e7eb; border-radius: 2px; display: inline-block;
-    }
-
-    .confidence-bar {
-      display: flex; height: 8px; margin: 14px 20px 0;
-      border-radius: 4px; overflow: hidden; background: #e5e7eb;
-    }
-    .confidence-bar-segment { transition: width 0.4s ease; min-width: 0; }
-    .confidence-bar-segment-high { background: #16a34a; }
-    .confidence-bar-segment-medium { background: #d97706; }
-    .confidence-bar-segment-low { background: #dc2626; }
-
-    .review-banner-message { padding: 12px 20px 14px; font-size: 13px; color: #6b7280; }
+    .review-banner-counts { padding: 16px 20px 4px; font-size: 14px; line-height: 1.6; }
+    .review-banner-message { padding: 4px 20px 14px; font-size: 13px; color: #6b7280; }
 
     .review-banner-fields { padding: 0 20px 16px; }
     .review-banner-field-tag {
@@ -940,31 +911,14 @@
         message = 'All fields look good!';
       }
 
-      var pctHigh = Math.round((counts.high / total) * 100);
-      var pctMedium = Math.round((counts.medium / total) * 100);
-      var pctLow = 100 - pctHigh - pctMedium;
-
       var html = '';
 
-      html += '<div class="review-banner-header">';
-      html += '<div class="review-banner-title">AI draft confidence</div>';
-      html += '<div class="review-banner-subtitle">How confident AI is in each field it filled.</div>';
-      html += '</div>';
-
-      html += '<div class="review-banner-legend">';
-      html += '<span class="review-banner-legend-item"><span class="review-banner-legend-dot" style="background:#16a34a;"></span> <span class="review-banner-legend-count">' + counts.high + '</span> Ready</span>';
-      html += '<span class="review-banner-legend-item"><span class="review-banner-legend-dot" style="background:#d97706;"></span> <span class="review-banner-legend-count">' + counts.medium + '</span> Worth a check</span>';
-      html += '<span class="review-banner-legend-item"><span class="review-banner-legend-dot" style="background:#dc2626;"></span> <span class="review-banner-legend-count">' + counts.low + '</span> Needs input</span>';
-      html += '</div>';
-
-      html += '<div class="review-banner-required-note">';
-      html += '<span class="review-banner-required-swatch"></span> Yellow = still needs your input';
-      html += '</div>';
-
-      html += '<div class="confidence-bar">';
-      if (counts.high) html += '<div class="confidence-bar-segment confidence-bar-segment-high" style="width:' + pctHigh + '%"></div>';
-      if (counts.medium) html += '<div class="confidence-bar-segment confidence-bar-segment-medium" style="width:' + pctMedium + '%"></div>';
-      if (counts.low) html += '<div class="confidence-bar-segment confidence-bar-segment-low" style="width:' + pctLow + '%"></div>';
+      html += '<div class="review-banner-counts"><strong>Draft confidence:</strong> ';
+      var parts = [];
+      if (counts.high) parts.push('<span style="color:#16a34a">' + counts.high + ' high</span>');
+      if (counts.medium) parts.push('<span style="color:#d97706">' + counts.medium + ' medium</span>');
+      if (counts.low) parts.push('<span style="color:#dc2626">' + counts.low + ' low</span>');
+      html += parts.join(' &middot; ');
       html += '</div>';
 
       html += '<div class="review-banner-message">' + message + '</div>';
