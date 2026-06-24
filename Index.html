@@ -1,0 +1,1524 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <meta charset="UTF-8">
+  <title>Interactive Demo Intake</title>
+
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 1120px;
+      margin: 32px auto;
+      padding: 0 20px;
+      color: #1f1f1f;
+      background: #fafafa;
+    }
+:root {
+  --bg: #f6f7fb;
+  --surface: #ffffff;
+  --ink: #111827;
+  --muted: #6b7280;
+  --border: #e5e7eb;
+  --shadow: 0 8px 24px rgba(0,0,0,.06);
+  --accent: #6d28d9;
+  --accent2: #ede9fe;
+  --featured-bg: #f5f3ff;
+  --featured-text: #5b21b6;
+  --latest-bg: #ecfeff;
+  --latest-text: #155e75;
+}
+
+.no-left-border {
+  border-left: 1px solid var(--border) !important;
+}
+
+.confidence-high { border-left: 4px solid #16a34a !important; }
+.confidence-medium { border-left: 4px solid #d97706 !important; }
+.confidence-low { border-left: 4px solid #dc2626 !important; }
+.needs-input { background: #fefce8 !important; }
+
+.review-banner {
+  border-radius: 8px; margin: 0 0 18px 0;
+  font-size: 14px; line-height: 1.5;
+  overflow: hidden;
+}
+.review-banner-good { background: #f0fdf4; border: 1px solid #bbf7d0; }
+.review-banner-warning { background: #fffbeb; border: 1px solid #fde68a; }
+.review-banner-alert { background: #fef2f2; border: 1px solid #fecaca; }
+
+.review-banner-header { padding: 16px 20px 0; }
+.review-banner-title { font-weight: 700; font-size: 14px; color: #1f1f1f; margin: 0; }
+.review-banner-subtitle { font-size: 13px; color: #6b7280; margin: 2px 0 0; }
+
+.review-banner-legend {
+  display: flex; flex-wrap: wrap; gap: 14px; align-items: center;
+  padding: 12px 20px 0; font-size: 13px; color: #374151;
+}
+.review-banner-legend-item { display: inline-flex; align-items: center; gap: 5px; }
+.review-banner-legend-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+.review-banner-legend-count { font-weight: 700; }
+
+.review-banner-required-note {
+  display: flex; align-items: center; gap: 6px;
+  padding: 6px 20px 0; font-size: 12px; color: #6b7280;
+}
+.review-banner-required-swatch {
+  width: 12px; height: 12px; background: #fefce8;
+  border: 1px solid #e5e7eb; border-radius: 2px; display: inline-block;
+}
+
+.confidence-bar {
+  display: flex; height: 8px; margin: 14px 20px 0;
+  border-radius: 4px; overflow: hidden; background: #e5e7eb;
+}
+.confidence-bar-segment { transition: width 0.4s ease; min-width: 0; }
+.confidence-bar-segment-high { background: #16a34a; }
+.confidence-bar-segment-medium { background: #d97706; }
+.confidence-bar-segment-low { background: #dc2626; }
+
+.review-banner-message { padding: 12px 20px 14px; font-size: 13px; color: #6b7280; }
+
+.review-banner-fields { padding: 0 20px 16px; }
+.review-banner-field-tag {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 4px 10px; margin: 3px 4px 3px 0; border-radius: 4px;
+  font-size: 12px; font-weight: 600; cursor: pointer;
+  border: 1px solid transparent; transition: background 0.15s, border-color 0.15s;
+}
+.review-banner-field-tag:hover { border-color: currentColor; }
+.review-banner-field-tag::after { content: "\2193"; font-size: 10px; opacity: 0.5; }
+.review-banner-field-tag-medium { background: #fef3c7; color: #92400e; }
+.review-banner-field-tag-low { background: #fee2e2; color: #991b1b; }
+
+.form-section {
+  margin-top: 28px;
+  padding-top: 20px;
+  border-top: 2px solid #e5e7eb;
+}
+
+.form-section:first-of-type {
+  margin-top: 12px;
+  border-top: none;
+  padding-top: 0;
+}
+
+.form-section-header {
+  font-size: 16px;
+  font-weight: 700;
+  color: #374151;
+  margin: 0 0 4px 0;
+  letter-spacing: 0.02em;
+}
+
+.form-section-subtitle {
+  font-size: 13px;
+  color: #6b7280;
+  margin: 0 0 8px 0;
+}
+
+    h1 {
+      margin-bottom: 4px;
+    }
+
+    h2 {
+      margin-top: 0;
+    }
+
+    h3 {
+      margin-bottom: 6px;
+    }
+
+    .subtle {
+      color: #666;
+      margin-top: 0;
+    }
+
+
+
+    .card {
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      padding: 20px;
+      margin: 20px 0;
+      background: #fff;
+    }
+
+    label {
+      display: block;
+      font-weight: 600;
+      margin-top: 14px;
+    }
+
+    .helper {
+      font-size: 13px;
+      color: #666;
+      margin-top: 4px;
+    }
+
+    .word-count {
+      font-size: 13px;
+      color: #666;
+      margin-top: 4px;
+    }
+
+
+    input,
+    textarea,
+    select {
+      width: 100%;
+      box-sizing: border-box;
+      padding: 10px;
+      margin-top: 6px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      font-family: Arial, sans-serif;
+      font-size: 14px;
+      background: #fff;
+    }
+
+
+
+    textarea {
+      min-height: 96px;
+    }
+
+    select[multiple] {
+      min-height: 120px;
+    }
+
+    button {
+      margin-top: 16px;
+      padding: 10px 16px;
+      border: 0;
+      border-radius: 4px;
+      cursor: pointer;
+      background: #222;
+      color: #fff;
+      font-weight: 600;
+    }
+
+    button.secondary {
+      background: #555;
+    }
+
+    button:disabled {
+      background: #aaa;
+      cursor: not-allowed;
+    }
+
+
+    .row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+
+    .status {
+      margin-top: 12px;
+      color: #555;
+      white-space: pre-wrap;
+    }
+
+    .error {
+      color: #b00020;
+    }
+
+    .success {
+      color: #176b2c;
+    }
+
+    .required-note {
+      color: #b00020;
+      font-size: 13px;
+    }
+
+    .checkbox-row {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      margin-top: 16px;
+    }
+
+    .checkbox-row input {
+      width: auto;
+      margin-top: 2px;
+    }
+
+    .checkbox-row label {
+      margin-top: 0;
+      font-weight: 400;
+    }
+
+    details {
+      margin-top: 16px;
+      border: 1px solid #ddd;
+      border-radius: 6px;
+      padding: 12px;
+      background: #f8f8f8;
+    }
+
+    summary {
+      cursor: pointer;
+      font-weight: 600;
+    }
+
+    input:focus,
+    textarea:focus,
+    select:focus {
+      outline: 2px solid #0066cc;
+      outline-offset: 1px;
+      border-color: #0066cc;
+    }
+
+    @media (max-width: 720px) {
+      body {
+        margin: 16px auto;
+        padding: 0 14px;
+      }
+
+      .row {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <h1>Interactive Demo Intake</h1>
+  <p class="subtle">
+    Paste your demo URL below. AI will pre-fill most fields — you just review and submit.
+  </p>
+
+<div class="card" style="border-left:4px solid #b45309; background:#fff7ed;">
+  <strong>Pilot mode</strong> — please don't enter sensitive or confidential information.
+</div>
+
+  <div id="urlSection" class="card">
+<h2>1. Paste your demo URL</h2>
+
+<p class="helper" style="margin-bottom:12px;">
+  Make sure your demo is in the <strong>Red Hat Workspace</strong> (not a private space) before submitting.
+</p>
+
+<label for="arcadeUrl">Demo URL <span class="required-note">*</span></label>
+<input id="arcadeUrl" placeholder="">
+<input id="arcadeId" type="hidden">
+
+<button onclick="extractGuide()">Extract Content</button>
+<div id="extractStatus" class="status"></div>
+
+  </div>
+  <div id="extractedCard" class="card" style="display:none;">
+    <h2>2. Review extracted content</h2>
+    <p class="subtle">
+  AI uses this content to pre-fill your intake. Check that it looks right, then generate the draft.
+</p>
+  
+<input id="creationLink" type="hidden">
+
+  
+    <label>Extracted Demo Title</label>
+    <input id="guideTitle">
+    
+    <label>Extracted Step Text</label>
+    <textarea id="stepTexts"></textarea>
+    
+    <textarea id="bodyText" style="display:none;"></textarea>
+
+    <div id="imagePreviewSection" style="display:none; margin-top:16px;">
+      <label>Extracted Images <span id="imageCount" style="font-weight:normal; color:var(--muted)"></span></label>
+      <div id="imagePreviewGrid" style="display:flex; flex-wrap:wrap; gap:8px; margin-top:8px;"></div>
+    </div>
+
+    <button onclick="generateDraft()">Generate Draft</button>
+    <div id="generateStatus" class="status"></div>
+  </div>
+
+
+  <div id="formSection" class="card no-left-border" style="display:none;">
+    <h2>3. Review and submit</h2>
+    <div id="reviewBanner"></div>
+
+<details>
+  <summary>How AI generated this draft</summary>
+
+  <label>Model and prompt version</label>
+  <input id="aiModelInfo" readonly>
+
+  <label>Review notes</label>
+  <textarea id="aiConfidenceNotes" readonly></textarea>
+</details>
+
+<!-- ===== DEMO ===== -->
+<div class="form-section">
+  <h3 class="form-section-header">Demo</h3>
+
+    <label>Title <span class="required-note">*</span></label>
+    <input id="demoTitle">
+
+    <label>Description <span class="required-note">*</span></label>
+    <textarea id="descriptionWithoutGid" oninput="updateWordCounts()" style="min-height:180px;"></textarea>
+    <div id="descriptionWithoutGidCount" class="word-count"></div>
+
+    <div class="row">
+      <div>
+        <label>Content type <span class="required-note">*</span></label>
+        <select id="contentType"></select>
+        <input id="contentTypeOther" placeholder="Explain other content type" style="display:none;">
+        <div class="helper">
+          Business Intro = under 90 seconds, non-technical. Technical Walkthrough = ~5 minutes, technical.
+        </div>
+      </div>
+
+      <div>
+        <label>Language(s) <span class="required-note">*</span></label>
+        <select id="language" multiple></select>
+        <input id="languageOther" placeholder="Enter other language(s)" style="display:none;">
+        <div class="helper">Hold Cmd (Mac) or Ctrl (Windows) to select multiple.</div>
+        <button type="button" class="secondary" onclick="clearMultiSelect('language', 'languageOther')">Clear</button>
+      </div>
+    </div>
+
+    <label>Estimated duration</label>
+    <input id="duration" placeholder="e.g., 3 minutes">
+
+    <label>Primary product featured? <span class="required-note">*</span></label>
+    <select id="primaryProduct"></select>
+    <input id="primaryProductOther" placeholder="Product name not in the list" style="display:none;">
+
+    <label>Optional: Other related products?</label>
+    <select id="otherProducts" multiple></select>
+    <input id="otherProductsOther" placeholder="Product name(s) not in the list" style="display:none;">
+    <div class="helper">Hold Cmd (Mac) or Ctrl (Windows) to select multiple.</div>
+    <button type="button" class="secondary" onclick="clearMultiSelect('otherProducts', 'otherProductsOther')">Clear</button>
+</div>
+
+<!-- ===== AUDIENCE ===== -->
+<div class="form-section">
+  <h3 class="form-section-header">Audience</h3>
+
+    <label>Vertical <span class="required-note">*</span></label>
+    <select id="vertical"></select>
+
+    <label>Is this for a specific event or project? <span class="required-note">*</span></label>
+    <select id="event"></select>
+
+    <label>Related Technology Decision Point? <span class="required-note">*</span></label>
+    <select id="tdp"></select>
+
+    <label>Related Sales Tactic? <span class="required-note">*</span></label>
+    <select id="salesTactic"></select>
+
+    <label>Related Marketing Program? <span class="required-note">*</span></label>
+    <select id="marketingProgram"></select>
+</div>
+
+<!-- ===== PUBLISHING ===== -->
+<div class="form-section">
+  <h3 class="form-section-header">Publishing</h3>
+
+    <label>SEO description <span class="required-note">*</span></label>
+    <textarea id="descriptionForSeo" oninput="updateWordCounts()" placeholder="Short description for search results"></textarea>
+    <div id="descriptionForSeoCount" class="word-count"></div>
+
+    <label>SEO keywords <span class="required-note">*</span></label>
+    <textarea id="seoKeywords" placeholder="e.g., ansible automation, openshift virtualization"></textarea>
+
+    <label>Call-to-action links <span class="required-note">*</span></label>
+    <div class="helper">
+      AI suggests 3 links from the approved catalog. Edit if needed.
+    </div>
+
+    <label>Link 1 <span class="required-note">*</span></label>
+    <input id="ctaLink1" placeholder="https://...">
+
+    <label>Link 2 <span class="required-note">*</span></label>
+    <input id="ctaLink2" placeholder="https://...">
+
+    <label>Link 3 <span class="required-note">*</span></label>
+    <input id="ctaLink3" placeholder="https://...">
+
+    <h3>Optional fields</h3>
+
+    <label>Optional: Should this IE be grouped with another or part of a larger collection?</label>
+    <textarea id="group"></textarea>
+
+    <label>Optional: Have an Employee Advocacy link? Add it here.</label>
+    <input id="employeeAdvocacy">
+</div>
+
+<!-- ===== CREATOR DETAILS ===== -->
+<div class="form-section">
+  <h3 class="form-section-header">Creator Details</h3>
+
+    <div class="row">
+      <div>
+        <label>Your email <span class="required-note">*</span></label>
+        <input id="email" placeholder="name@redhat.com">
+      </div>
+
+      <div>
+        <label>Your name(s) <span class="required-note">*</span></label>
+        <input id="creatorName" placeholder="First Last">
+      </div>
+    </div>
+
+    <label>Your team <span class="required-note">*</span></label>
+    <select id="creatorTeams"></select>
+    <input id="creatorTeamOther" placeholder="Team name not in the list" style="display:none;">
+
+    <label>What quarter was this content created in? <span class="required-note">*</span></label>
+    <select id="quarter"></select>
+    <input id="quarterOther" placeholder="e.g., Q3 2026" style="display:none;">
+
+    <div class="checkbox-row">
+      <input id="syntheticVoice" type="checkbox" checked>
+      <label for="syntheticVoice">No synthetic voice was used</label>
+    </div>
+
+    <div class="checkbox-row">
+      <input id="translation" type="checkbox" checked>
+      <label for="translation">No translation was used</label>
+    </div>
+
+    <div class="checkbox-row">
+      <input id="requirementsConfirmed" type="checkbox">
+      <label for="requirementsConfirmed">
+        I confirm this demo meets brand standards, includes English and Spanish captions, and is mobile-friendly.
+        <span class="required-note">*</span>
+      </label>
+    </div>
+</div>
+
+<button id="submitButton" onclick="submitForReview()">Submit</button>
+<div id="submitStatus" class="status"></div>
+  </div>
+
+  <div id="successSection" class="card" style="display:none;">
+  <h2>You're all set!</h2>
+  <p id="successMainMessage" class="subtle"></p>
+
+  <div id="successReference" style="margin-top:14px;"></div>
+
+  <button type="button" onclick="startAnotherSubmission()">Start another</button>
+</div>
+
+  <script>
+    let options = null;
+    let currentExtractedGuide = null;
+    let currentAiMeta = {
+      modelUsed: '',
+      promptVersion: '',
+      generatedAt: ''
+    };
+
+    function gasCall(functionName, ...args) {
+      return new Promise((resolve, reject) => {
+        google.script.run
+          .withSuccessHandler(resolve)
+          .withFailureHandler((error) => {
+            const message = error && error.message ? error.message : String(error || 'Unknown Apps Script error');
+            reject(new Error(message));
+          })[functionName](...args);
+      });
+    }
+
+    async function apiPost(path, payload) {
+      if (path === '/api/extract-guide') {
+        return gasCall('extractGuideContent', payload);
+      }
+
+      if (path === '/api/generate') {
+        return gasCall('generateDraftFromGuide', payload);
+      }
+
+      if (path === '/api/submit') {
+        return gasCall('submitIntakeForReview', payload);
+      }
+
+      throw new Error('Unknown API path: ' + path);
+    }
+
+    async function apiGet(path) {
+      if (path === '/api/options') {
+        return gasCall('getOptions');
+      }
+
+      throw new Error('Unknown API path: ' + path);
+    }
+
+    function setStatus(id, message, type) {
+      const el = document.getElementById(id);
+      el.textContent = message || '';
+      el.className = 'status';
+
+      if (type === 'error') el.classList.add('error');
+      if (type === 'success') el.classList.add('success');
+    }
+
+    function setGuideSuccessStatus(id, guideUrl, warnings) {
+  const el = document.getElementById(id);
+  el.innerHTML = '';
+  el.className = 'status success';
+
+  const message = document.createElement('span');
+  message.textContent = 'Content extracted successfully.';
+  el.appendChild(message);
+
+  if (guideUrl) {
+    el.appendChild(document.createTextNode(' '));
+
+    const link = document.createElement('a');
+    link.href = guideUrl;
+    link.target = '_blank';
+    link.rel = 'noopener';
+    link.textContent = 'Demo URL';
+    link.style.marginLeft = '6px';
+    link.style.fontWeight = '600';
+
+    el.appendChild(link);
+  }
+
+  if (warnings && warnings.length) {
+    const warningText = document.createElement('div');
+    warningText.style.marginTop = '6px';
+    warningText.textContent = 'Note: ' + warnings.join(' ');
+    el.appendChild(warningText);
+  }
+}
+
+    function populateSelect(id, values, includeBlank = true) {
+      const select = document.getElementById(id);
+      select.innerHTML = '';
+
+      if (includeBlank) {
+        const blank = document.createElement('option');
+        blank.value = '';
+        blank.textContent = '-- Select --';
+        select.appendChild(blank);
+      }
+
+      values.forEach(value => {
+        const option = document.createElement('option');
+        option.value = value;
+        option.textContent = value;
+        select.appendChild(option);
+      });
+    }
+
+    function setSelectValue(id, value) {
+      const select = document.getElementById(id);
+      const values = Array.from(select.options).map(option => option.value);
+
+      if (values.includes(value)) {
+        select.value = value;
+      } else {
+        select.value = '';
+      }
+    }
+
+    function clearMultiSelect(id, otherInputId) {
+  const select = document.getElementById(id);
+  if (!select) return;
+
+  Array.from(select.options).forEach(option => {
+    option.selected = false;
+  });
+
+  if (otherInputId) {
+    const otherInput = document.getElementById(otherInputId);
+    if (otherInput) {
+      otherInput.value = '';
+      otherInput.style.display = 'none';
+    }
+  }
+
+  toggleOtherFields();
+}
+
+    function setMultiSelectValues(id, selectedValues) {
+      const select = document.getElementById(id);
+      const selectedSet = new Set(selectedValues || []);
+
+      Array.from(select.options).forEach(option => {
+        option.selected = selectedSet.has(option.value);
+      });
+    }
+
+    function getMultiSelectValues(id) {
+      const select = document.getElementById(id);
+      return Array.from(select.selectedOptions).map(option => option.value);
+    }
+
+    async function loadOptions() {
+      const data = await apiGet('/api/options');
+      options = data.options;
+
+      populateSelect('creatorTeams', options.creatorTeams);
+      populateSelect('contentType', options.contentTypes);
+      populateSelect('quarter', options.quarters);
+      populateSelect('language', options.languages, false);
+      populateSelect('vertical', options.verticals);
+      populateSelect('event', options.events);
+      populateSelect('primaryProduct', options.products);
+      populateSelect('otherProducts', options.products, false);
+      populateSelect('tdp', options.tdps);
+      populateSelect('salesTactic', options.salesTactics);
+      populateSelect('marketingProgram', options.marketingPrograms);
+
+      document.getElementById('creatorTeams').addEventListener('change', toggleOtherFields);
+      document.getElementById('contentType').addEventListener('change', toggleOtherFields);
+      document.getElementById('quarter').addEventListener('change', toggleOtherFields);
+      document.getElementById('language').addEventListener('change', toggleOtherFields);
+      document.getElementById('primaryProduct').addEventListener('change', toggleOtherFields);
+      document.getElementById('otherProducts').addEventListener('change', toggleOtherFields);
+    }
+
+    function toggleOtherFields() {
+      document.getElementById('creatorTeamOther').style.display =
+        document.getElementById('creatorTeams').value === 'Other' ? 'block' : 'none';
+
+      document.getElementById('contentTypeOther').style.display =
+        document.getElementById('contentType').value === 'Other' ? 'block' : 'none';
+
+      document.getElementById('quarterOther').style.display =
+        document.getElementById('quarter').value === 'Other' ? 'block' : 'none';
+
+      const languages = getMultiSelectValues('language');
+      document.getElementById('languageOther').style.display =
+        languages.includes('Other') ? 'block' : 'none';
+
+      document.getElementById('primaryProductOther').style.display =
+        document.getElementById('primaryProduct').value === 'Other' ? 'block' : 'none';
+
+      const otherProducts = getMultiSelectValues('otherProducts');
+      document.getElementById('otherProductsOther').style.display =
+        otherProducts.includes('Other') ? 'block' : 'none';
+    }
+
+    function getCurrentQuarter() {
+      var now = new Date();
+      var year = now.getFullYear().toString().slice(-2);
+      var q = Math.ceil((now.getMonth() + 1) / 3);
+      return 'CY' + year + 'Q' + q;
+    }
+
+    function countWords(text) {
+      return String(text || '')
+        .trim()
+        .split(/\s+/)
+        .filter(Boolean)
+        .length;
+    }
+
+    function updateWordCounts() {
+      updateSingleWordCount('descriptionWithoutGid', 'descriptionWithoutGidCount', 30, 100, true);
+      updateSingleWordCount('descriptionForSeo', 'descriptionForSeoCount', 25, 45);
+    }
+
+    function updateSingleWordCount(textareaId, countId, minWords, maxWords, hasTourHighlights) {
+  const textarea = document.getElementById(textareaId);
+  const el = document.getElementById(countId);
+
+  if (!textarea || !el) return;
+
+  var text = textarea.value;
+  var count = countWords(text);
+
+  if (hasTourHighlights && text.indexOf('\n\nThe tour highlights:\n') !== -1) {
+    var paragraphOnly = text.split('\n\nThe tour highlights:\n')[0];
+    var paragraphCount = countWords(paragraphOnly);
+    el.textContent = paragraphCount + ' words in description + tour highlights appended. Suggested: ' + minWords + '-' + maxWords + ' words for description.';
+  } else {
+    el.textContent = count + ' words. Suggested: ' + minWords + '-' + maxWords + ' words.';
+  }
+  el.className = 'word-count';
+}
+
+    function getEditedExtractedGuide() {
+      const arcadeUrl = document.getElementById('arcadeUrl').value.trim();
+      const arcadeId = document.getElementById('arcadeId').value.trim();
+
+      return {
+        arcadeId,
+        sourceUrl: arcadeUrl,
+        shareUrl: document.getElementById('creationLink').value.trim(),
+        guideUrl: currentExtractedGuide?.guideUrl || document.getElementById('creationLink').value.trim(),
+        title: document.getElementById('guideTitle').value.trim(),
+        stepTexts: document.getElementById('stepTexts').value
+          .split('\n')
+          .map(item => item.trim())
+          .filter(Boolean),
+        imageTexts: currentExtractedGuide?.imageTexts || [],
+        imageUrls: currentExtractedGuide?.imageUrls || [],
+        steps: currentExtractedGuide?.steps || [],
+        links: currentExtractedGuide?.links || [],
+        bodyText: document.getElementById('bodyText').value.trim(),
+        warnings: currentExtractedGuide?.warnings || []
+      };
+    }
+
+    function collectFormData() {
+      return {
+        arcadeId: document.getElementById('arcadeId').value.trim(),
+        arcadeUrl: document.getElementById('arcadeUrl').value.trim(),
+        email: document.getElementById('email').value.trim(),
+        creatorName: document.getElementById('creatorName').value.trim(),
+
+        creatorTeams: document.getElementById('creatorTeams').value,
+        creatorTeamOther: document.getElementById('creatorTeamOther').value.trim(),
+
+        demoTitle: document.getElementById('demoTitle').value.trim(),
+        creationLink: document.getElementById('creationLink').value.trim(),
+
+        contentType: document.getElementById('contentType').value,
+        contentTypeOther: document.getElementById('contentTypeOther').value.trim(),
+
+        quarter: document.getElementById('quarter').value,
+        quarterOther: document.getElementById('quarterOther').value.trim(),
+
+        descriptionWithoutGid: document.getElementById('descriptionWithoutGid').value.trim(),
+        // Keep the old Description column populated for Google Form compatibility.
+        descriptionWithGid: document.getElementById('descriptionWithoutGid').value.trim(),
+        descriptionForSeo: document.getElementById('descriptionForSeo').value.trim(),
+
+        language: getMultiSelectValues('language'),
+        languageOther: document.getElementById('languageOther').value.trim(),
+
+        ctaLinks: [
+          document.getElementById('ctaLink1').value.trim(),
+          document.getElementById('ctaLink2').value.trim(),
+          document.getElementById('ctaLink3').value.trim()
+        ].filter(Boolean),
+        seoKeywords: document.getElementById('seoKeywords').value.trim(),
+        vertical: document.getElementById('vertical').value,
+        event: document.getElementById('event').value,
+
+        primaryProduct: document.getElementById('primaryProduct').value,
+        primaryProductOther: document.getElementById('primaryProductOther').value.trim(),
+
+        otherProducts: getMultiSelectValues('otherProducts'),
+        otherProductsOther: document.getElementById('otherProductsOther').value.trim(),
+
+        tdp: document.getElementById('tdp').value,
+        salesTactic: document.getElementById('salesTactic').value,
+        marketingProgram: document.getElementById('marketingProgram').value,
+        syntheticVoice: document.getElementById('syntheticVoice').checked ? 'No' : 'Yes',
+        translation: document.getElementById('translation').checked ? 'No' : 'Yes',
+        mobileFriendly: document.getElementById('requirementsConfirmed').checked ? 'Yes' : 'No',
+        group: document.getElementById('group').value.trim(),
+        duration: document.getElementById('duration').value.trim(),
+        employeeAdvocacy: document.getElementById('employeeAdvocacy').value.trim(),
+        requirementsConfirmed: document.getElementById('requirementsConfirmed').checked,
+        aiConfidenceNotes: document.getElementById('aiConfidenceNotes').value.trim(),
+        aiFieldsNeedingConfirmation: ''
+      };
+    }
+
+    function validateForm(form) {
+      const missing = [];
+      const warnings = [];
+
+      if (!form.arcadeUrl) missing.push('Interactive Demo URL');
+      if (!form.email) missing.push('Email Address');
+      if (!form.creatorName) missing.push('Creator Name(s)');
+      if (!form.creatorTeams) missing.push('Creator Team(s)');
+      if (form.creatorTeams === 'Other' && !form.creatorTeamOther) {
+        missing.push('Other Creator Team');
+      }
+
+      if (!form.demoTitle) missing.push('Final Demo Title');
+      if (!form.creationLink) missing.push('Creation Link');
+
+      if (!form.contentType) missing.push('Asset Type');
+      if (form.contentType === 'Other' && !form.contentTypeOther) {
+        missing.push('Other Asset Type explanation');
+      }
+
+      if (!form.quarter) missing.push('Quarter');
+      if (form.quarter === 'Other' && !form.quarterOther) {
+        missing.push('Other Quarter');
+      }
+
+      if (!form.descriptionWithoutGid) missing.push('Description');
+      if (!form.descriptionForSeo) missing.push('Description for SEO');
+
+      if (!form.language.length) missing.push('Language');
+      if (form.language.includes('Other') && !form.languageOther) {
+        missing.push('Other Language');
+      }
+
+      if (!form.ctaLinks || form.ctaLinks.length < 3) {
+        missing.push('3 CTA links');
+      }
+      if (!form.seoKeywords) missing.push('Keywords for SEO');
+      if (!form.vertical) missing.push('Vertical');
+      if (!form.event) missing.push('Event / Project');
+
+      if (!form.primaryProduct) missing.push('Primary Product');
+      if (form.primaryProduct === 'Other' && !form.primaryProductOther) {
+        missing.push('Other Primary Product');
+      }
+
+      if (form.otherProducts.includes('Other') && !form.otherProductsOther) {
+        missing.push('Other Related Products');
+      }
+
+      if (!form.tdp) missing.push('Technology Decision Point');
+      if (!form.salesTactic) missing.push('Sales Tactic');
+      if (!form.marketingProgram) missing.push('Marketing Program');
+      if (!form.requirementsConfirmed) missing.push('Requirements confirmation checkbox');
+
+      return { missing, warnings };
+    }
+function setGuideSuccessStatus(id, guideUrl, warnings) {
+  const el = document.getElementById(id);
+  if (!el) return;
+
+  el.innerHTML = '';
+  el.className = 'status success';
+
+  const message = document.createElement('span');
+  message.textContent = 'Content extracted successfully.';
+  el.appendChild(message);
+
+  if (guideUrl) {
+    el.appendChild(document.createTextNode(' '));
+
+    const link = document.createElement('a');
+    link.href = guideUrl;
+    link.target = '_blank';
+    link.rel = 'noopener';
+    link.textContent = guideUrl;
+    link.style.color = 'inherit';
+
+    el.appendChild(link);
+  }
+
+  if (warnings && warnings.length) {
+    const warningText = document.createElement('div');
+    warningText.textContent = 'Note: ' + warnings.join(' ');
+    el.appendChild(warningText);
+  }
+}
+
+async function extractGuide() {
+  const arcadeUrl = document.getElementById('arcadeUrl').value.trim();
+
+  if (!arcadeUrl) {
+    setStatus('extractStatus', 'Please paste a demo URL to get started.', 'error');
+    return;
+  }
+
+  setStatus('extractStatus', 'Extracting content...', '');
+
+  try {
+    const data = await apiPost('/api/extract-guide', { arcadeUrl });
+    currentExtractedGuide = data.extractedGuide || {};
+
+    document.getElementById('arcadeId').value =
+      currentExtractedGuide.arcadeId || '';
+
+    document.getElementById('creationLink').value =
+      currentExtractedGuide.shareUrl ||
+      currentExtractedGuide.sourceUrl ||
+      arcadeUrl;
+
+    document.getElementById('guideTitle').value =
+      currentExtractedGuide.title || '';
+
+    document.getElementById('stepTexts').value =
+      (currentExtractedGuide.stepTexts || []).join('\n');
+
+    document.getElementById('bodyText').value =
+      currentExtractedGuide.bodyText || '';
+
+    document.getElementById('extractedCard').style.display = 'block';
+
+    const steps = currentExtractedGuide.steps || [];
+    const imageUrls = currentExtractedGuide.imageUrls || [];
+    const previewSection = document.getElementById('imagePreviewSection');
+    const previewGrid = document.getElementById('imagePreviewGrid');
+    const imageCountEl = document.getElementById('imageCount');
+    previewGrid.innerHTML = '';
+
+    if (steps.length > 0) {
+      imageCountEl.textContent = '(' + steps.length + ' step-paired images will be sent to AI in sequence)';
+      steps.forEach(function(step, i) {
+        const wrapper = document.createElement('div');
+        wrapper.style.cssText = 'position:relative; border:1px solid var(--border); border-radius:6px; overflow:hidden; width:180px; background:#f0f0f0;';
+        const img = document.createElement('img');
+        img.src = step.imageUrl;
+        img.alt = step.text || 'Step ' + (i + 1);
+        img.style.cssText = 'width:100%; height:100px; object-fit:cover;';
+        img.onerror = function() { this.style.display='none'; };
+        const badge = document.createElement('span');
+        badge.textContent = (i + 1);
+        badge.style.cssText = 'position:absolute; top:4px; left:4px; background:rgba(0,0,0,0.6); color:#fff; font-size:10px; padding:1px 5px; border-radius:3px;';
+        const caption = document.createElement('div');
+        caption.textContent = step.text || '(no text)';
+        caption.style.cssText = 'padding:4px 6px; font-size:11px; color:var(--ink); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;';
+        caption.title = step.text || '';
+        wrapper.appendChild(img);
+        wrapper.appendChild(badge);
+        wrapper.appendChild(caption);
+        previewGrid.appendChild(wrapper);
+      });
+      previewSection.style.display = 'block';
+    } else if (imageUrls.length > 0) {
+      imageCountEl.textContent = '(' + imageUrls.length + ' images will be sent to AI)';
+      imageUrls.forEach(function(url, i) {
+        const wrapper = document.createElement('div');
+        wrapper.style.cssText = 'position:relative; border:1px solid var(--border); border-radius:6px; overflow:hidden; width:140px; height:100px; background:#f0f0f0;';
+        const img = document.createElement('img');
+        img.src = url;
+        img.alt = 'Guide image ' + (i + 1);
+        img.style.cssText = 'width:100%; height:100%; object-fit:cover;';
+        img.onerror = function() { this.style.display='none'; };
+        const badge = document.createElement('span');
+        badge.textContent = (i + 1);
+        badge.style.cssText = 'position:absolute; top:4px; left:4px; background:rgba(0,0,0,0.6); color:#fff; font-size:10px; padding:1px 5px; border-radius:3px;';
+        wrapper.appendChild(img);
+        wrapper.appendChild(badge);
+        previewGrid.appendChild(wrapper);
+      });
+      previewSection.style.display = 'block';
+    } else {
+      previewSection.style.display = 'none';
+    }
+
+    setGuideSuccessStatus(
+      'extractStatus',
+      currentExtractedGuide.guideUrl || '',
+      currentExtractedGuide.warnings || []
+    );
+  } catch (err) {
+    setStatus(
+      'extractStatus',
+      err && err.message ? err.message : String(err),
+      'error'
+    );
+  }
+}
+
+var FIELD_CONFIDENCE_MAP = {
+  'demoTitle': 'demo_title',
+  'descriptionWithoutGid': 'description_without_gid',
+  'descriptionForSeo': 'description_for_seo',
+  'language': 'language_suggestions',
+  'ctaLink1': 'cta_link_suggestions',
+  'ctaLink2': 'cta_link_suggestions',
+  'ctaLink3': 'cta_link_suggestions',
+  'seoKeywords': 'seo_keywords',
+  'primaryProduct': 'primary_product_suggestion',
+  'otherProducts': 'other_products_suggestion',
+  'tdp': 'tdp_suggestion',
+  'salesTactic': 'sales_tactic_suggestion',
+  'marketingProgram': 'marketing_program_suggestion'
+};
+
+var CONFIDENCE_LABELS = {
+  'high': 'High confidence',
+  'medium': 'Medium confidence — worth a quick check',
+  'low': 'Low confidence — please review'
+};
+
+var FIELD_DISPLAY_NAMES = {
+  'demo_title': 'Demo Title', 'description_without_gid': 'Description',
+  'description_for_seo': 'SEO Description', 'language_suggestions': 'Language',
+  'seo_keywords': 'SEO Keywords', 'vertical_suggestion': 'Vertical',
+  'event_or_project_suggestion': 'Event/Project', 'primary_product_suggestion': 'Primary Product',
+  'other_products_suggestion': 'Other Products', 'tdp_suggestion': 'Technology Decision Point',
+  'sales_tactic_suggestion': 'Sales Tactic', 'marketing_program_suggestion': 'Marketing Program',
+  'cta_link_suggestions': 'CTA Links', 'tour_highlights': 'Tour Highlights'
+};
+
+var CREATOR_REQUIRED_FIELDS = [
+  'email', 'creatorName', 'creatorTeams', 'vertical', 'event'
+];
+
+function highlightEmptyRequired() {
+  CREATOR_REQUIRED_FIELDS.forEach(function(id) {
+    var el = document.getElementById(id);
+    if (!el) return;
+    if (!el.value) {
+      el.classList.add('needs-input');
+    } else {
+      el.classList.remove('needs-input');
+    }
+  });
+}
+
+function attachRequiredFieldListeners() {
+  CREATOR_REQUIRED_FIELDS.forEach(function(id) {
+    var el = document.getElementById(id);
+    if (!el) return;
+    el.addEventListener('input', function() {
+      if (el.value) el.classList.remove('needs-input');
+      else el.classList.add('needs-input');
+    });
+    el.addEventListener('change', function() {
+      if (el.value) el.classList.remove('needs-input');
+      else el.classList.add('needs-input');
+    });
+  });
+}
+
+function clearConfidenceMarks() {
+  document.querySelectorAll('.confidence-high, .confidence-medium, .confidence-low').forEach(function(el) {
+    el.classList.remove('confidence-high', 'confidence-medium', 'confidence-low');
+    el.title = '';
+  });
+  var banner = document.getElementById('reviewBanner');
+  if (banner) { banner.innerHTML = ''; banner.className = ''; banner.style.display = 'none'; }
+}
+
+function fieldHasValue(id) {
+  const el = document.getElementById(id);
+  if (!el) return false;
+
+  if (el.tagName === 'SELECT' && el.multiple) {
+    return Array.from(el.selectedOptions).length > 0;
+  }
+
+  return String(el.value || '').trim() !== '';
+}
+
+function markFieldConfidence(id, level) {
+  if (!fieldHasValue(id)) return;
+  var el = document.getElementById(id);
+  if (!el) return;
+  el.classList.add('confidence-' + level);
+  el.title = CONFIDENCE_LABELS[level] || '';
+}
+
+function showReviewBanner(fieldConfidence) {
+  var banner = document.getElementById('reviewBanner');
+  if (!banner) return;
+
+  var counts = { high: 0, medium: 0, low: 0 };
+  var mediumFields = [];
+  var lowFields = [];
+
+  Object.keys(fieldConfidence).forEach(function(key) {
+    var level = fieldConfidence[key];
+    if (counts[level] !== undefined) counts[level]++;
+    if (level === 'medium') mediumFields.push(key);
+    if (level === 'low') lowFields.push(key);
+  });
+
+  var total = counts.high + counts.medium + counts.low;
+  if (total === 0) { banner.style.display = 'none'; return; }
+
+  var reverseMap = {};
+  Object.keys(FIELD_CONFIDENCE_MAP).forEach(function(elId) {
+    var draftKey = FIELD_CONFIDENCE_MAP[elId];
+    if (!reverseMap[draftKey]) reverseMap[draftKey] = elId;
+  });
+
+  var bannerClass = lowFields.length > 2 ? 'review-banner-alert'
+    : lowFields.length > 0 ? 'review-banner-warning' : 'review-banner-good';
+
+  var message = '';
+  if (lowFields.length > 0) {
+    message = 'Some fields need your attention before submitting.';
+  } else if (counts.medium > 0) {
+    message = 'Looks good — a few fields are worth a quick check.';
+  } else {
+    message = 'All fields look good!';
+  }
+
+  var pctHigh = Math.round((counts.high / total) * 100);
+  var pctMedium = Math.round((counts.medium / total) * 100);
+  var pctLow = 100 - pctHigh - pctMedium;
+
+  var html = '';
+
+  html += '<div class="review-banner-header">';
+  html += '<div class="review-banner-title">AI draft confidence</div>';
+  html += '<div class="review-banner-subtitle">How confident AI is in each field it filled.</div>';
+  html += '</div>';
+
+  html += '<div class="review-banner-legend">';
+  html += '<span class="review-banner-legend-item"><span class="review-banner-legend-dot" style="background:#16a34a;"></span> <span class="review-banner-legend-count">' + counts.high + '</span> Ready</span>';
+  html += '<span class="review-banner-legend-item"><span class="review-banner-legend-dot" style="background:#d97706;"></span> <span class="review-banner-legend-count">' + counts.medium + '</span> Worth a check</span>';
+  html += '<span class="review-banner-legend-item"><span class="review-banner-legend-dot" style="background:#dc2626;"></span> <span class="review-banner-legend-count">' + counts.low + '</span> Needs input</span>';
+  html += '</div>';
+
+  html += '<div class="review-banner-required-note">';
+  html += '<span class="review-banner-required-swatch"></span> Yellow = still needs your input';
+  html += '</div>';
+
+  html += '<div class="confidence-bar">';
+  if (counts.high) html += '<div class="confidence-bar-segment confidence-bar-segment-high" style="width:' + pctHigh + '%"></div>';
+  if (counts.medium) html += '<div class="confidence-bar-segment confidence-bar-segment-medium" style="width:' + pctMedium + '%"></div>';
+  if (counts.low) html += '<div class="confidence-bar-segment confidence-bar-segment-low" style="width:' + pctLow + '%"></div>';
+  html += '</div>';
+
+  html += '<div class="review-banner-message">' + message + '</div>';
+
+  var actionFields = lowFields.concat(mediumFields);
+  if (actionFields.length > 0) {
+    html += '<div class="review-banner-fields">';
+    lowFields.forEach(function(key) {
+      var name = FIELD_DISPLAY_NAMES[key] || key;
+      var targetId = reverseMap[key] || '';
+      html += '<span class="review-banner-field-tag review-banner-field-tag-low"'
+        + ' onclick="scrollToField(\'' + targetId + '\')"'
+        + ' title="Needs input — click to review">'
+        + name + '</span>';
+    });
+    mediumFields.forEach(function(key) {
+      var name = FIELD_DISPLAY_NAMES[key] || key;
+      var targetId = reverseMap[key] || '';
+      html += '<span class="review-banner-field-tag review-banner-field-tag-medium"'
+        + ' onclick="scrollToField(\'' + targetId + '\')"'
+        + ' title="Worth a check — click to review">'
+        + name + '</span>';
+    });
+    html += '</div>';
+  }
+
+  banner.className = 'review-banner ' + bannerClass;
+  banner.innerHTML = html;
+  banner.style.display = 'block';
+}
+
+function scrollToField(elementId) {
+  if (!elementId) return;
+  var el = document.getElementById(elementId);
+  if (!el) return;
+  el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  el.style.transition = 'box-shadow 0.3s ease';
+  el.style.boxShadow = '0 0 0 3px rgba(109, 40, 217, 0.35)';
+  setTimeout(function() { el.style.boxShadow = ''; }, 1500);
+  el.focus();
+}
+
+
+function findLabelForField(id) {
+  const el = document.getElementById(id);
+  if (!el) return null;
+
+  const labelWithFor = document.querySelector('label[for="' + id + '"]');
+  if (labelWithFor) return labelWithFor;
+
+  let node = el.previousElementSibling;
+  while (node) {
+    if (node.tagName === 'LABEL') return node;
+    node = node.previousElementSibling;
+  }
+
+  return null;
+}
+
+var currentDraft = null;
+
+
+function populateFormFromDraft(draft) {
+  document.getElementById('demoTitle').value = draft.demo_title || '';
+
+  var combinedDescription = draft.description_without_gid || draft.description_with_gid || '';
+  if (Array.isArray(draft.tour_highlights) && draft.tour_highlights.length > 0) {
+    combinedDescription += '\n\nThe tour highlights:\n';
+    combinedDescription += draft.tour_highlights.map(function(h) { return '- ' + h; }).join('\n');
+  }
+  document.getElementById('descriptionWithoutGid').value = combinedDescription;
+  document.getElementById('descriptionForSeo').value = draft.description_for_seo || '';
+
+  setMultiSelectValues('language', draft.language_suggestions || []);
+
+  var ctaLinks = Array.isArray(draft.cta_link_suggestions) ? draft.cta_link_suggestions : [];
+  document.getElementById('ctaLink1').value = ctaLinks[0] ? ctaLinks[0].label + ': ' + ctaLinks[0].url : '';
+  document.getElementById('ctaLink2').value = ctaLinks[1] ? ctaLinks[1].label + ': ' + ctaLinks[1].url : '';
+  document.getElementById('ctaLink3').value = ctaLinks[2] ? ctaLinks[2].label + ': ' + ctaLinks[2].url : '';
+
+  document.getElementById('seoKeywords').value = Array.isArray(draft.seo_keywords)
+    ? draft.seo_keywords.join(', ') : '';
+
+  setSelectValue('primaryProduct', draft.primary_product_suggestion);
+  setMultiSelectValues('otherProducts', draft.other_products_suggestion || []);
+  if (draft.other_products_other_text) {
+    document.getElementById('otherProductsOther').value = draft.other_products_other_text;
+  }
+  setSelectValue('tdp', draft.tdp_suggestion);
+  setSelectValue('salesTactic', draft.sales_tactic_suggestion);
+  setSelectValue('marketingProgram', draft.marketing_program_suggestion);
+
+  document.getElementById('aiConfidenceNotes').value = Array.isArray(draft.confidence_notes)
+    ? draft.confidence_notes.join('\n') : '';
+
+  toggleOtherFields();
+  updateWordCounts();
+
+  clearConfidenceMarks();
+  var fieldConfidence = draft.field_confidence || {};
+  Object.keys(FIELD_CONFIDENCE_MAP).forEach(function(elementId) {
+    var draftField = FIELD_CONFIDENCE_MAP[elementId];
+    var level = fieldConfidence[draftField] || 'medium';
+    markFieldConfidence(elementId, level);
+  });
+  showReviewBanner(fieldConfidence);
+
+  currentDraft = draft;
+}
+
+    async function generateDraft() {
+      const extractedGuide = getEditedExtractedGuide();
+
+      setStatus('generateStatus', 'Generating draft...', 'This may take a few seconds.');
+
+try {
+  const data = await apiPost('/api/generate', { extractedGuide });
+
+  currentAiMeta = {
+    modelUsed: data.modelUsed || '',
+    promptVersion: data.promptVersion || '',
+    generatedAt: data.generatedAt || ''
+  };
+
+        const draft = data.draft;
+
+        setSelectValue('contentType', 'Technical Walkthrough');
+        document.getElementById('contentTypeOther').value = '';
+        setSelectValue('quarter', getCurrentQuarter());
+        document.getElementById('languageOther').value = '';
+        document.getElementById('primaryProductOther').value = '';
+        document.getElementById('otherProductsOther').value = '';
+        document.getElementById('group').value = '';
+
+        if (!draft.demo_title && extractedGuide.title) {
+          draft.demo_title = extractedGuide.title;
+        }
+
+        document.getElementById('aiModelInfo').value =
+          `${currentAiMeta.modelUsed} | ${currentAiMeta.promptVersion} | ${currentAiMeta.generatedAt}`;
+
+        populateFormFromDraft(draft);
+
+        var stepCount = (currentExtractedGuide && currentExtractedGuide.steps && currentExtractedGuide.steps.length)
+          || (currentExtractedGuide && currentExtractedGuide.stepTexts && currentExtractedGuide.stepTexts.length)
+          || 0;
+        if (stepCount > 0) {
+          var minutes = Math.ceil(stepCount / 8);
+          document.getElementById('duration').value = '~' + minutes + ' minute' + (minutes !== 1 ? 's' : '');
+        }
+
+        const formSection = document.getElementById('formSection');
+        if (formSection) {
+          formSection.style.display = 'block';
+        }
+
+        highlightEmptyRequired();
+        attachRequiredFieldListeners();
+
+        setStatus(
+          'generateStatus',
+          'Draft ready! Review the fields below before submitting.',
+          'success'
+        );
+      } catch (err) {
+        setStatus('generateStatus', err.message, 'error');
+      }
+    }
+
+    let isSubmitting = false;
+
+function setSubmitLoading(isLoading) {
+  const button = document.getElementById('submitButton');
+  if (!button) return;
+
+  button.disabled = isLoading;
+  button.textContent = isLoading ? 'Submitting...' : 'Submit for Review';
+}
+
+function escapeHtml(value) {
+  return String(value || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+function setSubmitSuccessStatus(data) {
+  const workflowResult = data.workflowResult || {};
+  const workflowPayload = workflowResult.result || {};
+
+  const requestNumber = workflowPayload.number || '';
+  const action = workflowPayload.action || '';
+
+  document.getElementById('urlSection').style.display = 'none';
+  document.getElementById('extractedCard').style.display = 'none';
+  document.getElementById('formSection').style.display = 'none';
+
+  const successSection = document.getElementById('successSection');
+  const mainMessage = document.getElementById('successMainMessage');
+  const reference = document.getElementById('successReference');
+
+  let friendlyAction = 'Your intake has been submitted and sent into the review workflow.';
+
+  if (action === 'created_new_creator_only') {
+    friendlyAction = 'Your intake has been submitted as a new request and sent into the review workflow.';
+  }
+
+  if (action === 'updated_existing_request') {
+    friendlyAction = 'Your intake has been added to the existing request and sent back into the review workflow.';
+  }
+
+  mainMessage.textContent = friendlyAction;
+
+  reference.innerHTML = requestNumber
+    ? `<strong>Reference:</strong> Request #${escapeHtml(requestNumber)}`
+    : '';
+
+  successSection.style.display = 'block';
+  successSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function startAnotherSubmission() {
+  // Always restore the main sections first, so the page never stays blank.
+  const urlSection = document.getElementById('urlSection');
+  const extractedCard = document.getElementById('extractedCard');
+  const formSection = document.getElementById('formSection');
+  const successSection = document.getElementById('successSection');
+
+  if (urlSection) urlSection.style.display = 'block';
+  if (extractedCard) extractedCard.style.display = 'none';
+  if (formSection) formSection.style.display = 'none';
+  if (successSection) successSection.style.display = 'none';
+
+  currentExtractedGuide = null;
+  currentAiMeta = {
+    modelUsed: '',
+    promptVersion: '',
+    generatedAt: ''
+  };
+
+  // Clear fields safely.
+  document.querySelectorAll('input, textarea, select').forEach(el => {
+    if (el.type === 'checkbox') {
+      el.checked = false;
+      return;
+    }
+
+    if (el.tagName === 'SELECT' && el.multiple) {
+      Array.from(el.options).forEach(option => {
+        option.selected = false;
+      });
+      return;
+    }
+
+    el.value = '';
+  });
+
+  // Clear statuses.
+  ['extractStatus', 'generateStatus', 'submitStatus'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) {
+      el.textContent = '';
+      el.className = 'status';
+    }
+  });
+
+  // Clear success text.
+  const successMainMessage = document.getElementById('successMainMessage');
+  const successReference = document.getElementById('successReference');
+
+  if (successMainMessage) successMainMessage.textContent = '';
+  if (successReference) successReference.innerHTML = '';
+
+  // Reset UI helpers safely.
+  if (typeof clearConfidenceMarks === 'function') {
+    clearConfidenceMarks();
+  }
+
+  if (typeof toggleOtherFields === 'function') {
+    toggleOtherFields();
+  }
+
+  if (typeof updateWordCounts === 'function') {
+    updateWordCounts();
+  }
+
+  const submitButton = document.getElementById('submitButton');
+  if (submitButton) {
+    submitButton.disabled = false;
+    submitButton.textContent = 'Submit for Review';
+  }
+
+  isSubmitting = false;
+
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+async function submitForReview() {
+  if (isSubmitting) return;
+
+  const form = collectFormData();
+  const validation = validateForm(form);
+
+  if (validation.missing.length) {
+    setStatus(
+      'submitStatus',
+      'Please complete these required fields:\n- ' + validation.missing.join('\n- '),
+      'error'
+    );
+    return;
+  }
+
+  if (validation.warnings.length) {
+    const proceed = confirm(
+      'Please review these warnings before submitting:\n\n- ' +
+      validation.warnings.join('\n- ') +
+      '\n\nSubmit anyway?'
+    );
+
+    if (!proceed) {
+      return;
+    }
+  }
+
+  isSubmitting = true;
+  setSubmitLoading(true);
+  setStatus(
+    'submitStatus',
+    'Submitting...',
+    ''
+  );
+
+  try {
+    const data = await apiPost('/api/submit', {
+      form,
+      extractedGuide: currentExtractedGuide || getEditedExtractedGuide(),
+      aiMeta: currentAiMeta
+    });
+
+    setSubmitSuccessStatus(data);
+  } catch (err) {
+    setStatus(
+      'submitStatus',
+      err && err.message ? err.message : String(err),
+      'error'
+    );
+  } finally {
+    isSubmitting = false;
+    setSubmitLoading(false);
+  }
+}
+
+    loadOptions().catch(err => {
+      setStatus('extractStatus', 'Failed to load options: ' + err.message, 'error');
+    });
+
+    gasCall('getUserEmail').then(function(result) {
+      if (result && result.email) {
+        var emailField = document.getElementById('email');
+        if (emailField && !emailField.value) {
+          emailField.value = result.email;
+        }
+      }
+    }).catch(function() {});
+  </script>
+</body>
+</html>

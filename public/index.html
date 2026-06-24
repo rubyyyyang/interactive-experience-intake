@@ -2,7 +2,7 @@
 <html>
 <head>
   <meta charset="UTF-8">
-  <title>Arcade Intake Assistant</title>
+  <title>Interactive Demo Intake</title>
 
   <style>
     body {
@@ -179,29 +179,116 @@
         grid-template-columns: 1fr;
       }
     }
+    .confidence-high { border-left: 4px solid #16a34a !important; }
+    .confidence-medium { border-left: 4px solid #d97706 !important; }
+    .confidence-low { border-left: 4px solid #dc2626 !important; }
+    .needs-input { background: #fefce8 !important; }
+
+    .review-banner {
+      border-radius: 8px; margin: 0 0 18px 0;
+      font-size: 14px; line-height: 1.5;
+      overflow: hidden;
+    }
+    .review-banner-good { background: #f0fdf4; border: 1px solid #bbf7d0; }
+    .review-banner-warning { background: #fffbeb; border: 1px solid #fde68a; }
+    .review-banner-alert { background: #fef2f2; border: 1px solid #fecaca; }
+
+    .review-banner-header { padding: 16px 20px 0; }
+    .review-banner-title { font-weight: 700; font-size: 14px; color: #1f1f1f; margin: 0; }
+    .review-banner-subtitle { font-size: 13px; color: #6b7280; margin: 2px 0 0; }
+
+    .review-banner-legend {
+      display: flex; flex-wrap: wrap; gap: 14px; align-items: center;
+      padding: 12px 20px 0; font-size: 13px; color: #374151;
+    }
+    .review-banner-legend-item { display: inline-flex; align-items: center; gap: 5px; }
+    .review-banner-legend-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+    .review-banner-legend-count { font-weight: 700; }
+
+    .review-banner-required-note {
+      display: flex; align-items: center; gap: 6px;
+      padding: 6px 20px 0; font-size: 12px; color: #6b7280;
+    }
+    .review-banner-required-swatch {
+      width: 12px; height: 12px; background: #fefce8;
+      border: 1px solid #e5e7eb; border-radius: 2px; display: inline-block;
+    }
+
+    .confidence-bar {
+      display: flex; height: 8px; margin: 14px 20px 0;
+      border-radius: 4px; overflow: hidden; background: #e5e7eb;
+    }
+    .confidence-bar-segment { transition: width 0.4s ease; min-width: 0; }
+    .confidence-bar-segment-high { background: #16a34a; }
+    .confidence-bar-segment-medium { background: #d97706; }
+    .confidence-bar-segment-low { background: #dc2626; }
+
+    .review-banner-message { padding: 12px 20px 14px; font-size: 13px; color: #6b7280; }
+
+    .review-banner-fields { padding: 0 20px 16px; }
+    .review-banner-field-tag {
+      display: inline-flex; align-items: center; gap: 4px;
+      padding: 4px 10px; margin: 3px 4px 3px 0; border-radius: 4px;
+      font-size: 12px; font-weight: 600; cursor: pointer;
+      border: 1px solid transparent; transition: background 0.15s, border-color 0.15s;
+    }
+    .review-banner-field-tag:hover { border-color: currentColor; }
+    .review-banner-field-tag::after { content: "\2193"; font-size: 10px; opacity: 0.5; }
+    .review-banner-field-tag-medium { background: #fef3c7; color: #92400e; }
+    .review-banner-field-tag-low { background: #fee2e2; color: #991b1b; }
+
+    .form-section {
+      margin-top: 28px;
+      padding-top: 20px;
+      border-top: 2px solid #e5e7eb;
+    }
+
+    .form-section:first-of-type {
+      margin-top: 12px;
+      border-top: none;
+      padding-top: 0;
+    }
+
+    .form-section-header {
+      font-size: 16px;
+      font-weight: 700;
+      color: #374151;
+      margin: 0 0 4px 0;
+      letter-spacing: 0.02em;
+    }
+
+    .form-section-subtitle {
+      font-size: 13px;
+      color: #6b7280;
+      margin: 0 0 8px 0;
+    }
   </style>
 </head>
 
 <body>
-  <h1>Arcade Intake Assistant</h1>
+  <h1>Interactive Demo Intake</h1>
   <p class="subtle">
-    Enter an Arcade ID, pull step texts from the Arcade guide page, generate AI-assisted intake metadata, review and edit the draft, then submit it for review.
+    Paste your demo URL below. AI will pre-fill most fields — you just review and submit.
   </p>
 
 
 
   <div class="card">
-    <h2>1. Enter Arcade ID</h2>
+    <h2>1. Paste your demo URL</h2>
 
-    <label for="arcadeId">Arcade ID <span class="required-note">*</span></label>
+    <p class="helper" style="margin-bottom:12px;">
+      Make sure your demo is in the <strong>Red Hat Workspace</strong> (not a private space) before submitting.
+    </p>
+
+    <label for="arcadeId">Demo ID <span class="required-note">*</span></label>
     <input id="arcadeId" placeholder="Example: vg68ljkY97QPxSxGugNy">
 
-    <button onclick="extractGuide()">Pull Guide Content</button>
+    <button onclick="extractGuide()">Extract Content</button>
 
     <div id="extractStatus" class="status"></div>
   </div>
   <div id="extractedCard" class="card" style="display:none;">
-    <h2>2. Review source content</h2>
+    <h2>2. Review extracted content</h2>
   
     <input id="creationLink" type="hidden">
   
@@ -213,19 +300,17 @@
     
     <textarea id="bodyText" style="display:none;"></textarea>
   
-    <button onclick="generateDraft()">Generate Intake Draft</button>
+    <button onclick="generateDraft()">Generate Draft</button>
     <div id="generateStatus" class="status"></div>
   </div>
 
+
   <div id="formCard" class="card ai-card" style="display:none;">
-    <h2>3. Complete AI-assisted intake submission</h2>
-    <p class="subtle">
-      AI-suggested fields are editable. Some fields must be completed by the creator.
-    </p>
+    <h2>3. Review and submit</h2>
+    <div id="reviewBanner"></div>
 
     <details>
-      <summary>AI generation details</summary>
-
+      <summary>How AI generated this draft</summary>
 
       <label>Model / Prompt Info</label>
       <input id="aiModelInfo" readonly>
@@ -234,94 +319,57 @@
       <textarea id="aiConfidenceNotes" readonly></textarea>
     </details>
 
+<!-- ===== DEMO ===== -->
+<div class="form-section">
+  <h3 class="form-section-header">Demo</h3>
 
-    <div class="row">
-      <div>
-        <label>Email Address <span class="required-note">*</span></label>
-        <input id="email" placeholder="name@redhat.com">
-      </div>
-
-      <div>
-        <label>Creator Name(s) <span class="required-note">*</span></label>
-        <input id="creatorName" placeholder="Creator name(s)">
-      </div>
-    </div>
-
-    <label>Creator Team(s) <span class="required-note">*</span></label>
-    <select id="creatorTeams"></select>
-    <input id="creatorTeamOther" placeholder="Enter other creator team" style="display:none;">
-
-
-    <label>Final Demo Title <span class="required-note">*</span></label>
+    <label>Title <span class="required-note">*</span></label>
     <input id="demoTitle">
 
+    <label>Description <span class="required-note">*</span></label>
+    <textarea id="descriptionWithoutGid" oninput="updateWordCounts()" style="min-height:180px;"></textarea>
+    <div id="descriptionWithoutGidCount" class="word-count"></div>
+
     <div class="row">
       <div>
-        <label>Content Type <span class="required-note">*</span></label>
+        <label>Content type <span class="required-note">*</span></label>
         <select id="contentType"></select>
         <input id="contentTypeOther" placeholder="Explain other content type" style="display:none;">
         <div class="helper">
-          Business Intro: 90s or less, non-technical. Technical Walkthrough: around 5 minutes, technical.
+          Business Intro = under 90 seconds, non-technical. Technical Walkthrough = ~5 minutes, technical.
         </div>
       </div>
 
       <div>
-        <label>What quarter was this content created in? <span class="required-note">*</span></label>
-        <select id="quarter"></select>
-        <input id="quarterOther" placeholder="Enter other quarter" style="display:none;">
+        <label>Language(s) <span class="required-note">*</span></label>
+        <select id="language" multiple></select>
+        <input id="languageOther" placeholder="Enter other language(s)" style="display:none;">
+        <div class="helper">Hold Cmd (Mac) or Ctrl (Windows) to select multiple.</div>
       </div>
     </div>
 
-    <label>Language <span class="required-note">*</span></label>
-    <select id="language" multiple></select>
-    <input id="languageOther" placeholder="Enter other language(s)" style="display:none;">
-    <div class="helper">Hold Command on Mac to select multiple languages.</div>
+    <label>Estimated duration</label>
+    <input id="duration" placeholder="e.g., 3 minutes">
 
+    <label>Primary product featured? <span class="required-note">*</span></label>
+    <select id="primaryProduct"></select>
+    <input id="primaryProductOther" placeholder="Product name not in the list" style="display:none;">
 
-    <label>Description (50-150 words) <span class="required-note">*</span></label>
-    <textarea id="descriptionWithoutGid" oninput="updateWordCounts()"></textarea>
-    <div id="descriptionWithoutGidCount" class="word-count"></div>
+    <label>Optional: Other related products?</label>
+    <select id="otherProducts" multiple></select>
+    <input id="otherProductsOther" placeholder="Product name(s) not in the list" style="display:none;">
+    <div class="helper">Hold Cmd (Mac) or Ctrl (Windows) to select multiple.</div>
+</div>
 
-    <label>Description for SEO <span class="required-note">*</span></label>
-    <textarea id="descriptionForSeo" oninput="updateWordCounts()" placeholder="SEO-focused description for search results and page metadata"></textarea>
-    <div id="descriptionForSeoCount" class="word-count"></div>
-
-
-    <label>Keywords for SEO <span class="required-note">*</span></label>
-    <textarea id="seoKeywords" placeholder="e.g., cloud computing, automation, AI"></textarea>
-
-
-
-    <label>Links for next step call to action <span class="required-note">*</span></label>
-    <div class="helper">
-      AI suggests 3 official Red Hat links from an approved CTA catalog. Review and edit if needed.
-    </div>
-
-    <label>CTA Link 1 <span class="required-note">*</span></label>
-    <input id="ctaLink1" placeholder="Official Red Hat link">
-
-    <label>CTA Link 2 <span class="required-note">*</span></label>
-    <input id="ctaLink2" placeholder="Official Red Hat link">
-
-    <label>CTA Link 3 <span class="required-note">*</span></label>
-    <input id="ctaLink3" placeholder="Official Red Hat link">
-
+<!-- ===== AUDIENCE ===== -->
+<div class="form-section">
+  <h3 class="form-section-header">Audience</h3>
 
     <label>Vertical <span class="required-note">*</span></label>
     <select id="vertical"></select>
 
     <label>Is this for a specific event or project? <span class="required-note">*</span></label>
     <select id="event"></select>
-
-    <label>Primary product featured? <span class="required-note">*</span></label>
-    <select id="primaryProduct"></select>
-    <input id="primaryProductOther" placeholder="Enter other primary product" style="display:none;">
-
-    <label>Optional: Other related products?</label>
-    <select id="otherProducts" multiple></select>
-    <input id="otherProductsOther" placeholder="Enter other related products" style="display:none;">
-    <div class="helper">Hold Command on Mac to select multiple products.</div>
-
 
     <label>Related Technology Decision Point? <span class="required-note">*</span></label>
     <select id="tdp"></select>
@@ -331,40 +379,86 @@
 
     <label>Related Marketing Program? <span class="required-note">*</span></label>
     <select id="marketingProgram"></select>
+</div>
 
+<!-- ===== PUBLISHING ===== -->
+<div class="form-section">
+  <h3 class="form-section-header">Publishing</h3>
 
-    <div class="row">
-      <div>
-        <label>Synthetic Voice Used? <span class="required-note">*</span></label>
-        <select id="syntheticVoice"></select>
-      </div>
+    <label>SEO description <span class="required-note">*</span></label>
+    <textarea id="descriptionForSeo" oninput="updateWordCounts()" placeholder="Short description for search results"></textarea>
+    <div id="descriptionForSeoCount" class="word-count"></div>
 
-      <div>
-        <label>Translation Used? <span class="required-note">*</span></label>
-        <select id="translation"></select>
-      </div>
+    <label>SEO keywords <span class="required-note">*</span></label>
+    <textarea id="seoKeywords" placeholder="e.g., ansible automation, openshift virtualization"></textarea>
+
+    <label>Call-to-action links <span class="required-note">*</span></label>
+    <div class="helper">
+      AI suggests 3 links from the approved catalog. Edit if needed.
     </div>
 
-    <label>Mobile-friendly design considered? <span class="required-note">*</span></label>
-    <select id="mobileFriendly"></select>
+    <label>Link 1 <span class="required-note">*</span></label>
+    <input id="ctaLink1" placeholder="https://...">
 
-    <div class="checkbox-row">
-      <input id="requirementsConfirmed" type="checkbox">
-      <label for="requirementsConfirmed">
-        I have read the list of requirements and ensured this asset meets brand standards and includes English and Spanish translations for accessibility.
-        <span class="required-note">*</span>
-      </label>
-    </div>
+    <label>Link 2 <span class="required-note">*</span></label>
+    <input id="ctaLink2" placeholder="https://...">
 
-    <h3>Optional</h3>
+    <label>Link 3 <span class="required-note">*</span></label>
+    <input id="ctaLink3" placeholder="https://...">
+
+    <h3>Optional fields</h3>
 
     <label>Optional: Should this IE be grouped with another or part of a larger collection?</label>
     <textarea id="group"></textarea>
 
     <label>Optional: Have an Employee Advocacy link? Add it here.</label>
     <input id="employeeAdvocacy">
+</div>
 
-    <button onclick="submitForReview()">Submit for Review</button>
+<!-- ===== CREATOR DETAILS ===== -->
+<div class="form-section">
+  <h3 class="form-section-header">Creator Details</h3>
+
+    <div class="row">
+      <div>
+        <label>Your email <span class="required-note">*</span></label>
+        <input id="email" placeholder="name@redhat.com">
+      </div>
+
+      <div>
+        <label>Your name(s) <span class="required-note">*</span></label>
+        <input id="creatorName" placeholder="First Last">
+      </div>
+    </div>
+
+    <label>Your team <span class="required-note">*</span></label>
+    <select id="creatorTeams"></select>
+    <input id="creatorTeamOther" placeholder="Team name not in the list" style="display:none;">
+
+    <label>What quarter was this content created in? <span class="required-note">*</span></label>
+    <select id="quarter"></select>
+    <input id="quarterOther" placeholder="e.g., Q3 2026" style="display:none;">
+
+    <div class="checkbox-row">
+      <input id="syntheticVoice" type="checkbox" checked>
+      <label for="syntheticVoice">No synthetic voice was used</label>
+    </div>
+
+    <div class="checkbox-row">
+      <input id="translation" type="checkbox" checked>
+      <label for="translation">No translation was used</label>
+    </div>
+
+    <div class="checkbox-row">
+      <input id="requirementsConfirmed" type="checkbox">
+      <label for="requirementsConfirmed">
+        I confirm this demo meets brand standards, includes English and Spanish captions, and is mobile-friendly.
+        <span class="required-note">*</span>
+      </label>
+    </div>
+</div>
+
+    <button onclick="submitForReview()">Submit</button>
     <div id="submitStatus" class="status"></div>
   </div>
 
@@ -481,9 +575,6 @@
       populateSelect('tdp', options.tdps);
       populateSelect('salesTactic', options.salesTactics);
       populateSelect('marketingProgram', options.marketingPrograms);
-      populateSelect('syntheticVoice', options.yesNo);
-      populateSelect('translation', options.yesNo);
-      populateSelect('mobileFriendly', options.yesNo);
 
       document.getElementById('creatorTeams').addEventListener('change', toggleOtherFields);
       document.getElementById('contentType').addEventListener('change', toggleOtherFields);
@@ -515,6 +606,13 @@
         otherProducts.includes('Other') ? 'block' : 'none';
     }
 
+    function getCurrentQuarter() {
+      var now = new Date();
+      var year = now.getFullYear().toString().slice(-2);
+      var q = Math.ceil((now.getMonth() + 1) / 3);
+      return 'CY' + year + 'Q' + q;
+    }
+
     function countWords(text) {
       return String(text || '')
         .trim()
@@ -524,19 +622,26 @@
     }
 
     function updateWordCounts() {
-      updateSingleWordCount('descriptionWithoutGid', 'descriptionWithoutGidCount', 50, 150);
+      updateSingleWordCount('descriptionWithoutGid', 'descriptionWithoutGidCount', 30, 100, true);
       updateSingleWordCount('descriptionForSeo', 'descriptionForSeoCount', 25, 45);
     }
 
-    function updateSingleWordCount(textareaId, countId, minWords, maxWords) {
+    function updateSingleWordCount(textareaId, countId, minWords, maxWords, hasTourHighlights) {
   const textarea = document.getElementById(textareaId);
   const el = document.getElementById(countId);
 
   if (!textarea || !el) return;
 
-  const count = countWords(textarea.value);
+  var text = textarea.value;
+  var count = countWords(text);
 
-  el.textContent = `${count} words. Suggested: ${minWords}-${maxWords} words.`;
+  if (hasTourHighlights && text.indexOf('\n\nThe tour highlights:\n') !== -1) {
+    var paragraphOnly = text.split('\n\nThe tour highlights:\n')[0];
+    var paragraphCount = countWords(paragraphOnly);
+    el.textContent = paragraphCount + ' words in description + tour highlights appended. Suggested: ' + minWords + '-' + maxWords + ' words for description.';
+  } else {
+    el.textContent = count + ' words. Suggested: ' + minWords + '-' + maxWords + ' words.';
+  }
   el.className = 'word-count';
 }
 
@@ -553,6 +658,7 @@
           .filter(Boolean),
         imageTexts: currentExtractedGuide?.imageTexts || [],
         imageUrls: currentExtractedGuide?.imageUrls || [],
+        steps: currentExtractedGuide?.steps || [],
         links: currentExtractedGuide?.links || [],
         bodyText: document.getElementById('bodyText').value.trim()
       };
@@ -602,10 +708,11 @@
         tdp: document.getElementById('tdp').value,
         salesTactic: document.getElementById('salesTactic').value,
         marketingProgram: document.getElementById('marketingProgram').value,
-        syntheticVoice: document.getElementById('syntheticVoice').value,
-        translation: document.getElementById('translation').value,
-        mobileFriendly: document.getElementById('mobileFriendly').value,
+        syntheticVoice: document.getElementById('syntheticVoice').checked ? 'No' : 'Yes',
+        translation: document.getElementById('translation').checked ? 'No' : 'Yes',
+        mobileFriendly: document.getElementById('requirementsConfirmed').checked ? 'Yes' : 'No',
         group: document.getElementById('group').value.trim(),
+        duration: document.getElementById('duration').value.trim(),
         employeeAdvocacy: document.getElementById('employeeAdvocacy').value.trim(),
         requirementsConfirmed: document.getElementById('requirementsConfirmed').checked,
         aiConfidenceNotes: document.getElementById('aiConfidenceNotes').value.trim(),
@@ -617,7 +724,7 @@
       const missing = [];
       const warnings = [];
 
-      if (!form.arcadeId) missing.push('Arcade ID');
+      if (!form.arcadeId) missing.push('Interactive Demo ID');
       if (!form.email) missing.push('Email Address');
       if (!form.creatorName) missing.push('Creator Name(s)');
       if (!form.creatorTeams) missing.push('Creator Team(s)');
@@ -628,9 +735,9 @@
       if (!form.demoTitle) missing.push('Final Demo Title');
       if (!form.creationLink) missing.push('Creation Link');
 
-      if (!form.contentType) missing.push('Content Type');
+      if (!form.contentType) missing.push('Asset Type');
       if (form.contentType === 'Other' && !form.contentTypeOther) {
-        missing.push('Other Content Type explanation');
+        missing.push('Other Asset Type explanation');
       }
 
       if (!form.quarter) missing.push('Quarter');
@@ -640,14 +747,6 @@
 
       if (!form.descriptionWithoutGid) missing.push('Description');
       if (!form.descriptionForSeo) missing.push('Description for SEO');
-
-      const descriptionWithoutGidWords = countWords(form.descriptionWithoutGid);
-      const descriptionForSeoWords = countWords(form.descriptionForSeo);
-
-      if (descriptionWithoutGidWords < 50 || descriptionWithoutGidWords > 150) {
-        warnings.push('Description should be 50-150 words.');
-      }
-
 
       if (!form.language.length) missing.push('Language');
       if (form.language.includes('Other') && !form.languageOther) {
@@ -673,9 +772,6 @@
       if (!form.tdp) missing.push('Technology Decision Point');
       if (!form.salesTactic) missing.push('Sales Tactic');
       if (!form.marketingProgram) missing.push('Marketing Program');
-      if (!form.syntheticVoice) missing.push('Synthetic Voice Used');
-      if (!form.translation) missing.push('Translation Used');
-      if (!form.mobileFriendly) missing.push('Mobile-friendly design considered');
       if (!form.requirementsConfirmed) missing.push('Requirements confirmation checkbox');
 
       return { missing, warnings };
@@ -685,7 +781,7 @@
       const arcadeId = document.getElementById('arcadeId').value.trim();
 
       if (!arcadeId) {
-        setStatus('extractStatus', 'Please enter an Arcade ID.', 'error');
+        setStatus('extractStatus', 'Please enter an interactive demo ID.', 'error');
         return;
       }
 
@@ -712,6 +808,256 @@
       }
     }
 
+    var FIELD_CONFIDENCE_MAP = {
+      'demoTitle': 'demo_title',
+      'descriptionWithoutGid': 'description_without_gid',
+      'descriptionForSeo': 'description_for_seo',
+      'language': 'language_suggestions',
+      'ctaLink1': 'cta_link_suggestions',
+      'ctaLink2': 'cta_link_suggestions',
+      'ctaLink3': 'cta_link_suggestions',
+      'seoKeywords': 'seo_keywords',
+      'primaryProduct': 'primary_product_suggestion',
+      'otherProducts': 'other_products_suggestion',
+      'tdp': 'tdp_suggestion',
+      'salesTactic': 'sales_tactic_suggestion',
+      'marketingProgram': 'marketing_program_suggestion'
+    };
+
+    var CONFIDENCE_LABELS = {
+      'high': 'High confidence',
+      'medium': 'Medium confidence — worth a quick check',
+      'low': 'Low confidence — please review'
+    };
+
+    var FIELD_DISPLAY_NAMES = {
+      'demo_title': 'Demo Title',
+      'description_without_gid': 'Description',
+      'primary_product_suggestion': 'Primary Product',
+      'tdp_suggestion': 'Technology Decision Point',
+      'sales_tactic_suggestion': 'Sales Tactic',
+      'marketing_program_suggestion': 'Marketing Program',
+      'vertical_suggestion': 'Vertical',
+      'event_or_project_suggestion': 'Event/Project',
+      'other_products_suggestion': 'Other Products',
+      'seo_keywords': 'SEO Keywords',
+      'language_suggestions': 'Language',
+      'description_for_seo': 'SEO Description',
+      'cta_link_suggestions': 'CTA Links',
+      'tour_highlights': 'Tour Highlights'
+    };
+
+    function fieldHasValue(id) {
+      var el = document.getElementById(id);
+      if (!el) return false;
+      if (el.tagName === 'SELECT' && el.multiple) {
+        return Array.from(el.selectedOptions).some(function(o) { return o.value; });
+      }
+      return !!el.value;
+    }
+
+    var CREATOR_REQUIRED_FIELDS = [
+      'email', 'creatorName', 'creatorTeams', 'vertical', 'event'
+    ];
+
+    function highlightEmptyRequired() {
+      CREATOR_REQUIRED_FIELDS.forEach(function(id) {
+        var el = document.getElementById(id);
+        if (!el) return;
+        if (!el.value) {
+          el.classList.add('needs-input');
+        } else {
+          el.classList.remove('needs-input');
+        }
+      });
+    }
+
+    function attachRequiredFieldListeners() {
+      CREATOR_REQUIRED_FIELDS.forEach(function(id) {
+        var el = document.getElementById(id);
+        if (!el) return;
+        el.addEventListener('input', function() {
+          if (el.value) el.classList.remove('needs-input');
+          else el.classList.add('needs-input');
+        });
+        el.addEventListener('change', function() {
+          if (el.value) el.classList.remove('needs-input');
+          else el.classList.add('needs-input');
+        });
+      });
+    }
+
+    function clearConfidenceMarks() {
+      document.querySelectorAll('.confidence-high, .confidence-medium, .confidence-low').forEach(function(el) {
+        el.classList.remove('confidence-high', 'confidence-medium', 'confidence-low');
+        el.title = '';
+      });
+      var banner = document.getElementById('reviewBanner');
+      if (banner) { banner.innerHTML = ''; banner.className = ''; banner.style.display = 'none'; }
+    }
+
+    function markFieldConfidence(id, level) {
+      if (!fieldHasValue(id)) return;
+      var el = document.getElementById(id);
+      if (!el) return;
+      el.classList.add('confidence-' + level);
+      el.title = CONFIDENCE_LABELS[level] || '';
+    }
+
+    function showReviewBanner(fieldConfidence) {
+      var banner = document.getElementById('reviewBanner');
+      if (!banner) return;
+
+      var counts = { high: 0, medium: 0, low: 0 };
+      var mediumFields = [];
+      var lowFields = [];
+
+      Object.keys(fieldConfidence).forEach(function(key) {
+        var level = fieldConfidence[key];
+        if (counts[level] !== undefined) counts[level]++;
+        if (level === 'medium') mediumFields.push(key);
+        if (level === 'low') lowFields.push(key);
+      });
+
+      var total = counts.high + counts.medium + counts.low;
+      if (total === 0) { banner.style.display = 'none'; return; }
+
+      var reverseMap = {};
+      Object.keys(FIELD_CONFIDENCE_MAP).forEach(function(elId) {
+        var draftKey = FIELD_CONFIDENCE_MAP[elId];
+        if (!reverseMap[draftKey]) reverseMap[draftKey] = elId;
+      });
+
+      var bannerClass = lowFields.length > 2 ? 'review-banner-alert'
+        : lowFields.length > 0 ? 'review-banner-warning' : 'review-banner-good';
+
+      var message = '';
+      if (lowFields.length > 0) {
+        message = 'Some fields need your attention before submitting.';
+      } else if (counts.medium > 0) {
+        message = 'Looks good — a few fields are worth a quick check.';
+      } else {
+        message = 'All fields look good!';
+      }
+
+      var pctHigh = Math.round((counts.high / total) * 100);
+      var pctMedium = Math.round((counts.medium / total) * 100);
+      var pctLow = 100 - pctHigh - pctMedium;
+
+      var html = '';
+
+      html += '<div class="review-banner-header">';
+      html += '<div class="review-banner-title">AI draft confidence</div>';
+      html += '<div class="review-banner-subtitle">How confident AI is in each field it filled.</div>';
+      html += '</div>';
+
+      html += '<div class="review-banner-legend">';
+      html += '<span class="review-banner-legend-item"><span class="review-banner-legend-dot" style="background:#16a34a;"></span> <span class="review-banner-legend-count">' + counts.high + '</span> Ready</span>';
+      html += '<span class="review-banner-legend-item"><span class="review-banner-legend-dot" style="background:#d97706;"></span> <span class="review-banner-legend-count">' + counts.medium + '</span> Worth a check</span>';
+      html += '<span class="review-banner-legend-item"><span class="review-banner-legend-dot" style="background:#dc2626;"></span> <span class="review-banner-legend-count">' + counts.low + '</span> Needs input</span>';
+      html += '</div>';
+
+      html += '<div class="review-banner-required-note">';
+      html += '<span class="review-banner-required-swatch"></span> Yellow = still needs your input';
+      html += '</div>';
+
+      html += '<div class="confidence-bar">';
+      if (counts.high) html += '<div class="confidence-bar-segment confidence-bar-segment-high" style="width:' + pctHigh + '%"></div>';
+      if (counts.medium) html += '<div class="confidence-bar-segment confidence-bar-segment-medium" style="width:' + pctMedium + '%"></div>';
+      if (counts.low) html += '<div class="confidence-bar-segment confidence-bar-segment-low" style="width:' + pctLow + '%"></div>';
+      html += '</div>';
+
+      html += '<div class="review-banner-message">' + message + '</div>';
+
+      var actionFields = lowFields.concat(mediumFields);
+      if (actionFields.length > 0) {
+        html += '<div class="review-banner-fields">';
+        lowFields.forEach(function(key) {
+          var name = FIELD_DISPLAY_NAMES[key] || key;
+          var targetId = reverseMap[key] || '';
+          html += '<span class="review-banner-field-tag review-banner-field-tag-low"'
+            + ' onclick="scrollToField(\'' + targetId + '\')"'
+            + ' title="Needs input — click to review">'
+            + name + '</span>';
+        });
+        mediumFields.forEach(function(key) {
+          var name = FIELD_DISPLAY_NAMES[key] || key;
+          var targetId = reverseMap[key] || '';
+          html += '<span class="review-banner-field-tag review-banner-field-tag-medium"'
+            + ' onclick="scrollToField(\'' + targetId + '\')"'
+            + ' title="Worth a check — click to review">'
+            + name + '</span>';
+        });
+        html += '</div>';
+      }
+
+      banner.className = 'review-banner ' + bannerClass;
+      banner.innerHTML = html;
+      banner.style.display = 'block';
+    }
+
+    function scrollToField(elementId) {
+      if (!elementId) return;
+      var el = document.getElementById(elementId);
+      if (!el) return;
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      el.style.transition = 'box-shadow 0.3s ease';
+      el.style.boxShadow = '0 0 0 3px rgba(109, 40, 217, 0.35)';
+      setTimeout(function() { el.style.boxShadow = ''; }, 1500);
+      el.focus();
+    }
+
+    var currentDraft = null;
+
+
+    function populateFormFromDraft(draft) {
+      document.getElementById('demoTitle').value = draft.demo_title || '';
+
+      var combinedDescription = draft.description_without_gid || draft.description_with_gid || '';
+      if (Array.isArray(draft.tour_highlights) && draft.tour_highlights.length > 0) {
+        combinedDescription += '\n\nThe tour highlights:\n';
+        combinedDescription += draft.tour_highlights.map(function(h) { return '- ' + h; }).join('\n');
+      }
+      document.getElementById('descriptionWithoutGid').value = combinedDescription;
+      document.getElementById('descriptionForSeo').value = draft.description_for_seo || '';
+
+      setMultiSelectValues('language', draft.language_suggestions || []);
+
+      var ctaLinks = Array.isArray(draft.cta_link_suggestions) ? draft.cta_link_suggestions : [];
+      document.getElementById('ctaLink1').value = ctaLinks[0] ? ctaLinks[0].label + ': ' + ctaLinks[0].url : '';
+      document.getElementById('ctaLink2').value = ctaLinks[1] ? ctaLinks[1].label + ': ' + ctaLinks[1].url : '';
+      document.getElementById('ctaLink3').value = ctaLinks[2] ? ctaLinks[2].label + ': ' + ctaLinks[2].url : '';
+
+      document.getElementById('seoKeywords').value = Array.isArray(draft.seo_keywords)
+        ? draft.seo_keywords.join(', ') : '';
+
+      setSelectValue('primaryProduct', draft.primary_product_suggestion);
+      setMultiSelectValues('otherProducts', draft.other_products_suggestion || []);
+      if (draft.other_products_other_text) {
+        document.getElementById('otherProductsOther').value = draft.other_products_other_text;
+      }
+      setSelectValue('tdp', draft.tdp_suggestion);
+      setSelectValue('salesTactic', draft.sales_tactic_suggestion);
+      setSelectValue('marketingProgram', draft.marketing_program_suggestion);
+
+      document.getElementById('aiConfidenceNotes').value = Array.isArray(draft.confidence_notes)
+        ? draft.confidence_notes.join('\n') : '';
+
+      toggleOtherFields();
+      updateWordCounts();
+
+      clearConfidenceMarks();
+      var fieldConfidence = draft.field_confidence || {};
+      Object.keys(FIELD_CONFIDENCE_MAP).forEach(function(elementId) {
+        var draftField = FIELD_CONFIDENCE_MAP[elementId];
+        var level = fieldConfidence[draftField] || 'medium';
+        markFieldConfidence(elementId, level);
+      });
+      showReviewBanner(fieldConfidence);
+
+      currentDraft = draft;
+    }
+
     async function generateDraft() {
       const extractedGuide = getEditedExtractedGuide();
 
@@ -728,63 +1074,35 @@
 
         const draft = data.draft;
 
-        document.getElementById('demoTitle').value = draft.demo_title || extractedGuide.title || '';
-
-        setSelectValue('contentType', '');
+        setSelectValue('contentType', 'Technical Walkthrough');
         document.getElementById('contentTypeOther').value = '';
-
-        document.getElementById('descriptionWithoutGid').value =
-          draft.description_without_gid || draft.description_with_gid || '';
-        document.getElementById('descriptionForSeo').value = draft.description_for_seo || '';
-
-        setMultiSelectValues('language', draft.language_suggestions || []);
+        setSelectValue('quarter', getCurrentQuarter());
         document.getElementById('languageOther').value = '';
-
-        const ctaLinks = Array.isArray(draft.cta_link_suggestions)
-          ? draft.cta_link_suggestions
-          : [];
-
-        document.getElementById('ctaLink1').value = ctaLinks[0]
-          ? `${ctaLinks[0].label}: ${ctaLinks[0].url}`
-          : '';
-
-        document.getElementById('ctaLink2').value = ctaLinks[1]
-          ? `${ctaLinks[1].label}: ${ctaLinks[1].url}`
-          : '';
-
-        document.getElementById('ctaLink3').value = ctaLinks[2]
-          ? `${ctaLinks[2].label}: ${ctaLinks[2].url}`
-          : '';
-
-        document.getElementById('seoKeywords').value = Array.isArray(draft.seo_keywords)
-          ? draft.seo_keywords.join(', ')
-          : '';
-
-        setSelectValue('vertical', draft.vertical_suggestion);
-        setSelectValue('event', draft.event_or_project_suggestion);
-        setSelectValue('primaryProduct', draft.primary_product_suggestion);
         document.getElementById('primaryProductOther').value = '';
-
-        setMultiSelectValues('otherProducts', draft.other_products_suggestion || []);
         document.getElementById('otherProductsOther').value = '';
-
-        setSelectValue('tdp', draft.tdp_suggestion);
-        setSelectValue('salesTactic', draft.sales_tactic_suggestion);
-        setSelectValue('marketingProgram', draft.marketing_program_suggestion);
-
         document.getElementById('group').value = '';
+
+        if (!draft.demo_title && extractedGuide.title) {
+          draft.demo_title = extractedGuide.title;
+        }
 
         document.getElementById('aiModelInfo').value =
           `${currentAiMeta.modelUsed} | ${currentAiMeta.promptVersion} | ${currentAiMeta.generatedAt}`;
 
-        document.getElementById('aiConfidenceNotes').value = Array.isArray(draft.confidence_notes)
-          ? draft.confidence_notes.join('\n')
-          : '';
+        populateFormFromDraft(draft);
 
-        toggleOtherFields();
-        updateWordCounts();
+        var stepCount = (currentExtractedGuide && currentExtractedGuide.steps && currentExtractedGuide.steps.length)
+          || (currentExtractedGuide && currentExtractedGuide.stepTexts && currentExtractedGuide.stepTexts.length)
+          || 0;
+        if (stepCount > 0) {
+          var minutes = Math.ceil(stepCount / 8);
+          document.getElementById('duration').value = '~' + minutes + ' minute' + (minutes !== 1 ? 's' : '');
+        }
 
         document.getElementById('formCard').style.display = 'block';
+
+        highlightEmptyRequired();
+        attachRequiredFieldListeners();
 
         setStatus(
           'generateStatus',
@@ -839,6 +1157,20 @@
     loadOptions().catch(err => {
       setStatus('extractStatus', 'Failed to load options: ' + err.message, 'error');
     });
+
+    (function() {
+      var emailField = document.getElementById('email');
+      var saved = localStorage.getItem('arcade_intake_email');
+      if (saved && emailField && !emailField.value) {
+        emailField.value = saved;
+      }
+      if (emailField) {
+        emailField.addEventListener('change', function() {
+          var val = emailField.value.trim();
+          if (val) localStorage.setItem('arcade_intake_email', val);
+        });
+      }
+    })();
   </script>
 </body>
 </html>
