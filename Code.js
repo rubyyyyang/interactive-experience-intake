@@ -525,7 +525,7 @@ function doGet(e) {
 
 function getUserEmail() {
   try {
-    var email = Session.getActiveUser().getEmail();
+    const email = Session.getActiveUser().getEmail();
     return { success: true, email: email || '' };
   } catch (e) {
     return { success: true, email: '' };
@@ -540,10 +540,10 @@ function getOptions() {
 }
 
 function extractGuideContent(payload) {
-  var arcadeUrl = typeof payload === 'string'
+  const arcadeUrl = typeof payload === 'string'
     ? payload
     : payload && (payload.arcadeUrl || payload.arcadeId || payload.url);
-  var sessionId = (typeof payload === 'object' && payload) ? payload.sessionId : '';
+  const sessionId = (typeof payload === 'object' && payload) ? payload.sessionId : '';
 
   if (!arcadeUrl) {
     throw new Error('Please enter an interactive demo share URL. Preferred format: ' + PREFERRED_ARCADE_SHARE_URL_EXAMPLE);
@@ -555,12 +555,12 @@ function extractGuideContent(payload) {
     metadata: { submittedUrl: arcadeUrl }
   });
 
-  var startTime = Date.now();
+  const startTime = Date.now();
 
   try {
-    var extractedGuide = fetchGuideContent_(arcadeUrl);
+    const extractedGuide = fetchGuideContent_(arcadeUrl);
   } catch (e) {
-    var errorDurationMs = Date.now() - startTime;
+    const errorDurationMs = Date.now() - startTime;
     logAnalyticsEvent_('guide_extraction_error', {
       sessionId: sessionId,
       arcadeId: arcadeUrl,
@@ -571,10 +571,10 @@ function extractGuideContent(payload) {
     throw e;
   }
 
-  var durationMs = Date.now() - startTime;
+  const durationMs = Date.now() - startTime;
 
-  var imageCount = (extractedGuide.imageUrls || []).length;
-  var stepCount = (extractedGuide.steps || []).length
+  const imageCount = (extractedGuide.imageUrls || []).length;
+  const stepCount = (extractedGuide.steps || []).length
     || (extractedGuide.stepTexts || []).length;
 
   logAnalyticsEvent_('guide_extraction_complete', {
@@ -591,8 +591,8 @@ function extractGuideContent(payload) {
 }
 
 function generateDraftFromGuide(payload) {
-  var extractedGuide = payload && payload.extractedGuide;
-  var sessionId = payload && payload.sessionId || '';
+  const extractedGuide = payload && payload.extractedGuide;
+  const sessionId = payload && payload.sessionId || '';
   if (!extractedGuide) throw new Error('Missing extractedGuide');
 
   logAnalyticsEvent_('ai_generation_start', {
@@ -601,20 +601,20 @@ function generateDraftFromGuide(payload) {
     metadata: { model: MODEL_ID, promptVersion: PROMPT_VERSION }
   });
 
-  var startTime = Date.now();
+  const startTime = Date.now();
 
-  var steps = extractedGuide.steps || [];
-  var stepImageUrls = steps.map(function(s) { return s.imageUrl; });
-  var imagesUsed = 0;
+  const steps = extractedGuide.steps || [];
+  const stepImageUrls = steps.map(function(s) { return s.imageUrl; });
+  let imagesUsed = 0;
 
-  var interleavedParts = [];
+  const interleavedParts = [];
   if (stepImageUrls.length > 0) {
-    var imageResult = fetchImagesAsBase64_(stepImageUrls);
+    const imageResult = fetchImagesAsBase64_(stepImageUrls);
     if (imageResult.errors.length > 0) {
       console.warn('Some images failed to fetch: ' + imageResult.errors.join(', '));
     }
-    for (var i = 0; i < steps.length; i++) {
-      var stepLabel = 'Step ' + (i + 1) + ': ' + (steps[i].text || '(no description)');
+    for (let i = 0; i < steps.length; i++) {
+      const stepLabel = 'Step ' + (i + 1) + ': ' + (steps[i].text || '(no description)');
       interleavedParts.push({ text: stepLabel });
       if (imageResult.images[i]) {
         interleavedParts.push({
@@ -627,7 +627,7 @@ function generateDraftFromGuide(payload) {
       }
     }
   } else if (extractedGuide.imageUrls && extractedGuide.imageUrls.length > 0) {
-    var fallbackResult = fetchImagesAsBase64_(extractedGuide.imageUrls);
+    const fallbackResult = fetchImagesAsBase64_(extractedGuide.imageUrls);
     fallbackResult.images.forEach(function(img) {
       interleavedParts.push({ inlineData: { mimeType: img.mimeType, data: img.base64 } });
     });
@@ -635,10 +635,10 @@ function generateDraftFromGuide(payload) {
   }
 
   try {
-    var prompt = buildMetadataPrompt(extractedGuide);
-    var content = callGemini_(prompt, interleavedParts);
-    var draft = normalizeDraft(parseModelJson(content));
-    var durationMs = Date.now() - startTime;
+    const prompt = buildMetadataPrompt(extractedGuide);
+    const content = callGemini_(prompt, interleavedParts);
+    const draft = normalizeDraft(parseModelJson(content));
+    const durationMs = Date.now() - startTime;
 
     logAnalyticsEvent_('ai_generation_complete', {
       sessionId: sessionId,
@@ -656,7 +656,7 @@ function generateDraftFromGuide(payload) {
       imagesUsed: imagesUsed
     };
   } catch (e) {
-    var errorDurationMs = Date.now() - startTime;
+    const errorDurationMs = Date.now() - startTime;
 
     logAnalyticsEvent_('ai_generation_error', {
       sessionId: sessionId,
@@ -671,7 +671,7 @@ function generateDraftFromGuide(payload) {
 }
 
 function buildRefinementPrompt_(originalDraft, creatorAnswers) {
-  var answersText = Object.keys(creatorAnswers).map(function(field) {
+  const answersText = Object.keys(creatorAnswers).map(function(field) {
     return '- ' + field + ': ' + creatorAnswers[field];
   }).join('\n');
 
@@ -683,18 +683,18 @@ function buildRefinementPrompt_(originalDraft, creatorAnswers) {
 }
 
 function refineDraftWithAnswers(payload) {
-  var originalDraft = payload.originalDraft;
-  var creatorAnswers = payload.creatorAnswers;
-  var sessionId = payload.sessionId || '';
+  const originalDraft = payload.originalDraft;
+  const creatorAnswers = payload.creatorAnswers;
+  const sessionId = payload.sessionId || '';
 
   logAnalyticsEvent_('refinement_requested', {
     sessionId: sessionId,
     metadata: { fieldsRefined: Object.keys(creatorAnswers || {}) }
   });
 
-  var prompt = buildRefinementPrompt_(originalDraft, creatorAnswers);
-  var content = callGemini_(prompt, []);
-  var draft = normalizeDraft(parseModelJson(content));
+  const prompt = buildRefinementPrompt_(originalDraft, creatorAnswers);
+  const content = callGemini_(prompt, []);
+  const draft = normalizeDraft(parseModelJson(content));
   return {
     success: true,
     draft: draft,
@@ -835,29 +835,29 @@ function testGeminiFromAppsScript() {
 }
 
 function extractDuration_(html) {
-  var source = String(html || '');
+  const source = String(html || '');
 
-  var metaDuration = extractMetaContent_(source, 'property', 'og:video:duration')
+  const metaDuration = extractMetaContent_(source, 'property', 'og:video:duration')
     || extractMetaContent_(source, 'name', 'duration');
   if (metaDuration) {
-    var secs = parseInt(metaDuration, 10);
+    const secs = parseInt(metaDuration, 10);
     if (secs > 0) {
-      var mins = Math.ceil(secs / 60);
+      const mins = Math.ceil(secs / 60);
       return mins + ' min';
     }
   }
 
-  var durationAttrMatch = source.match(/\bduration["']?\s*[:=]\s*["']?(\d+(?:\.\d+)?)\s*(min|sec|s|m)/i);
+  const durationAttrMatch = source.match(/\bduration["']?\s*[:=]\s*["']?(\d+(?:\.\d+)?)\s*(min|sec|s|m)/i);
   if (durationAttrMatch) {
-    var val = parseFloat(durationAttrMatch[1]);
-    var unit = durationAttrMatch[2].toLowerCase();
+    const val = parseFloat(durationAttrMatch[1]);
+    const unit = durationAttrMatch[2].toLowerCase();
     if (unit === 'sec' || unit === 's') val = Math.ceil(val / 60);
     if (val > 0) return Math.ceil(val) + ' min';
   }
 
-  var textMatch = source.match(/(\d+(?:\.\d+)?)\s*(?:min(?:ute)?s?)\b/i);
+  const textMatch = source.match(/(\d+(?:\.\d+)?)\s*(?:min(?:ute)?s?)\b/i);
   if (textMatch) {
-    var m = Math.ceil(parseFloat(textMatch[1]));
+    const m = Math.ceil(parseFloat(textMatch[1]));
     if (m > 0 && m < 120) return m + ' min';
   }
 
@@ -1085,8 +1085,8 @@ function getTargetSpreadsheet_() {
 }
 
 function getAnalyticsSpreadsheet_() {
-  var props = PropertiesService.getScriptProperties();
-  var ssId = props.getProperty(ANALYTICS_SPREADSHEET_ID_PROP);
+  const props = PropertiesService.getScriptProperties();
+  const ssId = props.getProperty(ANALYTICS_SPREADSHEET_ID_PROP);
 
   if (ssId) {
     try {
@@ -1096,14 +1096,14 @@ function getAnalyticsSpreadsheet_() {
     }
   }
 
-  var ss = SpreadsheetApp.create('Arcade Intake Analytics');
+  const ss = SpreadsheetApp.create('Arcade Intake Analytics');
   props.setProperty(ANALYTICS_SPREADSHEET_ID_PROP, ss.getId());
   Logger.log('Analytics spreadsheet created: ' + ss.getUrl());
   return ss;
 }
 
 function ensureAnalyticsLogSheet_(ss) {
-  var sheet = ss.getSheetByName(ANALYTICS_LOG_SHEET);
+  const sheet = ss.getSheetByName(ANALYTICS_LOG_SHEET);
   if (sheet) return sheet;
 
   sheet = ss.insertSheet(ANALYTICS_LOG_SHEET);
@@ -1117,11 +1117,11 @@ function ensureAnalyticsLogSheet_(ss) {
 
 function logAnalyticsEvent_(eventType, data) {
   try {
-    var ss = getAnalyticsSpreadsheet_();
-    var sheet = ensureAnalyticsLogSheet_(ss);
-    var d = data || {};
+    const ss = getAnalyticsSpreadsheet_();
+    const sheet = ensureAnalyticsLogSheet_(ss);
+    const d = data || {};
 
-    var userEmail = '';
+    const userEmail = '';
     try { userEmail = Session.getActiveUser().getEmail(); } catch (e) {}
 
     sheet.appendRow([
@@ -1145,19 +1145,19 @@ function logAnalyticsEventFromClient(eventType, data) {
 }
 
 function computeAnalyticsSummary() {
-  var ss = getAnalyticsSpreadsheet_();
-  var logSheet = ss.getSheetByName(ANALYTICS_LOG_SHEET);
+  const ss = getAnalyticsSpreadsheet_();
+  const logSheet = ss.getSheetByName(ANALYTICS_LOG_SHEET);
   if (!logSheet || logSheet.getLastRow() <= 1) {
     return { message: 'No analytics data yet.' };
   }
 
-  var data = logSheet.getRange(2, 1, logSheet.getLastRow() - 1, 8).getValues();
-  var now = new Date();
-  var sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-  var thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+  const data = logSheet.getRange(2, 1, logSheet.getLastRow() - 1, 8).getValues();
+  const now = new Date();
+  const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+  const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
 
-  var events = data.map(function(row) {
-    var meta = {};
+  const events = data.map(function(row) {
+    const meta = {};
     try { meta = row[7] ? JSON.parse(row[7]) : {}; } catch (e) {}
     return {
       timestamp: new Date(row[0]),
@@ -1171,116 +1171,116 @@ function computeAnalyticsSummary() {
     };
   });
 
-  var submissions = events.filter(function(e) { return e.eventType === 'form_submitted'; });
-  var submissions7d = submissions.filter(function(e) { return e.timestamp >= sevenDaysAgo; });
-  var submissions30d = submissions.filter(function(e) { return e.timestamp >= thirtyDaysAgo; });
+  const submissions = events.filter(function(e) { return e.eventType === 'form_submitted'; });
+  const submissions7d = submissions.filter(function(e) { return e.timestamp >= sevenDaysAgo; });
+  const submissions30d = submissions.filter(function(e) { return e.timestamp >= thirtyDaysAgo; });
 
-  var allUsers = {};
-  var users30d = {};
+  const allUsers = {};
+  const users30d = {};
   submissions.forEach(function(e) { allUsers[e.userEmail] = true; });
   submissions30d.forEach(function(e) { users30d[e.userEmail] = true; });
 
-  var teamCounts = {};
-  var productCounts = {};
-  var contentTypeCounts = {};
+  const teamCounts = {};
+  const productCounts = {};
+  const contentTypeCounts = {};
   submissions.forEach(function(e) {
-    var team = (e.metadata.team || 'Unknown');
-    var product = (e.metadata.product || 'Unknown');
-    var ct = (e.metadata.contentType || 'Unknown');
+    const team = (e.metadata.team || 'Unknown');
+    const product = (e.metadata.product || 'Unknown');
+    const ct = (e.metadata.contentType || 'Unknown');
     teamCounts[team] = (teamCounts[team] || 0) + 1;
     productCounts[product] = (productCounts[product] || 0) + 1;
     contentTypeCounts[ct] = (contentTypeCounts[ct] || 0) + 1;
   });
 
-  var sessionDurations = submissions
+  const sessionDurations = submissions
     .map(function(e) { return e.metadata.sessionDurationMs; })
     .filter(function(d) { return d && d > 0; });
-  var avgSessionDuration = sessionDurations.length
+  const avgSessionDuration = sessionDurations.length
     ? Math.round(sessionDurations.reduce(function(a, b) { return a + b; }, 0) / sessionDurations.length)
     : 0;
 
-  var sessionsWithStart = {};
-  var sessionsWithSubmit = {};
+  const sessionsWithStart = {};
+  const sessionsWithSubmit = {};
   events.forEach(function(e) {
     if (e.eventType === 'session_start') sessionsWithStart[e.sessionId || e.timestamp] = true;
     if (e.eventType === 'form_submitted') sessionsWithSubmit[e.sessionId] = true;
   });
-  var totalSessions = Object.keys(sessionsWithStart).length || 1;
-  var abandonedSessions = totalSessions - Object.keys(sessionsWithSubmit).length;
-  var abandonmentRate = Math.round((abandonedSessions / totalSessions) * 100);
+  const totalSessions = Object.keys(sessionsWithStart).length || 1;
+  const abandonedSessions = totalSessions - Object.keys(sessionsWithSubmit).length;
+  const abandonmentRate = Math.round((abandonedSessions / totalSessions) * 100);
 
-  var genComplete = events.filter(function(e) { return e.eventType === 'ai_generation_complete'; });
-  var genError = events.filter(function(e) { return e.eventType === 'ai_generation_error'; });
-  var genStart = events.filter(function(e) { return e.eventType === 'ai_generation_start'; });
-  var genSuccessRate = genStart.length
+  const genComplete = events.filter(function(e) { return e.eventType === 'ai_generation_complete'; });
+  const genError = events.filter(function(e) { return e.eventType === 'ai_generation_error'; });
+  const genStart = events.filter(function(e) { return e.eventType === 'ai_generation_start'; });
+  const genSuccessRate = genStart.length
     ? Math.round((genComplete.length / genStart.length) * 100)
     : 0;
-  var genLatencies = genComplete
+  const genLatencies = genComplete
     .map(function(e) { return e.durationMs || (e.metadata && e.metadata.durationMs); })
     .filter(function(d) { return d && d > 0; });
-  var avgGenLatency = genLatencies.length
+  const avgGenLatency = genLatencies.length
     ? Math.round(genLatencies.reduce(function(a, b) { return a + b; }, 0) / genLatencies.length)
     : 0;
 
-  var fieldEditCounts = {};
+  const fieldEditCounts = {};
   submissions.forEach(function(e) {
     (e.metadata.editedFieldNames || []).forEach(function(f) {
       fieldEditCounts[f] = (fieldEditCounts[f] || 0) + 1;
     });
   });
-  var sortedEdits = Object.keys(fieldEditCounts).sort(function(a, b) {
+  const sortedEdits = Object.keys(fieldEditCounts).sort(function(a, b) {
     return fieldEditCounts[b] - fieldEditCounts[a];
   });
 
-  var confidenceTotals = {};
-  var confidenceCounts = {};
+  const confidenceTotals = {};
+  const confidenceCounts = {};
   genComplete.forEach(function(e) {
-    var fc = e.metadata.fieldConfidences || {};
+    const fc = e.metadata.fieldConfidences || {};
     Object.keys(fc).forEach(function(field) {
-      var val = fc[field] === 'high' ? 3 : fc[field] === 'medium' ? 2 : 1;
+      const val = fc[field] === 'high' ? 3 : fc[field] === 'medium' ? 2 : 1;
       confidenceTotals[field] = (confidenceTotals[field] || 0) + val;
       confidenceCounts[field] = (confidenceCounts[field] || 0) + 1;
     });
   });
-  var avgConfidence = {};
+  const avgConfidence = {};
   Object.keys(confidenceTotals).forEach(function(field) {
-    var avg = confidenceTotals[field] / confidenceCounts[field];
+    const avg = confidenceTotals[field] / confidenceCounts[field];
     avgConfidence[field] = avg >= 2.5 ? 'high' : avg >= 1.5 ? 'medium' : 'low';
   });
 
-  var refinements = events.filter(function(e) { return e.eventType === 'refinement_requested'; });
-  var refinementRate = submissions.length
+  const refinements = events.filter(function(e) { return e.eventType === 'refinement_requested'; });
+  const refinementRate = submissions.length
     ? Math.round((refinements.length / submissions.length) * 100)
     : 0;
 
-  var extractComplete = events.filter(function(e) { return e.eventType === 'guide_extraction_complete'; });
-  var extractLatencies = extractComplete
+  const extractComplete = events.filter(function(e) { return e.eventType === 'guide_extraction_complete'; });
+  const extractLatencies = extractComplete
     .map(function(e) { return e.durationMs || (e.metadata && e.metadata.durationMs); })
     .filter(function(d) { return d && d > 0; });
-  var avgExtractLatency = extractLatencies.length
+  const avgExtractLatency = extractLatencies.length
     ? Math.round(extractLatencies.reduce(function(a, b) { return a + b; }, 0) / extractLatencies.length)
     : 0;
 
-  var allErrors = events.filter(function(e) { return e.status === 'error'; });
-  var allApiCalls = events.filter(function(e) {
+  const allErrors = events.filter(function(e) { return e.status === 'error'; });
+  const allApiCalls = events.filter(function(e) {
     return ['guide_extraction_start', 'ai_generation_start'].indexOf(e.eventType) !== -1;
   });
-  var errorRate = allApiCalls.length
+  const errorRate = allApiCalls.length
     ? Math.round((allErrors.length / allApiCalls.length) * 100)
     : 0;
 
-  var errorsByType = {};
+  const errorsByType = {};
   allErrors.forEach(function(e) {
     errorsByType[e.eventType] = (errorsByType[e.eventType] || 0) + 1;
   });
 
-  var dailySubmissions = {};
+  const dailySubmissions = {};
   submissions30d.forEach(function(e) {
-    var day = e.timestamp.toISOString().split('T')[0];
+    const day = e.timestamp.toISOString().split('T')[0];
     dailySubmissions[day] = (dailySubmissions[day] || 0) + 1;
   });
 
-  var summary = {
+  const summary = {
     generatedAt: now.toISOString(),
     usage: {
       totalSubmissions: submissions.length,
@@ -1316,13 +1316,13 @@ function computeAnalyticsSummary() {
 }
 
 function writeAnalyticsSummarySheet_(ss, summary) {
-  var sheet = ss.getSheetByName(ANALYTICS_SUMMARY_SHEET);
+  const sheet = ss.getSheetByName(ANALYTICS_SUMMARY_SHEET);
   if (!sheet) {
     sheet = ss.insertSheet(ANALYTICS_SUMMARY_SHEET);
   }
   sheet.clear();
 
-  var rows = [];
+  const rows = [];
 
   rows.push(['Analytics Summary', 'Generated: ' + summary.generatedAt]);
   rows.push(['', '']);
@@ -1386,7 +1386,7 @@ function writeAnalyticsSummarySheet_(ss, summary) {
   rows.push(['', '']);
 
   rows.push(['--- Daily Submissions (Last 30 Days) ---', '']);
-  var days = Object.keys(summary.operations.dailySubmissions30d).sort();
+  const days = Object.keys(summary.operations.dailySubmissions30d).sort();
   days.forEach(function(day) {
     rows.push([day, summary.operations.dailySubmissions30d[day]]);
   });
@@ -1514,19 +1514,19 @@ function extractImageUrls_(html, baseUrl) {
 
     if (src.indexOf('watermark-logos/') !== -1) continue;
 
-    var innerIdx = src.indexOf('/https://');
+    const innerIdx = src.indexOf('/https://');
     if (innerIdx !== -1) {
       src = src.slice(innerIdx + 1);
     }
 
     src = src.replace(/&hotspot=[^&]*/g, '');
 
-    var dedupKey = src;
+    let dedupKey = src;
     try {
-      var qIdx = src.indexOf('image=');
+      const qIdx = src.indexOf('image=');
       if (qIdx !== -1) {
-        var imageParam = decodeURIComponent(src.slice(qIdx + 6).split('&')[0]);
-        var pathEnd = imageParam.indexOf('?');
+        const imageParam = decodeURIComponent(src.slice(qIdx + 6).split('&')[0]);
+        const pathEnd = imageParam.indexOf('?');
         dedupKey = pathEnd !== -1 ? imageParam.slice(0, pathEnd) : imageParam;
       }
     } catch (e) {}
@@ -1541,27 +1541,27 @@ function extractImageUrls_(html, baseUrl) {
 }
 
 function extractStepsWithImages_(html) {
-  var re = /<img\b[^>]*?\bsrc=["']([^"']+)["'][^>]*?\balt=["']([^"']*)["'][^>]*>|<img\b[^>]*?\balt=["']([^"']*)["'][^>]*?\bsrc=["']([^"']+)["'][^>]*>/gi;
-  var seenKeys = {};
-  var steps = [];
-  var match;
+  const re = /<img\b[^>]*?\bsrc=["']([^"']+)["'][^>]*?\balt=["']([^"']*)["'][^>]*>|<img\b[^>]*?\balt=["']([^"']*)["'][^>]*?\bsrc=["']([^"']+)["'][^>]*>/gi;
+  const seenKeys = {};
+  const steps = [];
+  let match;
 
   while ((match = re.exec(String(html || ''))) !== null) {
-    var src = decodeHtml_(match[1] || match[4]);
-    var alt = decodeHtml_(match[2] != null ? match[2] : (match[3] || ''));
+    let src = decodeHtml_(match[1] || match[4]);
+    const alt = decodeHtml_(match[2] != null ? match[2] : (match[3] || ''));
 
     if (src.indexOf('watermark-logos/') !== -1) continue;
 
-    var innerIdx = src.indexOf('/https://');
+    const innerIdx = src.indexOf('/https://');
     if (innerIdx !== -1) src = src.slice(innerIdx + 1);
     src = src.replace(/&hotspot=[^&]*/g, '');
 
-    var dedupKey = src;
+    let dedupKey = src;
     try {
-      var qIdx = src.indexOf('image=');
+      const qIdx = src.indexOf('image=');
       if (qIdx !== -1) {
-        var imageParam = decodeURIComponent(src.slice(qIdx + 6).split('&')[0]);
-        var pathEnd = imageParam.indexOf('?');
+        const imageParam = decodeURIComponent(src.slice(qIdx + 6).split('&')[0]);
+        const pathEnd = imageParam.indexOf('?');
         dedupKey = pathEnd !== -1 ? imageParam.slice(0, pathEnd) : imageParam;
       }
     } catch (e) {}
@@ -1576,33 +1576,33 @@ function extractStepsWithImages_(html) {
 }
 
 function fetchImagesAsBase64_(imageUrls) {
-  var images = [];
-  var errors = [];
+  const images = [];
+  const errors = [];
 
-  for (var i = 0; i < imageUrls.length; i++) {
+  for (let i = 0; i < imageUrls.length; i++) {
     try {
-      var resp = UrlFetchApp.fetch(imageUrls[i], {
+      const resp = UrlFetchApp.fetch(imageUrls[i], {
         method: 'get',
         muteHttpExceptions: true,
         headers: { 'User-Agent': 'Interactive Demo Intake Assistant' }
       });
 
-      var status = resp.getResponseCode();
+      const status = resp.getResponseCode();
       if (status < 200 || status >= 300) {
         errors.push('HTTP ' + status + ' for image ' + (i + 1));
         images.push(null);
         continue;
       }
 
-      var contentType = resp.getHeaders()['Content-Type'] || '';
+      const contentType = resp.getHeaders()['Content-Type'] || '';
       if (contentType.indexOf('image/') !== 0) {
         errors.push('Not an image: ' + contentType);
         images.push(null);
         continue;
       }
 
-      var blob = resp.getBlob();
-      var bytes = blob.getBytes();
+      const blob = resp.getBlob();
+      const bytes = blob.getBytes();
 
       if (bytes.length > 1024 * 1024) {
         errors.push('Image too large: ' + bytes.length + ' bytes');
@@ -1610,8 +1610,8 @@ function fetchImagesAsBase64_(imageUrls) {
         continue;
       }
 
-      var base64 = Utilities.base64Encode(bytes);
-      var mime = contentType.split(';')[0].trim() || 'image/png';
+      const base64 = Utilities.base64Encode(bytes);
+      const mime = contentType.split(';')[0].trim() || 'image/png';
 
       images.push({
         base64: base64,
@@ -2168,10 +2168,6 @@ function formatWorkflowResult_(result) {
  */
 function backfillDescriptions() {
   const SHEET_NAME = 'Request_Master';
-  const STATUS_COL = 1;        // A
-  const PRIMARY_URL_COL = 3;   // C
-  const FALLBACK_URL_COL = 63; // BK
-  const DESC_COL = 66;         // BN
   const ELIGIBLE_STATUSES = ['IE Published', 'IE Reviewed'];
 
   const ss = getTargetSpreadsheet_();
@@ -2189,14 +2185,22 @@ function backfillDescriptions() {
     .getValues()[0]
     .map(function(h) { return String(h || '').trim(); });
 
-  var durationCol = headers.indexOf('Duration') + 1;
-  var seoDescCol = headers.indexOf('Description for SEO') + 1;
+  const statusCol = headers.indexOf('Status') + 1;
+  const primaryUrlCol = headers.indexOf('Production Link') + 1;
+  const fallbackUrlCol = headers.indexOf('Creation Link') + 1;
+  const descCol = headers.indexOf('Demo Description') + 1;
+  let durationCol = headers.indexOf('Duration') + 1;
+  let seoDescCol = headers.indexOf('Description for SEO') + 1;
   if (!seoDescCol) seoDescCol = headers.indexOf('SEODescription') + 1;
 
-  const statuses = sheet.getRange(2, STATUS_COL, lastRow - 1, 1).getValues();
-  const primaryUrls = sheet.getRange(2, PRIMARY_URL_COL, lastRow - 1, 1).getValues();
-  const fallbackUrls = sheet.getRange(2, FALLBACK_URL_COL, lastRow - 1, 1).getValues();
-  const descriptions = sheet.getRange(2, DESC_COL, lastRow - 1, 1).getValues();
+  if (!statusCol || !primaryUrlCol || !descCol) {
+    throw new Error('Required columns (Status, Production Link, Demo Description) not found in ' + SHEET_NAME);
+  }
+
+  const statuses = sheet.getRange(2, statusCol, lastRow - 1, 1).getValues();
+  const primaryUrls = sheet.getRange(2, primaryUrlCol, lastRow - 1, 1).getValues();
+  const fallbackUrls = fallbackUrlCol ? sheet.getRange(2, fallbackUrlCol, lastRow - 1, 1).getValues() : [];
+  const descriptions = sheet.getRange(2, descCol, lastRow - 1, 1).getValues();
 
   let processed = 0;
   let skipped = 0;
@@ -2204,7 +2208,8 @@ function backfillDescriptions() {
 
   for (let i = 0; i < primaryUrls.length; i++) {
     const status = String(statuses[i][0] || '').trim();
-    const rawUrl = String(primaryUrls[i][0] || '').trim() || String(fallbackUrls[i][0] || '').trim();
+    const fallbackVal = fallbackUrls.length ? String(fallbackUrls[i][0] || '').trim() : '';
+    const rawUrl = String(primaryUrls[i][0] || '').trim() || fallbackVal;
     const arcadeUrl = rawUrl.split(/[\n\r]/)[0].trim();
     const existingDesc = String(descriptions[i][0] || '').trim();
     const rowIndex = i + 2;
@@ -2219,10 +2224,10 @@ function backfillDescriptions() {
 
       const extractedGuide = fetchGuideContent_(arcadeUrl);
 
-      var draft = null;
-      for (var attempt = 1; attempt <= 2; attempt++) {
+      let draft = null;
+      for (let attempt = 1; attempt <= 2; attempt++) {
         try {
-          var result = generateDraftFromGuide({ extractedGuide: extractedGuide });
+          const result = generateDraftFromGuide({ extractedGuide: extractedGuide });
           draft = result.draft;
           break;
         } catch (parseErr) {
@@ -2241,7 +2246,7 @@ function backfillDescriptions() {
       const combined = draft.description_without_gid +
         (highlights ? '\n\n' + highlights : '');
 
-      sheet.getRange(rowIndex, DESC_COL).setValue(combined);
+      sheet.getRange(rowIndex, descCol).setValue(combined);
 
       if (seoDescCol && draft.description_for_seo) {
         sheet.getRange(rowIndex, seoDescCol).setValue(draft.description_for_seo);
