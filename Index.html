@@ -718,7 +718,11 @@
   el.className = 'word-count';
 }
 
+    var fieldEditTrackingAttached = false;
     function attachFieldEditTracking() {
+      if (fieldEditTrackingAttached) return;
+      fieldEditTrackingAttached = true;
+
       var trackableFields = [
         'demoTitle', 'descriptionWithoutGid', 'descriptionForSeo', 'seoKeywords',
         'contentType', 'primaryProduct', 'otherProducts', 'vertical', 'event',
@@ -1434,6 +1438,7 @@ function startAnotherSubmission() {
   isSubmitting = false;
   editedFields.clear();
   aiDraftGenerated = false;
+  fieldEditTrackingAttached = false;
   analyticsSessionId = (function() {
     try { return crypto.randomUUID(); }
     catch (e) { return 'ses-' + Math.random().toString(36).slice(2) + Date.now().toString(36); }
