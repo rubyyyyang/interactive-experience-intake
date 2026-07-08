@@ -1275,7 +1275,7 @@ function writeAnalyticsSummarySheet_(ss, summary) {
   rows.push(['Analytics Summary', 'Generated: ' + summary.generatedAt]);
   rows.push(['', '']);
 
-  rows.push(['=== USAGE METRICS ===', '']);
+  rows.push(['USAGE METRICS', '']);
   rows.push(['Total Submissions (All Time)', summary.usage.totalSubmissions]);
   rows.push(['Submissions (Last 7 Days)', summary.usage.submissions7d]);
   rows.push(['Submissions (Last 30 Days)', summary.usage.submissions30d]);
@@ -1303,7 +1303,7 @@ function writeAnalyticsSummarySheet_(ss, summary) {
   });
   rows.push(['', '']);
 
-  rows.push(['=== AI QUALITY METRICS ===', '']);
+  rows.push(['AI QUALITY METRICS', '']);
   rows.push(['Generation Success Rate', summary.aiQuality.generationSuccessRate]);
   rows.push(['Avg Generation Latency (ms)', summary.aiQuality.avgGenerationLatencyMs]);
   rows.push(['Refinement Request Rate', summary.aiQuality.refinementRate]);
@@ -1321,7 +1321,7 @@ function writeAnalyticsSummarySheet_(ss, summary) {
   });
   rows.push(['', '']);
 
-  rows.push(['=== OPERATIONAL METRICS ===', '']);
+  rows.push(['OPERATIONAL METRICS', '']);
   rows.push(['Error Rate', summary.operations.errorRate]);
   rows.push(['Avg Extraction Time (ms)', summary.operations.avgExtractionTimeMs]);
   rows.push(['Avg Generation Time (ms)', summary.operations.avgGenerationTimeMs]);
