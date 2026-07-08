@@ -554,7 +554,21 @@ function extractGuideContent(payload) {
   });
 
   var startTime = Date.now();
-  var extractedGuide = fetchGuideContent_(arcadeUrl);
+
+  try {
+    var extractedGuide = fetchGuideContent_(arcadeUrl);
+  } catch (e) {
+    var errorDurationMs = Date.now() - startTime;
+    logAnalyticsEvent_('guide_extraction_error', {
+      sessionId: sessionId,
+      arcadeId: arcadeUrl,
+      durationMs: errorDurationMs,
+      status: 'error',
+      metadata: { errorMessage: e.message, durationMs: errorDurationMs }
+    });
+    throw e;
+  }
+
   var durationMs = Date.now() - startTime;
 
   var imageCount = (extractedGuide.imageUrls || []).length;
