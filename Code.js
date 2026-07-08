@@ -828,6 +828,36 @@ function testGeminiFromAppsScript() {
   return output;
 }
 
+function extractDuration_(html) {
+  var source = String(html || '');
+
+  var metaDuration = extractMetaContent_(source, 'property', 'og:video:duration')
+    || extractMetaContent_(source, 'name', 'duration');
+  if (metaDuration) {
+    var secs = parseInt(metaDuration, 10);
+    if (secs > 0) {
+      var mins = Math.ceil(secs / 60);
+      return mins + ' min';
+    }
+  }
+
+  var durationAttrMatch = source.match(/\bduration["']?\s*[:=]\s*["']?(\d+(?:\.\d+)?)\s*(min|sec|s|m)/i);
+  if (durationAttrMatch) {
+    var val = parseFloat(durationAttrMatch[1]);
+    var unit = durationAttrMatch[2].toLowerCase();
+    if (unit === 'sec' || unit === 's') val = Math.ceil(val / 60);
+    if (val > 0) return Math.ceil(val) + ' min';
+  }
+
+  var textMatch = source.match(/(\d+(?:\.\d+)?)\s*(?:min(?:ute)?s?)\b/i);
+  if (textMatch) {
+    var m = Math.ceil(parseFloat(textMatch[1]));
+    if (m > 0 && m < 120) return m + ' min';
+  }
+
+  return '';
+}
+
 function fetchGuideContent_(arcadeUrlOrId) {
   const parsed = normalizeArcadeUrlInput_(arcadeUrlOrId);
   const fetchResult = fetchFirstWorkingGuidePage_(parsed);
@@ -840,6 +870,7 @@ function fetchGuideContent_(arcadeUrlOrId) {
   const steps = extractStepsWithImages_(html);
   const possibleStepTexts = extractPossibleStepTexts_(html).slice(0, 20);
   const bodyText = cleanText(stripHtml_(html));
+  const duration = extractDuration_(html);
 
   const title = cleanText(
     extractBestGuideTitle_(html) ||
@@ -861,6 +892,7 @@ function fetchGuideContent_(arcadeUrlOrId) {
     imageUrls,
     steps,
     links,
+    duration,
     warnings: parsed.warnings || []
   };
 }
@@ -2146,6 +2178,15 @@ function backfillDescriptions() {
     return;
   }
 
+  const headers = sheet
+    .getRange(1, 1, 1, sheet.getLastColumn())
+    .getValues()[0]
+    .map(function(h) { return String(h || '').trim(); });
+
+  var durationCol = headers.indexOf('Duration') + 1;
+  var seoDescCol = headers.indexOf('Description for SEO') + 1;
+  if (!seoDescCol) seoDescCol = headers.indexOf('SEODescription') + 1;
+
   const statuses = sheet.getRange(2, STATUS_COL, lastRow - 1, 1).getValues();
   const primaryUrls = sheet.getRange(2, PRIMARY_URL_COL, lastRow - 1, 1).getValues();
   const fallbackUrls = sheet.getRange(2, FALLBACK_URL_COL, lastRow - 1, 1).getValues();
@@ -2195,6 +2236,15 @@ function backfillDescriptions() {
         (highlights ? '\n\n' + highlights : '');
 
       sheet.getRange(rowIndex, DESC_COL).setValue(combined);
+
+      if (seoDescCol && draft.description_for_seo) {
+        sheet.getRange(rowIndex, seoDescCol).setValue(draft.description_for_seo);
+      }
+
+      if (durationCol && extractedGuide.duration) {
+        sheet.getRange(rowIndex, durationCol).setValue(extractedGuide.duration);
+      }
+
       processed++;
 
       Logger.log('Row ' + rowIndex + ': Done');

@@ -1,5 +1,0 @@
-```json
-{
-  "demo_title": "(Autoplay version) Open Sovereign AI Cloud RH + Rafay",
-  "content_type_suggestion": "Technical Walkthrough",
-  "description_without_gid": "This guide demonstrates Red Hat Open Sovereign AI Cloud (OSAC) with Rafay, providing a starting point for

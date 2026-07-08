@@ -1,0 +1,7 @@
+local-dev/**
+node_modules/**
+.env
+*.local.*
+.DS_Store
+docs/**
+.superpowers/**
