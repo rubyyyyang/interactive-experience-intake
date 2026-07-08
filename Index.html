@@ -483,6 +483,13 @@
       promptVersion: '',
       generatedAt: ''
     };
+    var analyticsSessionId = (function() {
+      try { return crypto.randomUUID(); }
+      catch (e) { return 'ses-' + Math.random().toString(36).slice(2) + Date.now().toString(36); }
+    })();
+    var editedFields = new Set();
+    var aiDraftGenerated = false;
+    var sessionStartTime = Date.now();
 
     function gasCall(functionName, ...args) {
       return new Promise((resolve, reject) => {
@@ -496,16 +503,20 @@
     }
 
     async function apiPost(path, payload) {
+      var payloadWithSession = Object.assign({}, payload, { sessionId: analyticsSessionId });
+
       if (path === '/api/extract-guide') {
-        return gasCall('extractGuideContent', payload);
+        return gasCall('extractGuideContent', payloadWithSession);
       }
 
       if (path === '/api/generate') {
-        return gasCall('generateDraftFromGuide', payload);
+        return gasCall('generateDraftFromGuide', payloadWithSession);
       }
 
       if (path === '/api/submit') {
-        return gasCall('submitIntakeForReview', payload);
+        payloadWithSession.editedFields = Array.from(editedFields);
+        payloadWithSession.sessionDurationMs = Date.now() - sessionStartTime;
+        return gasCall('submitIntakeForReview', payloadWithSession);
       }
 
       throw new Error('Unknown API path: ' + path);
@@ -706,6 +717,22 @@
   }
   el.className = 'word-count';
 }
+
+    function attachFieldEditTracking() {
+      var trackableFields = [
+        'demoTitle', 'descriptionWithoutGid', 'descriptionForSeo', 'seoKeywords',
+        'contentType', 'primaryProduct', 'otherProducts', 'vertical', 'event',
+        'tdp', 'salesTactic', 'marketingProgram', 'ctaLink1', 'ctaLink2', 'ctaLink3',
+        'language', 'duration', 'group'
+      ];
+
+      trackableFields.forEach(function(fieldId) {
+        var el = document.getElementById(fieldId);
+        if (!el) return;
+        el.addEventListener('input', function() { editedFields.add(fieldId); });
+        el.addEventListener('change', function() { editedFields.add(fieldId); });
+      });
+    }
 
     function getEditedExtractedGuide() {
       const arcadeUrl = document.getElementById('arcadeUrl').value.trim();
@@ -1250,6 +1277,9 @@ try {
           `${currentAiMeta.modelUsed} | ${currentAiMeta.promptVersion} | ${currentAiMeta.generatedAt}`;
 
         populateFormFromDraft(draft);
+        editedFields.clear();
+        aiDraftGenerated = true;
+        attachFieldEditTracking();
 
         var stepCount = (currentExtractedGuide && currentExtractedGuide.steps && currentExtractedGuide.steps.length)
           || (currentExtractedGuide && currentExtractedGuide.stepTexts && currentExtractedGuide.stepTexts.length)
@@ -1402,6 +1432,13 @@ function startAnotherSubmission() {
   }
 
   isSubmitting = false;
+  editedFields.clear();
+  aiDraftGenerated = false;
+  analyticsSessionId = (function() {
+    try { return crypto.randomUUID(); }
+    catch (e) { return 'ses-' + Math.random().toString(36).slice(2) + Date.now().toString(36); }
+  })();
+  sessionStartTime = Date.now();
 
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
@@ -1473,6 +1510,17 @@ async function submitForReview() {
         }
       }
     }).catch(function() {});
+
+    window.addEventListener('beforeunload', function() {
+      if (!isSubmitting && aiDraftGenerated) {
+        try {
+          google.script.run.logAnalyticsEventFromClient('session_abandoned', {
+            sessionId: analyticsSessionId,
+            metadata: { timeSpentMs: Date.now() - sessionStartTime }
+          });
+        } catch (e) {}
+      }
+    });
   </script>
 </body>
 </html>
