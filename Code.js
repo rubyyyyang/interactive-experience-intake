@@ -514,7 +514,8 @@ function toOptionList(options) {
 
 
 
-function doGet() {
+function doGet(e) {
+  logAnalyticsEvent_('session_start', {});
   return HtmlService.createHtmlOutputFromFile('Index')
     .setTitle('Interactive Demo Intake Assistant')
     .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
@@ -537,24 +538,54 @@ function getOptions() {
 }
 
 function extractGuideContent(payload) {
-  const arcadeUrl = typeof payload === 'string'
+  var arcadeUrl = typeof payload === 'string'
     ? payload
     : payload && (payload.arcadeUrl || payload.arcadeId || payload.url);
+  var sessionId = (typeof payload === 'object' && payload) ? payload.sessionId : '';
 
   if (!arcadeUrl) {
-    throw new Error(`Please enter an interactive demo share URL. Preferred format: ${PREFERRED_ARCADE_SHARE_URL_EXAMPLE}`);
+    throw new Error('Please enter an interactive demo share URL. Preferred format: ' + PREFERRED_ARCADE_SHARE_URL_EXAMPLE);
   }
 
-  const extractedGuide = fetchGuideContent_(arcadeUrl);
+  logAnalyticsEvent_('guide_extraction_start', {
+    sessionId: sessionId,
+    arcadeId: arcadeUrl,
+    metadata: { submittedUrl: arcadeUrl }
+  });
+
+  var startTime = Date.now();
+  var extractedGuide = fetchGuideContent_(arcadeUrl);
+  var durationMs = Date.now() - startTime;
+
+  var imageCount = (extractedGuide.imageUrls || []).length;
+  var stepCount = (extractedGuide.steps || []).length
+    || (extractedGuide.stepTexts || []).length;
+
+  logAnalyticsEvent_('guide_extraction_complete', {
+    sessionId: sessionId,
+    arcadeId: extractedGuide.arcadeId || arcadeUrl,
+    durationMs: durationMs,
+    metadata: { durationMs: durationMs, imageCount: imageCount, stepCount: stepCount }
+  });
+
   return {
     success: true,
-    extractedGuide
+    extractedGuide: extractedGuide
   };
 }
 
 function generateDraftFromGuide(payload) {
-  const extractedGuide = payload && payload.extractedGuide;
+  var extractedGuide = payload && payload.extractedGuide;
+  var sessionId = payload && payload.sessionId || '';
   if (!extractedGuide) throw new Error('Missing extractedGuide');
+
+  logAnalyticsEvent_('ai_generation_start', {
+    sessionId: sessionId,
+    arcadeId: extractedGuide.arcadeId || '',
+    metadata: { model: MODEL_ID, promptVersion: PROMPT_VERSION }
+  });
+
+  var startTime = Date.now();
 
   var steps = extractedGuide.steps || [];
   var stepImageUrls = steps.map(function(s) { return s.imageUrl; });
@@ -587,18 +618,40 @@ function generateDraftFromGuide(payload) {
     imagesUsed = fallbackResult.images.length;
   }
 
-  const prompt = buildMetadataPrompt(extractedGuide);
-  const content = callGemini_(prompt, interleavedParts);
-  const draft = normalizeDraft(parseModelJson(content));
+  try {
+    var prompt = buildMetadataPrompt(extractedGuide);
+    var content = callGemini_(prompt, interleavedParts);
+    var draft = normalizeDraft(parseModelJson(content));
+    var durationMs = Date.now() - startTime;
 
-  return {
-    success: true,
-    draft,
-    modelUsed: MODEL_ID,
-    promptVersion: PROMPT_VERSION,
-    generatedAt: new Date().toISOString(),
-    imagesUsed: imagesUsed
-  };
+    logAnalyticsEvent_('ai_generation_complete', {
+      sessionId: sessionId,
+      arcadeId: extractedGuide.arcadeId || '',
+      durationMs: durationMs,
+      metadata: { durationMs: durationMs, fieldConfidences: draft.field_confidence || {} }
+    });
+
+    return {
+      success: true,
+      draft: draft,
+      modelUsed: MODEL_ID,
+      promptVersion: PROMPT_VERSION,
+      generatedAt: new Date().toISOString(),
+      imagesUsed: imagesUsed
+    };
+  } catch (e) {
+    var errorDurationMs = Date.now() - startTime;
+
+    logAnalyticsEvent_('ai_generation_error', {
+      sessionId: sessionId,
+      arcadeId: extractedGuide.arcadeId || '',
+      durationMs: errorDurationMs,
+      status: 'error',
+      metadata: { errorMessage: e.message, durationMs: errorDurationMs }
+    });
+
+    throw e;
+  }
 }
 
 function buildRefinementPrompt_(originalDraft, creatorAnswers) {
@@ -616,6 +669,13 @@ function buildRefinementPrompt_(originalDraft, creatorAnswers) {
 function refineDraftWithAnswers(payload) {
   var originalDraft = payload.originalDraft;
   var creatorAnswers = payload.creatorAnswers;
+  var sessionId = payload.sessionId || '';
+
+  logAnalyticsEvent_('refinement_requested', {
+    sessionId: sessionId,
+    metadata: { fieldsRefined: Object.keys(creatorAnswers || {}) }
+  });
+
   var prompt = buildRefinementPrompt_(originalDraft, creatorAnswers);
   var content = callGemini_(prompt, []);
   var draft = normalizeDraft(parseModelJson(content));
@@ -713,6 +773,19 @@ function submitIntakeForReview(payload) {
   };
 
  const saveResult = saveSubmissionToSheet_(submission);
+
+  logAnalyticsEvent_('form_submitted', {
+    sessionId: (payload && payload.sessionId) || '',
+    arcadeId: form.arcadeId || '',
+    metadata: {
+      fieldsEditedCount: (payload.editedFields || []).length,
+      editedFieldNames: payload.editedFields || [],
+      sessionDurationMs: payload.sessionDurationMs || '',
+      team: creatorTeamFinal,
+      product: primaryProductFinal,
+      contentType: contentTypeFinal
+    }
+  });
 
 return {
   success: true,
