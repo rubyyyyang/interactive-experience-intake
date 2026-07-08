@@ -374,6 +374,7 @@
 
     <label>Is this for a specific event or project? <span class="required-note">*</span></label>
     <select id="event"></select>
+    <input id="eventOther" placeholder="Event or project name" style="display:none;">
 
     <label>Related Technology Decision Point? <span class="required-note">*</span></label>
     <select id="tdp"></select>
@@ -441,7 +442,7 @@
 
     <label>What quarter was this content created in? <span class="required-note">*</span></label>
     <select id="quarter"></select>
-    <input id="quarterOther" placeholder="e.g., Q3 2026" style="display:none;">
+    <input id="quarterOther" placeholder="e.g., CY26Q3" style="display:none;">
 
     <div class="checkbox-row">
       <input id="syntheticVoice" type="checkbox" checked>
@@ -655,6 +656,7 @@
       document.getElementById('language').addEventListener('change', toggleOtherFields);
       document.getElementById('primaryProduct').addEventListener('change', toggleOtherFields);
       document.getElementById('otherProducts').addEventListener('change', toggleOtherFields);
+      document.getElementById('event').addEventListener('change', toggleOtherFields);
     }
 
     function toggleOtherFields() {
@@ -677,6 +679,9 @@
       const otherProducts = getMultiSelectValues('otherProducts');
       document.getElementById('otherProductsOther').style.display =
         otherProducts.includes('Other') ? 'block' : 'none';
+
+      document.getElementById('eventOther').style.display =
+        document.getElementById('event').value === 'Other' ? 'block' : 'none';
     }
 
     function getCurrentQuarter() {
@@ -796,6 +801,7 @@
         seoKeywords: document.getElementById('seoKeywords').value.trim(),
         vertical: document.getElementById('vertical').value,
         event: document.getElementById('event').value,
+        eventOther: document.getElementById('eventOther').value.trim(),
 
         primaryProduct: document.getElementById('primaryProduct').value,
         primaryProductOther: document.getElementById('primaryProductOther').value.trim(),
@@ -857,6 +863,10 @@
       if (!form.seoKeywords) missing.push('Keywords for SEO');
       if (!form.vertical) missing.push('Vertical');
       if (!form.event) missing.push('Event / Project');
+
+      if (form.event === 'Other' && !form.eventOther) {
+        missing.push('Other Event / Project name');
+      }
 
       if (!form.primaryProduct) missing.push('Primary Product');
       if (form.primaryProduct === 'Other' && !form.primaryProductOther) {

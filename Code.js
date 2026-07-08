@@ -71,7 +71,8 @@ const FIELD_OPTIONS = {
     'No',
     'Red Hat One',
     'KubeCon',
-    'Summit'
+    'Summit',
+    'Other'
   ],
 
   products: [
@@ -94,7 +95,8 @@ const FIELD_OPTIONS = {
     'Container Management',
     'Application Platform',
     'Mission Critical IT Automation',
-    'AI Platform'
+    'AI Platform',
+    'N/A'
   ],
 
   salesTactics: [
@@ -724,6 +726,10 @@ function submitIntakeForReview(payload) {
     ? `Other: ${form.quarterOther || ''}`
     : form.quarter || '';
 
+  const eventFinal = form.event === 'Other'
+    ? `Other: ${form.eventOther || ''}`
+    : form.event || '';
+
   const languageFinal = [
     ...(Array.isArray(form.language) ? form.language.filter(item => item !== 'Other') : []),
     form.languageOther ? `Other: ${form.languageOther}` : ''
@@ -760,7 +766,7 @@ function submitIntakeForReview(payload) {
     'Links for next step call to action': ctaLinksFinal,
     'Keywords for SEO': form.seoKeywords || '',
     'Vertical': form.vertical || '',
-    'Is this for a specific event or project?': form.event || '',
+    'Is this for a specific event or project?': eventFinal,
     'Primary product featured?': primaryProductFinal,
     'Optional: Other related products?': otherProductsFinal,
     'Related Technology Decision Point?': form.tdp || '',
