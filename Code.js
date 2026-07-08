@@ -1092,6 +1092,264 @@ function logAnalyticsEventFromClient(eventType, data) {
   return { success: true };
 }
 
+function computeAnalyticsSummary() {
+  var ss = getAnalyticsSpreadsheet_();
+  var logSheet = ss.getSheetByName(ANALYTICS_LOG_SHEET);
+  if (!logSheet || logSheet.getLastRow() <= 1) {
+    return { message: 'No analytics data yet.' };
+  }
+
+  var data = logSheet.getRange(2, 1, logSheet.getLastRow() - 1, 8).getValues();
+  var now = new Date();
+  var sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+  var thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+
+  var events = data.map(function(row) {
+    var meta = {};
+    try { meta = row[7] ? JSON.parse(row[7]) : {}; } catch (e) {}
+    return {
+      timestamp: new Date(row[0]),
+      sessionId: row[1],
+      eventType: row[2],
+      userEmail: row[3],
+      arcadeId: row[4],
+      durationMs: row[5],
+      status: row[6],
+      metadata: meta
+    };
+  });
+
+  var submissions = events.filter(function(e) { return e.eventType === 'form_submitted'; });
+  var submissions7d = submissions.filter(function(e) { return e.timestamp >= sevenDaysAgo; });
+  var submissions30d = submissions.filter(function(e) { return e.timestamp >= thirtyDaysAgo; });
+
+  var allUsers = {};
+  var users30d = {};
+  submissions.forEach(function(e) { allUsers[e.userEmail] = true; });
+  submissions30d.forEach(function(e) { users30d[e.userEmail] = true; });
+
+  var teamCounts = {};
+  var productCounts = {};
+  var contentTypeCounts = {};
+  submissions.forEach(function(e) {
+    var team = (e.metadata.team || 'Unknown');
+    var product = (e.metadata.product || 'Unknown');
+    var ct = (e.metadata.contentType || 'Unknown');
+    teamCounts[team] = (teamCounts[team] || 0) + 1;
+    productCounts[product] = (productCounts[product] || 0) + 1;
+    contentTypeCounts[ct] = (contentTypeCounts[ct] || 0) + 1;
+  });
+
+  var sessionDurations = submissions
+    .map(function(e) { return e.metadata.sessionDurationMs; })
+    .filter(function(d) { return d && d > 0; });
+  var avgSessionDuration = sessionDurations.length
+    ? Math.round(sessionDurations.reduce(function(a, b) { return a + b; }, 0) / sessionDurations.length)
+    : 0;
+
+  var sessionsWithStart = {};
+  var sessionsWithSubmit = {};
+  events.forEach(function(e) {
+    if (e.eventType === 'session_start') sessionsWithStart[e.sessionId || e.timestamp] = true;
+    if (e.eventType === 'form_submitted') sessionsWithSubmit[e.sessionId] = true;
+  });
+  var totalSessions = Object.keys(sessionsWithStart).length || 1;
+  var abandonedSessions = totalSessions - Object.keys(sessionsWithSubmit).length;
+  var abandonmentRate = Math.round((abandonedSessions / totalSessions) * 100);
+
+  var genComplete = events.filter(function(e) { return e.eventType === 'ai_generation_complete'; });
+  var genError = events.filter(function(e) { return e.eventType === 'ai_generation_error'; });
+  var genStart = events.filter(function(e) { return e.eventType === 'ai_generation_start'; });
+  var genSuccessRate = genStart.length
+    ? Math.round((genComplete.length / genStart.length) * 100)
+    : 0;
+  var genLatencies = genComplete
+    .map(function(e) { return e.durationMs || (e.metadata && e.metadata.durationMs); })
+    .filter(function(d) { return d && d > 0; });
+  var avgGenLatency = genLatencies.length
+    ? Math.round(genLatencies.reduce(function(a, b) { return a + b; }, 0) / genLatencies.length)
+    : 0;
+
+  var fieldEditCounts = {};
+  submissions.forEach(function(e) {
+    (e.metadata.editedFieldNames || []).forEach(function(f) {
+      fieldEditCounts[f] = (fieldEditCounts[f] || 0) + 1;
+    });
+  });
+  var sortedEdits = Object.keys(fieldEditCounts).sort(function(a, b) {
+    return fieldEditCounts[b] - fieldEditCounts[a];
+  });
+
+  var confidenceTotals = {};
+  var confidenceCounts = {};
+  genComplete.forEach(function(e) {
+    var fc = e.metadata.fieldConfidences || {};
+    Object.keys(fc).forEach(function(field) {
+      var val = fc[field] === 'high' ? 3 : fc[field] === 'medium' ? 2 : 1;
+      confidenceTotals[field] = (confidenceTotals[field] || 0) + val;
+      confidenceCounts[field] = (confidenceCounts[field] || 0) + 1;
+    });
+  });
+  var avgConfidence = {};
+  Object.keys(confidenceTotals).forEach(function(field) {
+    var avg = confidenceTotals[field] / confidenceCounts[field];
+    avgConfidence[field] = avg >= 2.5 ? 'high' : avg >= 1.5 ? 'medium' : 'low';
+  });
+
+  var refinements = events.filter(function(e) { return e.eventType === 'refinement_requested'; });
+  var refinementRate = submissions.length
+    ? Math.round((refinements.length / submissions.length) * 100)
+    : 0;
+
+  var extractComplete = events.filter(function(e) { return e.eventType === 'guide_extraction_complete'; });
+  var extractLatencies = extractComplete
+    .map(function(e) { return e.durationMs || (e.metadata && e.metadata.durationMs); })
+    .filter(function(d) { return d && d > 0; });
+  var avgExtractLatency = extractLatencies.length
+    ? Math.round(extractLatencies.reduce(function(a, b) { return a + b; }, 0) / extractLatencies.length)
+    : 0;
+
+  var allErrors = events.filter(function(e) { return e.status === 'error'; });
+  var allApiCalls = events.filter(function(e) {
+    return ['guide_extraction_start', 'ai_generation_start'].indexOf(e.eventType) !== -1;
+  });
+  var errorRate = allApiCalls.length
+    ? Math.round((allErrors.length / allApiCalls.length) * 100)
+    : 0;
+
+  var errorsByType = {};
+  allErrors.forEach(function(e) {
+    errorsByType[e.eventType] = (errorsByType[e.eventType] || 0) + 1;
+  });
+
+  var dailySubmissions = {};
+  submissions30d.forEach(function(e) {
+    var day = e.timestamp.toISOString().split('T')[0];
+    dailySubmissions[day] = (dailySubmissions[day] || 0) + 1;
+  });
+
+  var summary = {
+    generatedAt: now.toISOString(),
+    usage: {
+      totalSubmissions: submissions.length,
+      submissions7d: submissions7d.length,
+      submissions30d: submissions30d.length,
+      uniqueUsersAllTime: Object.keys(allUsers).length,
+      uniqueUsers30d: Object.keys(users30d).length,
+      byTeam: teamCounts,
+      byProduct: productCounts,
+      byContentType: contentTypeCounts,
+      avgSessionDurationMs: avgSessionDuration,
+      abandonmentRate: abandonmentRate + '%'
+    },
+    aiQuality: {
+      avgConfidenceByField: avgConfidence,
+      mostEditedFields: sortedEdits.slice(0, 10),
+      leastEditedFields: sortedEdits.slice(-5).reverse(),
+      generationSuccessRate: genSuccessRate + '%',
+      avgGenerationLatencyMs: avgGenLatency,
+      refinementRate: refinementRate + '%'
+    },
+    operations: {
+      errorRate: errorRate + '%',
+      errorsByType: errorsByType,
+      avgExtractionTimeMs: avgExtractLatency,
+      avgGenerationTimeMs: avgGenLatency,
+      dailySubmissions30d: dailySubmissions
+    }
+  };
+
+  writeAnalyticsSummarySheet_(ss, summary);
+  return summary;
+}
+
+function writeAnalyticsSummarySheet_(ss, summary) {
+  var sheet = ss.getSheetByName(ANALYTICS_SUMMARY_SHEET);
+  if (!sheet) {
+    sheet = ss.insertSheet(ANALYTICS_SUMMARY_SHEET);
+  }
+  sheet.clear();
+
+  var rows = [];
+
+  rows.push(['Analytics Summary', 'Generated: ' + summary.generatedAt]);
+  rows.push(['', '']);
+
+  rows.push(['=== USAGE METRICS ===', '']);
+  rows.push(['Total Submissions (All Time)', summary.usage.totalSubmissions]);
+  rows.push(['Submissions (Last 7 Days)', summary.usage.submissions7d]);
+  rows.push(['Submissions (Last 30 Days)', summary.usage.submissions30d]);
+  rows.push(['Unique Users (All Time)', summary.usage.uniqueUsersAllTime]);
+  rows.push(['Unique Users (Last 30 Days)', summary.usage.uniqueUsers30d]);
+  rows.push(['Avg Session Duration (ms)', summary.usage.avgSessionDurationMs]);
+  rows.push(['Abandonment Rate', summary.usage.abandonmentRate]);
+  rows.push(['', '']);
+
+  rows.push(['--- Submissions by Team ---', '']);
+  Object.keys(summary.usage.byTeam).forEach(function(team) {
+    rows.push([team, summary.usage.byTeam[team]]);
+  });
+  rows.push(['', '']);
+
+  rows.push(['--- Submissions by Product ---', '']);
+  Object.keys(summary.usage.byProduct).forEach(function(product) {
+    rows.push([product, summary.usage.byProduct[product]]);
+  });
+  rows.push(['', '']);
+
+  rows.push(['--- Submissions by Content Type ---', '']);
+  Object.keys(summary.usage.byContentType).forEach(function(ct) {
+    rows.push([ct, summary.usage.byContentType[ct]]);
+  });
+  rows.push(['', '']);
+
+  rows.push(['=== AI QUALITY METRICS ===', '']);
+  rows.push(['Generation Success Rate', summary.aiQuality.generationSuccessRate]);
+  rows.push(['Avg Generation Latency (ms)', summary.aiQuality.avgGenerationLatencyMs]);
+  rows.push(['Refinement Request Rate', summary.aiQuality.refinementRate]);
+  rows.push(['', '']);
+
+  rows.push(['--- Most Edited Fields (AI Weakest) ---', '']);
+  summary.aiQuality.mostEditedFields.forEach(function(field, i) {
+    rows.push([(i + 1) + '. ' + field, '']);
+  });
+  rows.push(['', '']);
+
+  rows.push(['--- Avg Confidence by Field ---', '']);
+  Object.keys(summary.aiQuality.avgConfidenceByField).forEach(function(field) {
+    rows.push([field, summary.aiQuality.avgConfidenceByField[field]]);
+  });
+  rows.push(['', '']);
+
+  rows.push(['=== OPERATIONAL METRICS ===', '']);
+  rows.push(['Error Rate', summary.operations.errorRate]);
+  rows.push(['Avg Extraction Time (ms)', summary.operations.avgExtractionTimeMs]);
+  rows.push(['Avg Generation Time (ms)', summary.operations.avgGenerationTimeMs]);
+  rows.push(['', '']);
+
+  rows.push(['--- Errors by Type ---', '']);
+  Object.keys(summary.operations.errorsByType).forEach(function(type) {
+    rows.push([type, summary.operations.errorsByType[type]]);
+  });
+  rows.push(['', '']);
+
+  rows.push(['--- Daily Submissions (Last 30 Days) ---', '']);
+  var days = Object.keys(summary.operations.dailySubmissions30d).sort();
+  days.forEach(function(day) {
+    rows.push([day, summary.operations.dailySubmissions30d[day]]);
+  });
+
+  sheet.getRange(1, 1, rows.length, 2).setValues(rows);
+
+  sheet.setColumnWidth(1, 320);
+  sheet.setColumnWidth(2, 200);
+  sheet.getRange(1, 1, 1, 2).setFontWeight('bold');
+}
+
+function getAnalyticsSummary() {
+  return computeAnalyticsSummary();
+}
+
 
 function extractFirstTagText_(html, tagName) {
   const safeTag = String(tagName || '').replace(/[^\w-]/g, '');
