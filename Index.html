@@ -539,37 +539,6 @@
       if (type === 'success') el.classList.add('success');
     }
 
-    function setGuideSuccessStatus(id, guideUrl, warnings) {
-  const el = document.getElementById(id);
-  el.innerHTML = '';
-  el.className = 'status success';
-
-  const message = document.createElement('span');
-  message.textContent = 'Content extracted successfully.';
-  el.appendChild(message);
-
-  if (guideUrl) {
-    el.appendChild(document.createTextNode(' '));
-
-    const link = document.createElement('a');
-    link.href = guideUrl;
-    link.target = '_blank';
-    link.rel = 'noopener';
-    link.textContent = 'Demo URL';
-    link.style.marginLeft = '6px';
-    link.style.fontWeight = '600';
-
-    el.appendChild(link);
-  }
-
-  if (warnings && warnings.length) {
-    const warningText = document.createElement('div');
-    warningText.style.marginTop = '6px';
-    warningText.textContent = 'Note: ' + warnings.join(' ');
-    el.appendChild(warningText);
-  }
-}
-
     function populateSelect(id, values, includeBlank = true) {
       const select = document.getElementById(id);
       select.innerHTML = '';
