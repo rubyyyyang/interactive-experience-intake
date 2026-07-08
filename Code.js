@@ -1350,6 +1350,19 @@ function getAnalyticsSummary() {
   return computeAnalyticsSummary();
 }
 
+function installAnalyticsSummaryTrigger() {
+  ScriptApp.getProjectTriggers()
+    .filter(function(trigger) { return trigger.getHandlerFunction() === 'computeAnalyticsSummary'; })
+    .forEach(function(trigger) { ScriptApp.deleteTrigger(trigger); });
+
+  ScriptApp.newTrigger('computeAnalyticsSummary')
+    .timeBased()
+    .everyHours(1)
+    .create();
+
+  Logger.log('Analytics summary trigger installed (hourly).');
+}
+
 
 function extractFirstTagText_(html, tagName) {
   const safeTag = String(tagName || '').replace(/[^\w-]/g, '');
