@@ -276,7 +276,7 @@
 <input id="arcadeUrl" placeholder="">
 <input id="arcadeId" type="hidden">
 
-<button onclick="extractGuide()">Extract Content</button>
+<button id="extractButton" onclick="extractGuide()">Extract Content</button>
 <div id="extractStatus" class="status"></div>
 
   </div>
@@ -302,7 +302,7 @@
       <div id="imagePreviewGrid" style="display:flex; flex-wrap:wrap; gap:8px; margin-top:8px;"></div>
     </div>
 
-    <button onclick="generateDraft()">Generate Draft</button>
+    <button id="generateButton" onclick="generateDraft()">Generate Draft</button>
     <div id="generateStatus" class="status"></div>
   </div>
 
@@ -884,7 +884,9 @@ function setGuideSuccessStatus(id, guideUrl, warnings) {
   }
 }
 
+let isExtracting = false;
 async function extractGuide() {
+  if (isExtracting) return;
   const arcadeUrl = document.getElementById('arcadeUrl').value.trim();
 
   if (!arcadeUrl) {
@@ -892,6 +894,9 @@ async function extractGuide() {
     return;
   }
 
+  isExtracting = true;
+  const extractBtn = document.getElementById('extractButton');
+  if (extractBtn) { extractBtn.disabled = true; extractBtn.textContent = 'Extracting...'; }
   setStatus('extractStatus', 'Extracting content...', '');
 
   try {
@@ -980,6 +985,10 @@ async function extractGuide() {
       err && err.message ? err.message : String(err),
       'error'
     );
+  } finally {
+    isExtracting = false;
+    const extractBtn = document.getElementById('extractButton');
+    if (extractBtn) { extractBtn.disabled = false; extractBtn.textContent = 'Extract Content'; }
   }
 }
 
@@ -1228,9 +1237,14 @@ function populateFormFromDraft(draft) {
   currentDraft = draft;
 }
 
+    let isGenerating = false;
     async function generateDraft() {
+      if (isGenerating) return;
       const extractedGuide = getEditedExtractedGuide();
 
+      isGenerating = true;
+      const genBtn = document.getElementById('generateButton');
+      if (genBtn) { genBtn.disabled = true; genBtn.textContent = 'Generating...'; }
       setStatus('generateStatus', 'Generating draft...', 'This may take a few seconds.');
 
 try {
@@ -1287,6 +1301,10 @@ try {
         );
       } catch (err) {
         setStatus('generateStatus', err.message, 'error');
+      } finally {
+        isGenerating = false;
+        const genBtn = document.getElementById('generateButton');
+        if (genBtn) { genBtn.disabled = false; genBtn.textContent = 'Generate Draft'; }
       }
     }
 
@@ -1495,8 +1513,10 @@ async function submitForReview() {
       }
     }).catch(function() {});
 
-    window.addEventListener('beforeunload', function() {
+    window.addEventListener('beforeunload', function(event) {
       if (!isSubmitting && aiDraftGenerated) {
+        event.preventDefault();
+        event.returnValue = '';
         try {
           google.script.run.logAnalyticsEventFromClient('session_abandoned', {
             sessionId: analyticsSessionId,
