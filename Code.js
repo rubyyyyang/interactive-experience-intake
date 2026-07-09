@@ -716,6 +716,7 @@ function submitIntakeForReview(payload) {
   if (!form) throw new Error('Missing form data');
 
   const submittedAt = new Date().toISOString();
+  const globalId = Utilities.getUuid();
 
   const creatorTeamFinal = form.creatorTeams === 'Other'
     ? `Other: ${form.creatorTeamOther || ''}`
@@ -792,7 +793,8 @@ function submitIntakeForReview(payload) {
     'Submission Status': 'Submitted for review',
     'Source': 'apps-script-pilot',
     'Raw Extracted Title': extractedGuide && extractedGuide.title || '',
-    'Raw Extracted Text': extractedGuide && extractedGuide.bodyText || ''
+    'Raw Extracted Text': extractedGuide && extractedGuide.bodyText || '',
+    'Global ID': globalId
   };
 
  const saveResult = saveSubmissionToSheet_(submission);
@@ -815,7 +817,8 @@ return {
   message: 'Submission received. Your intake has been saved and the review workflow will start shortly.',
   submission,
   rowIndex: saveResult.rowIndex,
-  workflowQueued: true
+  workflowQueued: true,
+  globalId: globalId
 };
 
 }
@@ -2127,6 +2130,7 @@ function debugWorkflowWebhookUrl() {
 
 function ensureWorkflowTrackingColumns_(sheet) {
   const neededHeaders = [
+    'Global ID',
     'Duration',
     'Description for SEO',
     'AI Workflow Status',
