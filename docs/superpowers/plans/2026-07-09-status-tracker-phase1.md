@@ -4,7 +4,7 @@
 
 **Goal:** Add a read-only status tracking page to the Intake app so creators and requestors can see where their interactive demo submissions are in the review pipeline.
 
-**Architecture:** The Intake app's `doGet()` gains a `?page=status` route that serves a new `StatusTracker.html`. Two new server functions (`getSubmissionStatus`, `getMySubmissions`) read from `Request_Master` in the shared Master Spreadsheet (read-only). A tracking token (UUID) is generated at submission time and stored in `Creator_Form_Raw`, then passed to Finder via the webhook for storage in `Request_Master`. The success screen gets "Submit Another" and "Finish" buttons, with "Finish" linking to the status page.
+**Architecture:** The Intake app generates a UUID (Global ID) at submission time and stores it in `Creator_Form_Raw`. When the webhook fires, Finder's `extractCreatorFormData` picks up the Global ID from the row automatically. A small fallback is added to Finder so that a new (unrecognized) Global ID creates a new row instead of erroring. The Intake app's `doGet()` gains a `?page=status` route serving `StatusTracker.html`, which reads status from `Request_Master` by Global ID or by email. The success screen gets "Submit Another" and "Finish" buttons.
 
 **Tech Stack:** Google Apps Script (V8), HtmlService, SpreadsheetApp, google.script.run
 
@@ -17,42 +17,41 @@
 - Frontend uses `google.script.run` for server calls, not `fetch()`
 - CSS must be consistent with existing `Index.html` styling (Arial, max-width 1120px, card pattern)
 - Escape user-visible dynamic HTML before DOM insertion
+- Unified Global ID: Intake generates the UUID, Finder uses it as the row's primary key — no separate Tracking Token
 
 ---
 
-### Task 1: Generate and Store Tracking Token on Submission
+### Task 1: Generate Global ID in Intake and Store on Submission
 
 **Files:**
 - Modify: `Code.js:709-818` (`submitIntakeForReview` function)
-- Modify: `Code.js:1084-1088` (webhook payload in `triggerOldCreatorWorkflow_`)
 - Modify: `Code.js:2089-2112` (`ensureWorkflowTrackingColumns_`)
 
 **Interfaces:**
 - Consumes: existing `submitIntakeForReview(payload)` function, `Utilities.getUuid()`
-- Produces: `submission['Tracking Token']` — UUID string stored in `Creator_Form_Raw` row. Webhook payload gains `trackingToken` field. Return value gains `trackingToken` field.
+- Produces: `submission['Global ID']` — UUID string stored in `Creator_Form_Raw` row. Return value gains `globalId` field.
 
-- [ ] **Step 1: Add tracking token generation to `submitIntakeForReview`**
+- [ ] **Step 1: Add Global ID generation to `submitIntakeForReview`**
 
-In `Code.js`, add the UUID generation after line 716 (`const submittedAt = ...`) and add it to the submission object:
+In `Code.js`, add the UUID generation after line 716 (`const submittedAt = ...`):
 
 ```js
-// After line 716:
-const trackingToken = Utilities.getUuid();
+const globalId = Utilities.getUuid();
 ```
 
 Then add to the `submission` object (after the `'Raw Extracted Text'` line, before the closing `}`):
 
 ```js
-'Tracking Token': trackingToken,
+'Global ID': globalId,
 ```
 
-- [ ] **Step 2: Add `Tracking Token` to `ensureWorkflowTrackingColumns_`**
+- [ ] **Step 2: Add `Global ID` to `ensureWorkflowTrackingColumns_`**
 
-In `Code.js`, add `'Tracking Token'` to the `neededHeaders` array in `ensureWorkflowTrackingColumns_`:
+In `Code.js`, add `'Global ID'` to the `neededHeaders` array in `ensureWorkflowTrackingColumns_` (line 2089):
 
 ```js
 const neededHeaders = [
-  'Tracking Token',
+  'Global ID',
   'Duration',
   'Description for SEO',
   'AI Workflow Status',
@@ -65,26 +64,7 @@ const neededHeaders = [
 ];
 ```
 
-- [ ] **Step 3: Pass tracking token through the webhook payload**
-
-In `Code.js`, update the `triggerOldCreatorWorkflow_` function to accept and pass the tracking token. Change the function signature and payload:
-
-```js
-function triggerOldCreatorWorkflow_(rowIndex, trackingToken) {
-```
-
-And update the payload JSON (around line 1084):
-
-```js
-payload: JSON.stringify({
-  secret: secret,
-  sheetName: 'Creator_Form_Raw',
-  rowIndex: rowIndex,
-  trackingToken: trackingToken || ''
-}),
-```
-
-- [ ] **Step 4: Return tracking token from `submitIntakeForReview`**
+- [ ] **Step 3: Return Global ID from `submitIntakeForReview`**
 
 Update the return value at the bottom of `submitIntakeForReview` (around line 811):
 
@@ -95,49 +75,157 @@ return {
   submission,
   rowIndex: saveResult.rowIndex,
   workflowQueued: true,
-  trackingToken: trackingToken
+  globalId: globalId
 };
 ```
 
-- [ ] **Step 5: Pass tracking token in `processPendingWorkflowRows`**
-
-In `Code.js`, update `processPendingWorkflowRows` to read the tracking token from the row and pass it to `triggerOldCreatorWorkflow_`. After line 2171 where `triggerOldCreatorWorkflow_(rowIndex)` is called, change to:
-
-```js
-const trackingToken = columnMap['Tracking Token']
-  ? String(values[i][columnMap['Tracking Token'] - 1] || '')
-  : '';
-const result = triggerOldCreatorWorkflow_(rowIndex, trackingToken);
-```
-
-- [ ] **Step 6: Verify manually**
+- [ ] **Step 4: Verify**
 
 Run: `clasp push`
 
-Then open the web app, submit a test demo, and check `Creator_Form_Raw` to confirm:
-- The `Tracking Token` column exists
-- The submitted row has a UUID value
-- The return data in the browser console includes `trackingToken`
+Then open the web app, submit a test demo, and check `Creator_Form_Raw`:
+- The `Global ID` column exists
+- The submitted row has a UUID value (e.g., `7ee49e6d-7ce2-4cea-96f1-3cb1f1a7b14f`)
+- Open browser dev tools, in the console check the response from the submit call includes `globalId`
 
-- [ ] **Step 7: Commit**
+Expected: `Creator_Form_Raw` row has a UUID in the `Global ID` column.
+
+- [ ] **Step 5: Commit**
 
 ```bash
 git add Code.js
-git commit -m "feat: generate tracking token on submission and pass through webhook"
+git commit -m "feat: generate Global ID on submission for status tracking"
 ```
 
 ---
 
-### Task 2: Server-Side Status Lookup Functions
+### Task 2: Add Fallback in Finder for New Global IDs
 
 **Files:**
-- Modify: `Code.js` — add new functions after `getOptions()` (around line 540)
+- Modify: `/Users/rubyyang/Arcade Finder/RM_CreatorIntake.js:281-327` (`handleCreatorWithExistingGlobalId`)
+
+**Interfaces:**
+- Consumes: `formData.globalId` from `extractCreatorFormData` (line 263: reads `"Global ID"` column from `Creator_Form_Raw`)
+- Produces: When a Global ID is present but no matching row exists in `Request_Master`, falls through to the "create new" path instead of throwing an error.
+
+**Context:** Currently, `extractCreatorFormData` (line 215-218) already reads `"Global ID"` from the `Creator_Form_Raw` row. When Intake writes a UUID to this column, Finder will pick it up automatically. The branching at line 81 sends it to PATH 1, which errors at line 286-287 because no row exists yet. We need a fallback.
+
+- [ ] **Step 1: Add fallback to `handleCreatorWithExistingGlobalId`**
+
+In `/Users/rubyyang/Arcade Finder/RM_CreatorIntake.js`, replace lines 281-327 of `handleCreatorWithExistingGlobalId`:
+
+```js
+function handleCreatorWithExistingGlobalId(formData) {
+  try {
+    console.log(`Processing creator submission for existing Global ID: ${formData.globalId}`);
+
+    const existingRequest = getMasterRowByGlobalId(formData.globalId);
+
+    if (!existingRequest || existingRequest.rowIndex === -1) {
+      console.log(`No existing request found for Global ID: ${formData.globalId}. Treating as new creator-only submission.`);
+      return handleCreatorWithoutGlobalId(formData);
+    }
+
+    const creatorPayload = buildCreatorPayload(formData);
+    const upsertResult = upsertMasterRowByGlobalId(formData.globalId, creatorPayload);
+
+    if (upsertResult.rowIndex && typeof syncRequestMasterRowToVersion === "function") {
+      try {
+        syncRequestMasterRowToVersion(upsertResult.rowIndex);
+        console.log(`✅ Version sync triggered for row ${upsertResult.rowIndex} after creator submission with Global ID`);
+      } catch (error) {
+        logError("handleCreatorWithGlobalId_version_sync", error, {
+          globalId: formData.globalId,
+          rowIndex: upsertResult.rowIndex
+        });
+      }
+    }
+
+    updateRequestDocumentWithCreatorInfo(existingRequest, formData);
+
+    const workflowResult = handleRequestMasterByGlobalId(formData.globalId);
+
+    logWorkflowEvent("creator_updated_existing_request", {
+      globalId: formData.globalId,
+      creatorName: formData.creatorName,
+      number: upsertResult.number
+    });
+
+    return {
+      globalId: formData.globalId,
+      number: upsertResult.number,
+      action: "updated_existing_request",
+      workflow: workflowResult,
+      ...upsertResult
+    };
+
+  } catch (error) {
+    logError("handleCreatorWithExistingGlobalId", error, formData);
+    throw error;
+  }
+}
+```
+
+The only change from the original: lines 286-288 changed from `throw new Error(...)` to `return handleCreatorWithoutGlobalId(formData);`. This way, `handleCreatorWithoutGlobalId` will **reuse** the existing `formData.globalId` (the UUID from Intake) instead of generating a new one — because line 417-418 checks `const newGlobalId = Utilities.getUuid()` but then line 418 does `formData.globalId = newGlobalId`. We need to preserve the Intake-provided UUID.
+
+- [ ] **Step 2: Preserve the Intake-provided Global ID in PATH 2**
+
+In `/Users/rubyyang/Arcade Finder/RM_CreatorIntake.js`, update `handleCreatorWithoutGlobalId` (line 413) to only generate a new UUID if one isn't already present:
+
+Replace lines 417-418:
+
+```js
+    const newGlobalId = Utilities.getUuid();
+    formData.globalId = newGlobalId;
+```
+
+With:
+
+```js
+    const newGlobalId = formData.globalId || Utilities.getUuid();
+    formData.globalId = newGlobalId;
+```
+
+This is a one-character change (`formData.globalId || `) that preserves any existing UUID while still generating one for submissions that truly have no Global ID.
+
+- [ ] **Step 3: Verify**
+
+Run: `clasp push` in the Finder project directory.
+
+**Test the fallback path:**
+1. Submit a test demo through Intake
+2. Wait for `AI Workflow Status` = `Completed` in `Creator_Form_Raw`
+3. Check `Request_Master` for the new row
+4. Confirm: the `Global ID` column in `Request_Master` matches the `Global ID` in `Creator_Form_Raw` (same UUID)
+5. Confirm: status is `IE Received`, doc was created, no errors in execution log
+
+**Test existing path still works (regression):**
+1. Find a row in `Request_Master` that already has a Global ID
+2. Submit a Creator Form with that Global ID via the Google Form (if possible)
+3. Confirm: it updates the existing row (PATH 1), doesn't create a duplicate
+
+Expected: Both paths work — new Global IDs create new rows, existing Global IDs update existing rows.
+
+- [ ] **Step 4: Commit (in Finder repo)**
+
+```bash
+cd "/Users/rubyyang/Arcade Finder"
+git add RM_CreatorIntake.js
+git commit -m "feat: fall through to create-new path when Global ID has no existing row"
+```
+
+---
+
+### Task 3: Server-Side Status Lookup Functions
+
+**Files:**
+- Modify: `Code.js` — add constants after line 18, add functions after `getOptions()` (around line 540)
 
 **Interfaces:**
 - Consumes: `MASTER_SPREADSHEET_ID_PROP`, `SpreadsheetApp.openById()`, `Session.getActiveUser()`
 - Produces:
-  - `getSubmissionStatus(token)` → `{ success: boolean, submission: object | null }` where `submission` has keys: `title`, `status`, `dateSubmitted`, `primaryProduct`, `contentType`, `creatorName`, `requestorName`, `creationLink`, `drupalPageUrl`, `publishedDate`, `trackingToken`
-  - `getMySubmissions()` → `{ success: boolean, submissions: object[] }` — array of the same submission shape, sorted newest first
+  - `getSubmissionStatus(globalId)` → `{ success: boolean, submission: object | null, processing: boolean }` where `submission` has keys: `title`, `status`, `dateSubmitted`, `primaryProduct`, `contentType`, `creatorName`, `requestorName`, `creationLink`, `drupalPageUrl`, `publishedDate`, `globalId`
+  - `getMySubmissions()` → `{ success: boolean, submissions: object[] }` — array of the same shape, sorted newest first
 
 - [ ] **Step 1: Add column constants for status tracker**
 
@@ -160,13 +248,13 @@ const STATUS_TRACKER_COLUMNS = {
   CREATION_LINK: 'Creation Link',
   PUBLIC_SITE_LINK: 'Public Site Link',
   RHAC_PAGE: 'RHAC page',
-  TRACKING_TOKEN: 'Tracking Token'
+  GLOBAL_ID: 'Global ID'
 };
 ```
 
 - [ ] **Step 2: Add `getRequestMasterData_` private helper**
 
-After the `getOptions()` function (around line 540), add a helper that reads `Request_Master` and builds a header map:
+After the `getOptions()` function (around line 540), add:
 
 ```js
 function getRequestMasterData_() {
@@ -193,8 +281,6 @@ function getRequestMasterData_() {
 
 - [ ] **Step 3: Add `buildSubmissionFromRow_` private helper**
 
-Add a helper that extracts the display fields from a row:
-
 ```js
 function buildSubmissionFromRow_(row, headerMap) {
   const col = STATUS_TRACKER_COLUMNS;
@@ -214,7 +300,7 @@ function buildSubmissionFromRow_(row, headerMap) {
     creationLink: get(col.CREATION_LINK),
     drupalPageUrl: get(col.PUBLIC_SITE_LINK) || get(col.RHAC_PAGE),
     publishedDate: get(col.STATUS_PUBLISHED_TS),
-    trackingToken: get(col.TRACKING_TOKEN)
+    globalId: get(col.GLOBAL_ID)
   };
 }
 ```
@@ -222,26 +308,28 @@ function buildSubmissionFromRow_(row, headerMap) {
 - [ ] **Step 4: Add `getSubmissionStatus` public function**
 
 ```js
-function getSubmissionStatus(token) {
-  if (!token) return { success: false, error: 'No tracking token provided.' };
+function getSubmissionStatus(globalId) {
+  if (!globalId) return { success: false, error: 'No ID provided.' };
 
   try {
     const { rows, headerMap } = getRequestMasterData_();
-    const tokenIdx = headerMap[STATUS_TRACKER_COLUMNS.TRACKING_TOKEN];
-    if (tokenIdx == null) return { success: false, error: 'Tracking Token column not found.' };
+    const idIdx = headerMap[STATUS_TRACKER_COLUMNS.GLOBAL_ID];
+    if (idIdx == null) return { success: false, error: 'Global ID column not found.' };
 
     for (let i = 0; i < rows.length; i++) {
-      if (String(rows[i][tokenIdx] || '').trim() === token) {
+      if (String(rows[i][idIdx] || '').trim() === globalId) {
         return { success: true, submission: buildSubmissionFromRow_(rows[i], headerMap) };
       }
     }
 
-    return { success: false, error: 'Submission not found.' };
+    return { success: true, submission: null, processing: true };
   } catch (e) {
     return { success: false, error: e.message || String(e) };
   }
 }
 ```
+
+Note: when the Global ID isn't found in `Request_Master`, we return `{ success: true, submission: null, processing: true }` instead of an error — the row may not exist yet because the webhook hasn't fired (1-2 min delay).
 
 - [ ] **Step 5: Add `getMySubmissions` public function**
 
@@ -280,19 +368,36 @@ function getMySubmissions() {
 }
 ```
 
-- [ ] **Step 6: Verify manually**
+- [ ] **Step 6: Verify**
 
 Run: `clasp push`
 
-In the Apps Script editor, run this test in the execution log:
+In the Apps Script editor, run these tests:
 
 ```js
-function testStatusFunctions() {
-  Logger.log(getMySubmissions());
+function testGetMySubmissions() {
+  const result = getMySubmissions();
+  Logger.log('getMySubmissions: ' + JSON.stringify(result).slice(0, 500));
+  Logger.log('Count: ' + (result.submissions ? result.submissions.length : 0));
+}
+
+function testGetSubmissionStatus() {
+  // Use a known Global ID from Request_Master
+  const result = getSubmissionStatus('PASTE_A_REAL_GLOBAL_ID_HERE');
+  Logger.log('getSubmissionStatus: ' + JSON.stringify(result));
+}
+
+function testGetSubmissionStatusNotFound() {
+  const result = getSubmissionStatus('nonexistent-uuid-12345');
+  Logger.log('Not found result: ' + JSON.stringify(result));
+  // Expected: { success: true, submission: null, processing: true }
 }
 ```
 
-Confirm it returns submission objects with the expected fields.
+Expected:
+- `testGetMySubmissions` returns your submissions sorted newest first
+- `testGetSubmissionStatus` returns a submission object with all fields populated
+- `testGetSubmissionStatusNotFound` returns `processing: true` (not an error)
 
 - [ ] **Step 7: Commit**
 
@@ -303,18 +408,18 @@ git commit -m "feat: add getSubmissionStatus and getMySubmissions server functio
 
 ---
 
-### Task 3: Update `doGet()` to Route Status Page
+### Task 4: Update `doGet()` to Route Status Page
 
 **Files:**
 - Modify: `Code.js:519-524` (`doGet` function)
 
 **Interfaces:**
-- Consumes: `HtmlService.createHtmlOutputFromFile()`, query parameter `e.parameter.page`
+- Consumes: `HtmlService.createHtmlOutputFromFile()`, query parameter `e.parameter.page`, `e.parameter.token`
 - Produces: Updated `doGet(e)` that serves `StatusTracker` when `?page=status`, otherwise serves `Index`
 
 - [ ] **Step 1: Update `doGet` to handle page routing**
 
-Replace the existing `doGet` function:
+Replace the existing `doGet` function (lines 519-524):
 
 ```js
 function doGet(e) {
@@ -333,7 +438,13 @@ function doGet(e) {
 }
 ```
 
-- [ ] **Step 2: Commit**
+- [ ] **Step 2: Verify**
+
+Run: `clasp push`
+
+Open the deployed web app URL with `?page=status` appended. Expected: blank page loads without errors (StatusTracker.html doesn't exist yet, so this will error — that's OK, just confirming the routing logic works by checking the Apps Script execution log shows it tried to load `StatusTracker`).
+
+- [ ] **Step 3: Commit**
 
 ```bash
 git add Code.js
@@ -342,18 +453,18 @@ git commit -m "feat: add page routing to doGet for status tracker"
 
 ---
 
-### Task 4: Build `StatusTracker.html`
+### Task 5: Build `StatusTracker.html`
 
 **Files:**
 - Create: `StatusTracker.html`
 
 **Interfaces:**
-- Consumes: `google.script.run.getSubmissionStatus(token)`, `google.script.run.getMySubmissions()`, URL parameter `token` (via `google.script.history`)
-- Produces: Complete status page with two views — token-based single card and logged-in list
+- Consumes: `google.script.run.getSubmissionStatus(globalId)`, `google.script.run.getMySubmissions()`, URL parameter `token` via `window.location.search`
+- Produces: Complete status page with two views — single submission (by Global ID) and logged-in list (by email)
 
 - [ ] **Step 1: Create `StatusTracker.html`**
 
-Create the file `StatusTracker.html` with the full status page implementation:
+Create the file `StatusTracker.html`:
 
 ```html
 <!DOCTYPE html>
@@ -520,6 +631,16 @@ Create the file `StatusTracker.html` with the full status page implementation:
     .empty-state p {
       margin: 8px 0;
     }
+
+    .processing-message {
+      text-align: center;
+      padding: 40px 20px;
+      color: #666;
+    }
+
+    .processing-message p {
+      margin: 8px 0;
+    }
   </style>
 </head>
 <body>
@@ -533,6 +654,10 @@ Create the file `StatusTracker.html` with the full status page implementation:
 
 <div id="loadingState" class="loading">Loading your submissions...</div>
 <div id="errorState" class="error-message" style="display:none;"></div>
+<div id="processingState" class="processing-message" style="display:none;">
+  <p>Your submission is being processed.</p>
+  <p>This usually takes a minute or two. Check back shortly.</p>
+</div>
 <div id="emptyState" class="empty-state" style="display:none;">
   <p>No submissions found.</p>
   <p>Once you submit an interactive demo, you can track its status here.</p>
@@ -659,12 +784,19 @@ Create the file `StatusTracker.html` with the full status page implementation:
     el.style.display = 'block';
   }
 
-  function loadByToken(token) {
+  function showProcessing() {
+    document.getElementById('loadingState').style.display = 'none';
+    document.getElementById('processingState').style.display = 'block';
+  }
+
+  function loadByGlobalId(globalId) {
     document.getElementById('pageTitle').textContent = 'Submission Status';
     google.script.run
       .withSuccessHandler(function(result) {
         if (result && result.success && result.submission) {
           renderSubmissions([result.submission]);
+        } else if (result && result.processing) {
+          showProcessing();
         } else {
           showError((result && result.error) || 'Submission not found.');
         }
@@ -672,7 +804,7 @@ Create the file `StatusTracker.html` with the full status page implementation:
       .withFailureHandler(function(err) {
         showError(err && err.message ? err.message : String(err));
       })
-      .getSubmissionStatus(token);
+      .getSubmissionStatus(globalId);
   }
 
   function loadMySubmissions() {
@@ -692,7 +824,7 @@ Create the file `StatusTracker.html` with the full status page implementation:
 
   var token = getUrlParam('token');
   if (token) {
-    loadByToken(token);
+    loadByGlobalId(token);
   } else {
     loadMySubmissions();
   }
@@ -701,17 +833,37 @@ Create the file `StatusTracker.html` with the full status page implementation:
 </html>
 ```
 
-- [ ] **Step 2: Verify manually**
+- [ ] **Step 2: Verify**
 
 Run: `clasp push`
 
-Open the web app with `?page=status` appended to the URL. Confirm:
-- The page loads and shows your submissions (or empty state if none)
-- Each card expands on click to show details
-- The "Submit a new interactive demo" link navigates back to the main form
-- Status badges show correct colors
+**Test 1 — Logged-in view:**
+Open `<app-url>?page=status`. Expected:
+- Shows all your submissions (by email match) as expandable cards
+- Each card shows title, product, date, status badge
+- Click expands to show detail grid (content type, creator, links, dates)
+- Empty state shows if no submissions match your email
+- "Submit a new interactive demo" link goes back to the main form
 
-If you have a tracking token from Task 1 testing, also test `?page=status&token=<uuid>` to confirm the single-submission view works.
+**Test 2 — Global ID view:**
+Open `<app-url>?page=status&token=<paste-a-real-global-id>`. Expected:
+- Page title changes to "Submission Status"
+- Shows the single matching submission card
+- Card expands with full detail
+
+**Test 3 — Processing state:**
+Open `<app-url>?page=status&token=nonexistent-uuid`. Expected:
+- Shows "Your submission is being processed. This usually takes a minute or two."
+
+**Test 4 — Status badge colors:**
+Verify each status has the correct color:
+- Request Open → blue
+- Request Approved → green
+- IE Received → amber
+- IE Reviewed → blue
+- IE Published → green
+- IE Retired → red
+- Closed → grey
 
 - [ ] **Step 3: Commit**
 
@@ -722,23 +874,25 @@ git commit -m "feat: add StatusTracker.html for submission status page"
 
 ---
 
-### Task 5: Update Success Screen and Add Check Status Navigation
+### Task 6: Update Success Screen and Add Check Status Navigation
 
 **Files:**
 - Modify: `Index.html:470-477` (success section HTML)
+- Modify: `Index.html:479-494` (JS state variables)
 - Modify: `Index.html:1329-1362` (`setSubmitSuccessStatus` function)
-- Modify: `Index.html:264-268` (add Check Status link near the top)
+- Modify: `Index.html:1364-1446` (after `startAnotherSubmission`)
+- Modify: `Index.html:264-268` (add Check Status link)
 
 **Interfaces:**
-- Consumes: `data.trackingToken` from `submitIntakeForReview` return value. Session submissions tracked in JS array.
-- Produces: Updated success screen with "Submit Another" and "Finish" buttons. "Check Status" link in header area.
+- Consumes: `data.globalId` from `submitIntakeForReview` return value
+- Produces: Updated success screen with "Submit Another" and "Finish" buttons. Session submissions tracked in JS array. "Check Status" link in header area.
 
 - [ ] **Step 1: Add session submissions tracking to JS state**
 
-In `Index.html`, after the existing state variables (around line 487-494, after `let sessionStartTime = Date.now();`), add:
+In `Index.html`, after the existing state variables (around line 493, after `let sessionStartTime = Date.now();`), add:
 
 ```js
-let sessionSubmissions = [];
+    let sessionSubmissions = [];
 ```
 
 - [ ] **Step 2: Update success section HTML**
@@ -746,7 +900,7 @@ let sessionSubmissions = [];
 Replace the success section HTML (lines 470-477):
 
 ```html
-<div id="successSection" class="card" style="display:none;">
+  <div id="successSection" class="card" style="display:none;">
   <h2>You're all set!</h2>
   <p id="successMainMessage" class="subtle"></p>
 
@@ -759,9 +913,9 @@ Replace the success section HTML (lines 470-477):
 </div>
 ```
 
-- [ ] **Step 3: Track submissions in `setSubmitSuccessStatus`**
+- [ ] **Step 3: Update `setSubmitSuccessStatus` to track submissions**
 
-In `Index.html`, update `setSubmitSuccessStatus` (line 1329) to store the submission title and token:
+Replace the `setSubmitSuccessStatus` function (lines 1329-1362):
 
 ```js
 function setSubmitSuccessStatus(data) {
@@ -770,12 +924,12 @@ function setSubmitSuccessStatus(data) {
 
   const requestNumber = workflowPayload.number || '';
   const action = workflowPayload.action || '';
-  const trackingToken = data.trackingToken || '';
+  const globalId = data.globalId || '';
   const demoTitle = (data.submission && data.submission['Final Demo Title']) || '';
 
   sessionSubmissions.push({
     title: demoTitle,
-    trackingToken: trackingToken,
+    globalId: globalId,
     requestNumber: requestNumber
   });
 
@@ -826,11 +980,7 @@ function finishSession() {
 }
 ```
 
-- [ ] **Step 5: Reset session submissions in `startAnotherSubmission`**
-
-In `startAnotherSubmission`, do NOT clear `sessionSubmissions` — the array persists across submissions in the same session. But the rest of the existing reset logic stays the same. No code change needed here; just confirming the existing function is compatible.
-
-- [ ] **Step 6: Add "Check Status" link near the top of the page**
+- [ ] **Step 5: Add "Check Status" link near the top of the page**
 
 In `Index.html`, after the pilot warning banner (around line 267, after the closing `</div>` of the pilot warning card), add:
 
@@ -841,18 +991,29 @@ In `Index.html`, after the pilot warning banner (around line 267, after the clos
 </div>
 ```
 
-- [ ] **Step 7: Verify manually**
+- [ ] **Step 6: Verify**
 
 Run: `clasp push`
 
-Open the web app and test:
-1. Submit a demo → success screen shows "Submit Another" and "Finish" buttons
-2. Click "Submit Another" → form resets, submit another demo
-3. Success screen shows count "(2 submitted this session)"
-4. Click "Finish" → navigates to the status page
-5. "Check submission status" link near the top works
+**Test 1 — Submit and see new success screen:**
+1. Open the web app and submit a demo
+2. Success screen shows "Submit Another" and "Finish" buttons
+3. Click "Submit Another" → form resets, ready for next submission
+4. Submit a second demo → success screen says "(2 submitted this session)"
+5. Click "Finish" → navigates to `?page=status`
 
-- [ ] **Step 8: Commit**
+**Test 2 — Check Status link:**
+1. Open the web app main form
+2. "Check submission status" link appears near the top
+3. Clicking it navigates to the status page
+
+**Test 3 — Full end-to-end:**
+1. Submit a demo via Intake
+2. Click "Finish" → status page loads
+3. If the webhook hasn't fired yet: your new submission may not show in the list yet (this is expected — it appears within 1-2 minutes)
+4. Wait 2 minutes, refresh the status page → new submission appears with status "IE Received"
+
+- [ ] **Step 7: Commit**
 
 ```bash
 git add Index.html
@@ -861,78 +1022,61 @@ git commit -m "feat: add Submit Another / Finish flow and Check Status link"
 
 ---
 
-### Task 6: Store Tracking Token in Finder's `Request_Master`
+## End-to-End Test Plan
 
-**Files:**
-- Modify: `/Users/rubyyang/Arcade Finder/RM_Config.js` — add `TRACKING_TOKEN` column constant
-- Modify: `/Users/rubyyang/Arcade Finder/RM_CreatorIntake.js` — read token from webhook payload, store in `Request_Master`
+After all 6 tasks are complete, run these integration tests:
 
-**Interfaces:**
-- Consumes: `payload.trackingToken` from webhook POST (added in Task 1)
-- Produces: `Tracking Token` column populated in `Request_Master` rows created via the webhook path
+### Test A: New Submission → Status Tracking
 
-- [ ] **Step 1: Add column constant to Finder's config**
+1. Open the Intake web app
+2. Paste a valid interactive demo URL, extract, generate, review
+3. Submit the demo
+4. **Verify** success screen shows "Submit Another" and "Finish"
+5. Click "Finish" → status page loads
+6. **Verify** the processing message shows (webhook hasn't fired yet)
+7. Wait 2 minutes, refresh the page
+8. **Verify** the submission appears with status "IE Received"
+9. Check `Creator_Form_Raw` → `Global ID` column has a UUID
+10. Check `Request_Master` → same UUID in `Global ID` column
 
-In `/Users/rubyyang/Arcade Finder/RM_Config.js`, add `TRACKING_TOKEN` to the COLUMNS object. After the `METADATA` line (around line 166):
+### Test B: Multiple Submissions in One Session
 
-```js
-TRACKING_TOKEN: "Tracking Token",
-```
+1. Submit demo #1 → click "Submit Another"
+2. Submit demo #2 → success screen shows "(2 submitted this session)"
+3. Click "Finish" → status page shows both submissions (after webhook processing)
 
-- [ ] **Step 2: Thread tracking token through `doPost` → `onCreatorFormSubmit` → payload builders**
+### Test C: Direct Status Lookup by Global ID
 
-Three files need small changes in `/Users/rubyyang/Arcade Finder/RM_CreatorIntake.js`:
+1. Copy a Global ID from `Request_Master`
+2. Open `<app-url>?page=status&token=<global-id>`
+3. **Verify** single submission card appears with correct details
+4. **Verify** clicking the card expands the detail grid
 
-**In `doPost` (line 649):** After `const rowIndex = Number(payload.rowIndex);` (around line 676), add:
+### Test D: Logged-in View Shows All Submissions
 
-```js
-const trackingToken = payload.trackingToken || '';
-```
+1. Open `<app-url>?page=status` (no token)
+2. **Verify** all submissions where your email matches Creator Email or Requestor Email appear
+3. **Verify** sorted newest first
+4. **Verify** cards expand with correct details
 
-Then add it to `fakeEvent` (around line 700, after the `namedValues` line):
+### Test E: Status Badge Colors
 
-```js
-const fakeEvent = {
-  range: range,
-  source: ss,
-  values: range.getValues()[0],
-  namedValues: buildNamedValuesFromRow_(sheet, rowIndex),
-  trackingToken: trackingToken
-};
-```
+Open the status page and verify submissions at different statuses show correct badge colors:
+- Request Open → blue
+- IE Received → amber
+- IE Published → green
+- Closed → grey
 
-**In `onCreatorFormSubmit` (line 59):** After `const formData = extractCreatorFormData(event);` (line 78), add:
+### Test F: Finder Regression — Existing Global IDs Still Work
 
-```js
-const trackingToken = event.trackingToken || '';
-```
+1. Find an existing row in `Request_Master` with a Global ID
+2. Submit a Creator Form (via Google Form, not Intake) with that Global ID
+3. **Verify** the existing row is updated (PATH 1), not a new row created
+4. **Verify** status advances to "IE Received" and Jira notification fires (if configured)
 
-Then in each branch, after the payload is built, inject the token:
+### Test G: Navigation
 
-In the `handleCreatorWithExistingGlobalId` path (line 281), find where `buildCreatorPayload(formData)` is called (line 291) and after the payload is assigned, add:
-
-```js
-if (trackingToken) creatorPayload[ENHANCED_CONFIG.COLUMNS.TRACKING_TOKEN] = trackingToken;
-```
-
-In the `handleCreatorWithoutGlobalId` path (line 413), find where `buildCreatorOnlyMasterPayload(formData, docUrl)` is called (line 423) and after the payload is assigned, add:
-
-```js
-if (trackingToken) masterPayload[ENHANCED_CONFIG.COLUMNS.TRACKING_TOKEN] = trackingToken;
-```
-
-Note: the `trackingToken` variable needs to be accessible in both handler functions. The simplest approach is to pass it as a parameter: change `handleCreatorWithExistingGlobalId(formData)` to `handleCreatorWithExistingGlobalId(formData, trackingToken)` and `handleCreatorWithoutGlobalId(formData)` to `handleCreatorWithoutGlobalId(formData, trackingToken)` — then update both call sites and function signatures accordingly.
-
-- [ ] **Step 3: Verify manually**
-
-Run: `clasp push` in the Finder project directory.
-
-Submit a test demo through Intake, wait for the webhook to process (check `AI Workflow Status` = Completed in `Creator_Form_Raw`), then check `Request_Master` for the new row — confirm the `Tracking Token` column has the UUID.
-
-- [ ] **Step 4: Commit (in Finder repo)**
-
-```bash
-cd "/Users/rubyyang/Arcade Finder"
-git add RM_Config.js RM_CreatorIntake.js
-git commit -m "feat: store tracking token from Intake webhook in Request_Master"
-```
+1. From main form → "Check submission status" link → status page loads
+2. From status page → "Submit a new interactive demo" link → main form loads
+3. From success screen → "Finish" → status page loads
+4. From success screen → "Submit Another" → form resets for new submission
