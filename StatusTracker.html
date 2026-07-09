@@ -225,7 +225,7 @@
   }
 
   function getStatusClass(status) {
-    var s = (status || '').toLowerCase().replace(/\s+/g, '-');
+    var s = (status || '').toLowerCase().replace(/[^a-z0-9-]/g, '').replace(/\s+/g, '-');
     return 'status-' + s;
   }
 
@@ -242,6 +242,7 @@
 
   function renderLink(url, label) {
     if (!url) return '<span style="color:#aaa;">—</span>';
+    if (!/^https?:\/\//i.test(url)) return '<span>' + escapeHtml(url) + '</span>';
     return '<a href="' + escapeHtml(url) + '" target="_blank">' + escapeHtml(label || url) + '</a>';
   }
 
