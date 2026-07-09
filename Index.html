@@ -484,13 +484,13 @@
       promptVersion: '',
       generatedAt: ''
     };
-    var analyticsSessionId = (function() {
+    const analyticsSessionId = (function() {
       try { return crypto.randomUUID(); }
       catch (e) { return 'ses-' + Math.random().toString(36).slice(2) + Date.now().toString(36); }
     })();
-    var editedFields = new Set();
-    var aiDraftGenerated = false;
-    var sessionStartTime = Date.now();
+    const editedFields = new Set();
+    let aiDraftGenerated = false;
+    const sessionStartTime = Date.now();
 
     function gasCall(functionName, ...args) {
       return new Promise((resolve, reject) => {
@@ -504,7 +504,7 @@
     }
 
     async function apiPost(path, payload) {
-      var payloadWithSession = Object.assign({}, payload, { sessionId: analyticsSessionId });
+      const payloadWithSession = Object.assign({}, payload, { sessionId: analyticsSessionId });
 
       if (path === '/api/extract-guide') {
         return gasCall('extractGuideContent', payloadWithSession);
@@ -654,9 +654,9 @@
     }
 
     function getCurrentQuarter() {
-      var now = new Date();
-      var year = now.getFullYear().toString().slice(-2);
-      var q = Math.ceil((now.getMonth() + 1) / 3);
+      const now = new Date();
+      const year = now.getFullYear().toString().slice(-2);
+      const q = Math.ceil((now.getMonth() + 1) / 3);
       return 'CY' + year + 'Q' + q;
     }
 
@@ -679,12 +679,12 @@
 
   if (!textarea || !el) return;
 
-  var text = textarea.value;
-  var count = countWords(text);
+  const text = textarea.value;
+  const count = countWords(text);
 
   if (hasTourHighlights && text.indexOf('\n\nThe tour highlights:\n') !== -1) {
-    var paragraphOnly = text.split('\n\nThe tour highlights:\n')[0];
-    var paragraphCount = countWords(paragraphOnly);
+    const paragraphOnly = text.split('\n\nThe tour highlights:\n')[0];
+    const paragraphCount = countWords(paragraphOnly);
     el.textContent = paragraphCount + ' words in description + tour highlights appended. Suggested: ' + minWords + '-' + maxWords + ' words for description.';
   } else {
     el.textContent = count + ' words. Suggested: ' + minWords + '-' + maxWords + ' words.';
@@ -692,12 +692,12 @@
   el.className = 'word-count';
 }
 
-    var fieldEditTrackingAttached = false;
+    let fieldEditTrackingAttached = false;
     function attachFieldEditTracking() {
       if (fieldEditTrackingAttached) return;
       fieldEditTrackingAttached = true;
 
-      var trackableFields = [
+      const trackableFields = [
         'demoTitle', 'descriptionWithoutGid', 'descriptionForSeo', 'seoKeywords',
         'contentType', 'primaryProduct', 'otherProducts', 'vertical', 'event',
         'tdp', 'salesTactic', 'marketingProgram', 'ctaLink1', 'ctaLink2', 'ctaLink3',
@@ -705,7 +705,7 @@
       ];
 
       trackableFields.forEach(function(fieldId) {
-        var el = document.getElementById(fieldId);
+        const el = document.getElementById(fieldId);
         if (!el) return;
         el.addEventListener('input', function() { editedFields.add(fieldId); });
         el.addEventListener('change', function() { editedFields.add(fieldId); });
@@ -983,7 +983,7 @@ async function extractGuide() {
   }
 }
 
-var FIELD_CONFIDENCE_MAP = {
+const FIELD_CONFIDENCE_MAP = {
   'demoTitle': 'demo_title',
   'descriptionWithoutGid': 'description_without_gid',
   'descriptionForSeo': 'description_for_seo',
@@ -999,13 +999,13 @@ var FIELD_CONFIDENCE_MAP = {
   'marketingProgram': 'marketing_program_suggestion'
 };
 
-var CONFIDENCE_LABELS = {
+const CONFIDENCE_LABELS = {
   'high': 'High confidence',
   'medium': 'Medium confidence — worth a quick check',
   'low': 'Low confidence — please review'
 };
 
-var FIELD_DISPLAY_NAMES = {
+const FIELD_DISPLAY_NAMES = {
   'demo_title': 'Demo Title', 'description_without_gid': 'Description',
   'description_for_seo': 'SEO Description', 'language_suggestions': 'Language',
   'seo_keywords': 'SEO Keywords', 'vertical_suggestion': 'Vertical',
@@ -1015,13 +1015,13 @@ var FIELD_DISPLAY_NAMES = {
   'cta_link_suggestions': 'CTA Links', 'tour_highlights': 'Tour Highlights'
 };
 
-var CREATOR_REQUIRED_FIELDS = [
+const CREATOR_REQUIRED_FIELDS = [
   'email', 'creatorName', 'creatorTeams', 'vertical', 'event'
 ];
 
 function highlightEmptyRequired() {
   CREATOR_REQUIRED_FIELDS.forEach(function(id) {
-    var el = document.getElementById(id);
+    const el = document.getElementById(id);
     if (!el) return;
     if (!el.value) {
       el.classList.add('needs-input');
@@ -1033,7 +1033,7 @@ function highlightEmptyRequired() {
 
 function attachRequiredFieldListeners() {
   CREATOR_REQUIRED_FIELDS.forEach(function(id) {
-    var el = document.getElementById(id);
+    const el = document.getElementById(id);
     if (!el) return;
     el.addEventListener('input', function() {
       if (el.value) el.classList.remove('needs-input');
@@ -1051,7 +1051,7 @@ function clearConfidenceMarks() {
     el.classList.remove('confidence-high', 'confidence-medium', 'confidence-low');
     el.title = '';
   });
-  var banner = document.getElementById('reviewBanner');
+  const banner = document.getElementById('reviewBanner');
   if (banner) { banner.innerHTML = ''; banner.className = ''; banner.style.display = 'none'; }
 }
 
@@ -1068,40 +1068,40 @@ function fieldHasValue(id) {
 
 function markFieldConfidence(id, level) {
   if (!fieldHasValue(id)) return;
-  var el = document.getElementById(id);
+  const el = document.getElementById(id);
   if (!el) return;
   el.classList.add('confidence-' + level);
   el.title = CONFIDENCE_LABELS[level] || '';
 }
 
 function showReviewBanner(fieldConfidence) {
-  var banner = document.getElementById('reviewBanner');
+  const banner = document.getElementById('reviewBanner');
   if (!banner) return;
 
-  var counts = { high: 0, medium: 0, low: 0 };
-  var mediumFields = [];
-  var lowFields = [];
+  const counts = { high: 0, medium: 0, low: 0 };
+  const mediumFields = [];
+  const lowFields = [];
 
   Object.keys(fieldConfidence).forEach(function(key) {
-    var level = fieldConfidence[key];
+    const level = fieldConfidence[key];
     if (counts[level] !== undefined) counts[level]++;
     if (level === 'medium') mediumFields.push(key);
     if (level === 'low') lowFields.push(key);
   });
 
-  var total = counts.high + counts.medium + counts.low;
+  const total = counts.high + counts.medium + counts.low;
   if (total === 0) { banner.style.display = 'none'; return; }
 
-  var reverseMap = {};
+  const reverseMap = {};
   Object.keys(FIELD_CONFIDENCE_MAP).forEach(function(elId) {
-    var draftKey = FIELD_CONFIDENCE_MAP[elId];
+    const draftKey = FIELD_CONFIDENCE_MAP[elId];
     if (!reverseMap[draftKey]) reverseMap[draftKey] = elId;
   });
 
-  var bannerClass = lowFields.length > 2 ? 'review-banner-alert'
+  const bannerClass = lowFields.length > 2 ? 'review-banner-alert'
     : lowFields.length > 0 ? 'review-banner-warning' : 'review-banner-good';
 
-  var message = '';
+  let message = '';
   if (lowFields.length > 0) {
     message = 'Some fields need your attention before submitting.';
   } else if (counts.medium > 0) {
@@ -1110,10 +1110,10 @@ function showReviewBanner(fieldConfidence) {
     message = 'All fields look good!';
   }
 
-  var html = '';
+  let html = '';
 
   html += '<div class="review-banner-counts"><strong>Draft confidence:</strong> ';
-  var parts = [];
+  const parts = [];
   if (counts.high) parts.push('<span style="color:#16a34a">' + counts.high + ' high</span>');
   if (counts.medium) parts.push('<span style="color:#d97706">' + counts.medium + ' medium</span>');
   if (counts.low) parts.push('<span style="color:#dc2626">' + counts.low + ' low</span>');
@@ -1122,20 +1122,20 @@ function showReviewBanner(fieldConfidence) {
 
   html += '<div class="review-banner-message">' + message + '</div>';
 
-  var actionFields = lowFields.concat(mediumFields);
+  const actionFields = lowFields.concat(mediumFields);
   if (actionFields.length > 0) {
     html += '<div class="review-banner-fields">';
     lowFields.forEach(function(key) {
-      var name = FIELD_DISPLAY_NAMES[key] || key;
-      var targetId = reverseMap[key] || '';
+      const name = FIELD_DISPLAY_NAMES[key] || key;
+      const targetId = reverseMap[key] || '';
       html += '<span class="review-banner-field-tag review-banner-field-tag-low"'
         + ' onclick="scrollToField(\'' + targetId + '\')"'
         + ' title="Needs input — click to review">'
         + name + '</span>';
     });
     mediumFields.forEach(function(key) {
-      var name = FIELD_DISPLAY_NAMES[key] || key;
-      var targetId = reverseMap[key] || '';
+      const name = FIELD_DISPLAY_NAMES[key] || key;
+      const targetId = reverseMap[key] || '';
       html += '<span class="review-banner-field-tag review-banner-field-tag-medium"'
         + ' onclick="scrollToField(\'' + targetId + '\')"'
         + ' title="Worth a check — click to review">'
@@ -1151,7 +1151,7 @@ function showReviewBanner(fieldConfidence) {
 
 function scrollToField(elementId) {
   if (!elementId) return;
-  var el = document.getElementById(elementId);
+  const el = document.getElementById(elementId);
   if (!el) return;
   el.scrollIntoView({ behavior: 'smooth', block: 'center' });
   el.style.transition = 'box-shadow 0.3s ease';
@@ -1177,13 +1177,13 @@ function findLabelForField(id) {
   return null;
 }
 
-var currentDraft = null;
+let currentDraft = null;
 
 
 function populateFormFromDraft(draft) {
   document.getElementById('demoTitle').value = draft.demo_title || '';
 
-  var combinedDescription = draft.description_without_gid || draft.description_with_gid || '';
+  let combinedDescription = draft.description_without_gid || draft.description_with_gid || '';
   if (Array.isArray(draft.tour_highlights) && draft.tour_highlights.length > 0) {
     combinedDescription += '\n\nThe tour highlights:\n';
     combinedDescription += draft.tour_highlights.map(function(h) { return '- ' + h; }).join('\n');
@@ -1193,7 +1193,7 @@ function populateFormFromDraft(draft) {
 
   setMultiSelectValues('language', draft.language_suggestions || []);
 
-  var ctaLinks = Array.isArray(draft.cta_link_suggestions) ? draft.cta_link_suggestions : [];
+  const ctaLinks = Array.isArray(draft.cta_link_suggestions) ? draft.cta_link_suggestions : [];
   document.getElementById('ctaLink1').value = ctaLinks[0] ? ctaLinks[0].label + ': ' + ctaLinks[0].url : '';
   document.getElementById('ctaLink2').value = ctaLinks[1] ? ctaLinks[1].label + ': ' + ctaLinks[1].url : '';
   document.getElementById('ctaLink3').value = ctaLinks[2] ? ctaLinks[2].label + ': ' + ctaLinks[2].url : '';
@@ -1217,10 +1217,10 @@ function populateFormFromDraft(draft) {
   updateWordCounts();
 
   clearConfidenceMarks();
-  var fieldConfidence = draft.field_confidence || {};
+  const fieldConfidence = draft.field_confidence || {};
   Object.keys(FIELD_CONFIDENCE_MAP).forEach(function(elementId) {
-    var draftField = FIELD_CONFIDENCE_MAP[elementId];
-    var level = fieldConfidence[draftField] || 'medium';
+    const draftField = FIELD_CONFIDENCE_MAP[elementId];
+    const level = fieldConfidence[draftField] || 'medium';
     markFieldConfidence(elementId, level);
   });
   showReviewBanner(fieldConfidence);
@@ -1264,11 +1264,11 @@ try {
         aiDraftGenerated = true;
         attachFieldEditTracking();
 
-        var stepCount = (currentExtractedGuide && currentExtractedGuide.steps && currentExtractedGuide.steps.length)
+        const stepCount = (currentExtractedGuide && currentExtractedGuide.steps && currentExtractedGuide.steps.length)
           || (currentExtractedGuide && currentExtractedGuide.stepTexts && currentExtractedGuide.stepTexts.length)
           || 0;
         if (stepCount > 0) {
-          var minutes = Math.ceil(stepCount / 8);
+          const minutes = Math.ceil(stepCount / 8);
           document.getElementById('duration').value = '~' + minutes + ' minute' + (minutes !== 1 ? 's' : '');
         }
 
@@ -1488,7 +1488,7 @@ async function submitForReview() {
 
     gasCall('getUserEmail').then(function(result) {
       if (result && result.email) {
-        var emailField = document.getElementById('email');
+        const emailField = document.getElementById('email');
         if (emailField && !emailField.value) {
           emailField.value = result.email;
         }
