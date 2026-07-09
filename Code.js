@@ -557,8 +557,9 @@ function extractGuideContent(payload) {
 
   const startTime = Date.now();
 
+  let extractedGuide;
   try {
-    const extractedGuide = fetchGuideContent_(arcadeUrl);
+    extractedGuide = fetchGuideContent_(arcadeUrl);
   } catch (e) {
     const errorDurationMs = Date.now() - startTime;
     logAnalyticsEvent_('guide_extraction_error', {
@@ -849,7 +850,7 @@ function extractDuration_(html) {
 
   const durationAttrMatch = source.match(/\bduration["']?\s*[:=]\s*["']?(\d+(?:\.\d+)?)\s*(min|sec|s|m)/i);
   if (durationAttrMatch) {
-    const val = parseFloat(durationAttrMatch[1]);
+    let val = parseFloat(durationAttrMatch[1]);
     const unit = durationAttrMatch[2].toLowerCase();
     if (unit === 'sec' || unit === 's') val = Math.ceil(val / 60);
     if (val > 0) return Math.ceil(val) + ' min';
@@ -1103,7 +1104,7 @@ function getAnalyticsSpreadsheet_() {
 }
 
 function ensureAnalyticsLogSheet_(ss) {
-  const sheet = ss.getSheetByName(ANALYTICS_LOG_SHEET);
+  let sheet = ss.getSheetByName(ANALYTICS_LOG_SHEET);
   if (sheet) return sheet;
 
   sheet = ss.insertSheet(ANALYTICS_LOG_SHEET);
@@ -1121,7 +1122,7 @@ function logAnalyticsEvent_(eventType, data) {
     const sheet = ensureAnalyticsLogSheet_(ss);
     const d = data || {};
 
-    const userEmail = '';
+    let userEmail = '';
     try { userEmail = Session.getActiveUser().getEmail(); } catch (e) {}
 
     sheet.appendRow([
@@ -1157,7 +1158,7 @@ function computeAnalyticsSummary() {
   const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
 
   const events = data.map(function(row) {
-    const meta = {};
+    let meta = {};
     try { meta = row[7] ? JSON.parse(row[7]) : {}; } catch (e) {}
     return {
       timestamp: new Date(row[0]),
@@ -1316,7 +1317,7 @@ function computeAnalyticsSummary() {
 }
 
 function writeAnalyticsSummarySheet_(ss, summary) {
-  const sheet = ss.getSheetByName(ANALYTICS_SUMMARY_SHEET);
+  let sheet = ss.getSheetByName(ANALYTICS_SUMMARY_SHEET);
   if (!sheet) {
     sheet = ss.insertSheet(ANALYTICS_SUMMARY_SHEET);
   }
