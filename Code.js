@@ -19,6 +19,25 @@ const ANALYTICS_SPREADSHEET_ID_PROP = 'ANALYTICS_SPREADSHEET_ID';
 const ANALYTICS_LOG_SHEET = 'Analytics_Log';
 const ANALYTICS_SUMMARY_SHEET = 'Analytics_Summary';
 
+const STATUS_TRACKER_COLUMNS = {
+  FINAL_DEMO_TITLE: 'Final Demo Title',
+  SUGGESTED_DEMO_TITLE: 'Suggested Demo Title',
+  STATUS: 'Status',
+  STATUS_RECEIVED_TS: 'Status Received Timestamp',
+  STATUS_PUBLISHED_TS: 'Status Published Timestamp',
+  PRIMARY_PRODUCT: 'Primary Product',
+  CONTENT_TYPE: 'Content Type',
+  FINAL_CONTENT_TYPE: 'Final Content Type',
+  CREATOR_NAME: 'Creator Name',
+  REQUESTOR_NAME: 'Requestor Name',
+  CREATOR_EMAIL: 'Creator Email',
+  REQUESTOR_EMAIL: 'Requestor Email',
+  CREATION_LINK: 'Creation Link',
+  PUBLIC_SITE_LINK: 'Public Site Link',
+  RHAC_PAGE: 'RHAC page',
+  GLOBAL_ID: 'Global ID'
+};
+
 const FIELD_OPTIONS = {
   contentTypes: [
     'Business Intro',
@@ -539,6 +558,102 @@ function getOptions() {
     success: true,
     options: FIELD_OPTIONS
   };
+}
+
+function getRequestMasterData_() {
+  const spreadsheetId = PropertiesService.getScriptProperties().getProperty(MASTER_SPREADSHEET_ID_PROP);
+  if (!spreadsheetId) throw new Error('MASTER_SPREADSHEET_ID is not configured.');
+
+  const ss = SpreadsheetApp.openById(spreadsheetId);
+  const sheet = ss.getSheetByName('Request_Master');
+  if (!sheet) throw new Error('Request_Master sheet not found.');
+
+  const lastRow = sheet.getLastRow();
+  if (lastRow <= 1) return { headers: [], rows: [], headerMap: {} };
+
+  const lastCol = sheet.getLastColumn();
+  const headers = sheet.getRange(1, 1, 1, lastCol).getValues()[0].map(h => String(h || '').trim());
+  const rows = sheet.getRange(2, 1, lastRow - 1, lastCol).getValues();
+
+  const headerMap = {};
+  headers.forEach((h, i) => { if (h) headerMap[h] = i; });
+
+  return { headers, rows, headerMap };
+}
+
+function buildSubmissionFromRow_(row, headerMap) {
+  const col = STATUS_TRACKER_COLUMNS;
+  const get = (name) => {
+    const idx = headerMap[name];
+    return idx != null ? String(row[idx] || '') : '';
+  };
+
+  return {
+    title: get(col.FINAL_DEMO_TITLE) || get(col.SUGGESTED_DEMO_TITLE),
+    status: get(col.STATUS),
+    dateSubmitted: get(col.STATUS_RECEIVED_TS),
+    primaryProduct: get(col.PRIMARY_PRODUCT),
+    contentType: get(col.FINAL_CONTENT_TYPE) || get(col.CONTENT_TYPE),
+    creatorName: get(col.CREATOR_NAME),
+    requestorName: get(col.REQUESTOR_NAME),
+    creationLink: get(col.CREATION_LINK),
+    drupalPageUrl: get(col.PUBLIC_SITE_LINK) || get(col.RHAC_PAGE),
+    publishedDate: get(col.STATUS_PUBLISHED_TS),
+    globalId: get(col.GLOBAL_ID)
+  };
+}
+
+function getSubmissionStatus(globalId) {
+  if (!globalId) return { success: false, error: 'No ID provided.' };
+
+  try {
+    const { rows, headerMap } = getRequestMasterData_();
+    const idIdx = headerMap[STATUS_TRACKER_COLUMNS.GLOBAL_ID];
+    if (idIdx == null) return { success: false, error: 'Global ID column not found.' };
+
+    for (let i = 0; i < rows.length; i++) {
+      if (String(rows[i][idIdx] || '').trim() === globalId) {
+        return { success: true, submission: buildSubmissionFromRow_(rows[i], headerMap) };
+      }
+    }
+
+    return { success: true, submission: null, processing: true };
+  } catch (e) {
+    return { success: false, error: e.message || String(e) };
+  }
+}
+
+function getMySubmissions() {
+  try {
+    const email = Session.getActiveUser().getEmail();
+    if (!email) return { success: false, error: 'Could not determine your email. Please make sure you are logged in.' };
+
+    const { rows, headerMap } = getRequestMasterData_();
+    const creatorIdx = headerMap[STATUS_TRACKER_COLUMNS.CREATOR_EMAIL];
+    const requestorIdx = headerMap[STATUS_TRACKER_COLUMNS.REQUESTOR_EMAIL];
+
+    const lowerEmail = email.toLowerCase();
+    const submissions = [];
+
+    for (let i = 0; i < rows.length; i++) {
+      const creatorEmail = creatorIdx != null ? String(rows[i][creatorIdx] || '').toLowerCase().trim() : '';
+      const requestorEmail = requestorIdx != null ? String(rows[i][requestorIdx] || '').toLowerCase().trim() : '';
+
+      if (creatorEmail === lowerEmail || requestorEmail === lowerEmail) {
+        submissions.push(buildSubmissionFromRow_(rows[i], headerMap));
+      }
+    }
+
+    submissions.sort((a, b) => {
+      const dateA = a.dateSubmitted ? new Date(a.dateSubmitted).getTime() : 0;
+      const dateB = b.dateSubmitted ? new Date(b.dateSubmitted).getTime() : 0;
+      return dateB - dateA;
+    });
+
+    return { success: true, submissions };
+  } catch (e) {
+    return { success: false, error: e.message || String(e) };
+  }
 }
 
 function extractGuideContent(payload) {
