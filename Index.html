@@ -265,6 +265,11 @@
   <strong>Pilot mode</strong> — please don't enter sensitive or confidential information.
 </div>
 
+<div style="text-align: right; margin-bottom: 12px;">
+  <a href="#" onclick="window.top.location.href = (window.location.href.split('?')[0] || '') + '?page=status'; return false;"
+     style="color: #0066cc; font-size: 0.9rem; text-decoration: none;">Check submission status</a>
+</div>
+
   <div id="urlSection" class="card">
 <h2>1. Paste your demo URL</h2>
 
@@ -473,7 +478,10 @@
 
   <div id="successReference" style="margin-top:14px;"></div>
 
-  <button type="button" onclick="startAnotherSubmission()">Start another</button>
+  <div style="margin-top: 20px; display: flex; gap: 12px; flex-wrap: wrap;">
+    <button type="button" onclick="startAnotherSubmission()">Submit Another</button>
+    <button type="button" onclick="finishSession()" style="background:#fff; color:#1f1f1f; border:1px solid #ccc;">Finish</button>
+  </div>
 </div>
 
   <script>
@@ -491,6 +499,7 @@
     const editedFields = new Set();
     let aiDraftGenerated = false;
     let sessionStartTime = Date.now();
+    let sessionSubmissions = [];
 
     function gasCall(functionName, ...args) {
       return new Promise((resolve, reject) => {
@@ -1332,6 +1341,14 @@ function setSubmitSuccessStatus(data) {
 
   const requestNumber = workflowPayload.number || '';
   const action = workflowPayload.action || '';
+  const globalId = data.globalId || '';
+  const demoTitle = (data.submission && data.submission['Final Demo Title']) || '';
+
+  sessionSubmissions.push({
+    title: demoTitle,
+    globalId: globalId,
+    requestNumber: requestNumber
+  });
 
   document.getElementById('urlSection').style.display = 'none';
   document.getElementById('extractedCard').style.display = 'none';
@@ -1341,20 +1358,24 @@ function setSubmitSuccessStatus(data) {
   const mainMessage = document.getElementById('successMainMessage');
   const reference = document.getElementById('successReference');
 
-  let friendlyAction = 'Your intake has been submitted and sent into the review workflow.';
+  let friendlyAction = 'Your interactive demo has been submitted and sent into the review workflow.';
 
   if (action === 'created_new_creator_only') {
-    friendlyAction = 'Your intake has been submitted as a new request and sent into the review workflow.';
+    friendlyAction = 'Your interactive demo has been submitted as a new request and sent into the review workflow.';
   }
 
   if (action === 'updated_existing_request') {
-    friendlyAction = 'Your intake has been added to the existing request and sent back into the review workflow.';
+    friendlyAction = 'Your interactive demo has been added to the existing request and sent back into the review workflow.';
+  }
+
+  if (sessionSubmissions.length > 1) {
+    friendlyAction += ' (' + sessionSubmissions.length + ' submitted this session)';
   }
 
   mainMessage.textContent = friendlyAction;
 
   reference.innerHTML = requestNumber
-    ? `<strong>Reference:</strong> Request #${escapeHtml(requestNumber)}`
+    ? '<strong>Reference:</strong> Request #' + escapeHtml(requestNumber)
     : '';
 
   successSection.style.display = 'block';
@@ -1443,6 +1464,14 @@ function startAnotherSubmission() {
   sessionStartTime = Date.now();
 
   window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function finishSession() {
+  var baseUrl = '';
+  try {
+    baseUrl = window.location.href.split('?')[0];
+  } catch (e) {}
+  window.top.location.href = baseUrl + '?page=status';
 }
 
 async function submitForReview() {
