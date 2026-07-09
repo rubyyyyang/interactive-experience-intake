@@ -538,6 +538,14 @@ function toOptionList(options) {
 
 
 function doGet(e) {
+  const page = e && e.parameter && e.parameter.page;
+
+  if (page === 'status') {
+    return HtmlService.createHtmlOutputFromFile('StatusTracker')
+      .setTitle('My Submissions — Interactive Demo Intake')
+      .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+  }
+
   logAnalyticsEvent_('session_start', {});
   return HtmlService.createHtmlOutputFromFile('Index')
     .setTitle('Interactive Demo Intake Assistant')
