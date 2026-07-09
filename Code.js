@@ -7,7 +7,8 @@
  * - MASTER_SPREADSHEET_ID  optional if this script is bound to the spreadsheet
  ***************************************/
 
-const MODEL_ID = 'gemini-2.5-flash';
+const MODEL_ID = 'gemini-3.5-flash';
+const FALLBACK_MODEL_ID = 'gemini-flash-latest';
 const GEMINI_API_KEY_PROP = 'GEMINI_API_KEY';
 const MASTER_SPREADSHEET_ID_PROP = 'MASTER_SPREADSHEET_ID';
 const INTAKE_SUBMISSIONS_SHEET = 'Creator_Form_Raw';
@@ -948,7 +949,17 @@ function callGemini_(prompt, interleavedParts) {
   const apiKey = PropertiesService.getScriptProperties().getProperty(GEMINI_API_KEY_PROP);
   if (!apiKey) throw new Error('Missing GEMINI_API_KEY in Script Properties.');
 
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL_ID}:generateContent?key=${apiKey}`;
+  const result = callGeminiWithModel_(MODEL_ID, apiKey, prompt, interleavedParts);
+  if (result.deprecatedModel) {
+    const fallbackResult = callGeminiWithModel_(FALLBACK_MODEL_ID, apiKey, prompt, interleavedParts);
+    notifyModelDeprecation_(MODEL_ID, FALLBACK_MODEL_ID);
+    return fallbackResult.content;
+  }
+  return result.content;
+}
+
+function callGeminiWithModel_(modelId, apiKey, prompt, interleavedParts) {
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelId}:generateContent?key=${apiKey}`;
 
   const parts = [{ text: prompt }];
   if (interleavedParts && interleavedParts.length > 0) {
@@ -984,6 +995,10 @@ function callGemini_(prompt, interleavedParts) {
     const status = response.getResponseCode();
     const body = response.getContentText();
 
+    if (status === 404) {
+      return { deprecatedModel: true };
+    }
+
     if (status === 429 || status === 503) {
       lastError = new Error('Gemini API error ' + status + ' (attempt ' + (attempt + 1) + '/3)');
       Utilities.sleep(1000 * Math.pow(2, attempt));
@@ -1010,9 +1025,32 @@ function callGemini_(prompt, interleavedParts) {
       result.candidates[0].content.parts[0] && result.candidates[0].content.parts[0].text;
 
     if (!content) throw new Error('Gemini returned empty content.');
-    return content;
+    return { content: content };
   }
   throw lastError;
+}
+
+function notifyModelDeprecation_(oldModel, fallbackModel) {
+  const props = PropertiesService.getScriptProperties();
+  const notifiedKey = 'MODEL_DEPRECATION_NOTIFIED_' + oldModel;
+  if (props.getProperty(notifiedKey)) return;
+
+  try {
+    const ownerEmail = props.getProperty('ADMIN_NOTIFY_EMAIL') || Session.getEffectiveUser().getEmail();
+    MailApp.sendEmail({
+      to: ownerEmail,
+      subject: '[Arcade Intake] Gemini model "' + oldModel + '" has been deprecated',
+      body: 'The Gemini model "' + oldModel + '" returned a 404 (not found) error.\n\n' +
+        'The app automatically fell back to "' + fallbackModel + '" so creators are not affected, ' +
+        'but you should update MODEL_ID in Code.js to a specific stable model.\n\n' +
+        'Current fallback: ' + fallbackModel + '\n' +
+        'Time: ' + new Date().toISOString()
+    });
+  } catch (e) {
+    Logger.log('Failed to send deprecation notification: ' + e.message);
+  }
+
+  props.setProperty(notifiedKey, new Date().toISOString());
 }
 function saveSubmissionToSheet_(submission) {
   const ss = getTargetSpreadsheet_();
