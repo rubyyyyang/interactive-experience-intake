@@ -957,7 +957,7 @@ function callGemini_(prompt, interleavedParts) {
     });
   }
 
-  const payload = {
+  const requestPayload = {
     contents: [
       {
         role: 'user',
@@ -971,27 +971,48 @@ function callGemini_(prompt, interleavedParts) {
     }
   };
 
-  const response = UrlFetchApp.fetch(url, {
+  const options = {
     method: 'post',
     contentType: 'application/json',
-    payload: JSON.stringify(payload),
+    payload: JSON.stringify(requestPayload),
     muteHttpExceptions: true
-  });
+  };
 
-  const status = response.getResponseCode();
-  const body = response.getContentText();
+  let lastError;
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const response = UrlFetchApp.fetch(url, options);
+    const status = response.getResponseCode();
+    const body = response.getContentText();
 
-  if (status !== 200) {
-    throw new Error(`Gemini API error ${status}: ${body}`);
+    if (status === 429 || status === 503) {
+      lastError = new Error('Gemini API error ' + status + ' (attempt ' + (attempt + 1) + '/3)');
+      Utilities.sleep(1000 * Math.pow(2, attempt));
+      continue;
+    }
+
+    if (status !== 200) {
+      throw new Error('Gemini API error ' + status + ': ' + body);
+    }
+
+    let result;
+    try {
+      result = JSON.parse(body);
+    } catch (e) {
+      throw new Error('Gemini returned invalid JSON response');
+    }
+
+    if (result.promptFeedback && result.promptFeedback.blockReason) {
+      throw new Error('Gemini blocked prompt: ' + result.promptFeedback.blockReason);
+    }
+
+    const content = result.candidates && result.candidates[0] &&
+      result.candidates[0].content && result.candidates[0].content.parts &&
+      result.candidates[0].content.parts[0] && result.candidates[0].content.parts[0].text;
+
+    if (!content) throw new Error('Gemini returned empty content.');
+    return content;
   }
-
-  const result = JSON.parse(body);
-  const content = result.candidates && result.candidates[0] &&
-    result.candidates[0].content && result.candidates[0].content.parts &&
-    result.candidates[0].content.parts[0] && result.candidates[0].content.parts[0].text;
-
-  if (!content) throw new Error('Gemini returned empty content.');
-  return content;
+  throw lastError;
 }
 function saveSubmissionToSheet_(submission) {
   const ss = getTargetSpreadsheet_();
@@ -1025,10 +1046,17 @@ function saveSubmissionToSheet_(submission) {
     return queuedSubmission[header] == null ? '' : queuedSubmission[header];
   });
 
-  sheet.appendRow(row);
+  const lock = LockService.getScriptLock();
+  lock.waitLock(10000);
+  try {
+    sheet.appendRow(row);
+    var appendedRow = sheet.getLastRow();
+  } finally {
+    lock.releaseLock();
+  }
 
   return {
-    rowIndex: sheet.getLastRow(),
+    rowIndex: appendedRow,
     workflowQueued: true
   };
 }
@@ -1580,14 +1608,22 @@ function fetchImagesAsBase64_(imageUrls) {
   const images = [];
   const errors = [];
 
-  for (let i = 0; i < imageUrls.length; i++) {
-    try {
-      const resp = UrlFetchApp.fetch(imageUrls[i], {
-        method: 'get',
-        muteHttpExceptions: true,
-        headers: { 'User-Agent': 'Interactive Demo Intake Assistant' }
-      });
+  if (!imageUrls || !imageUrls.length) return { images: images, errors: errors };
 
+  const requests = imageUrls.map(function(url) {
+    return {
+      url: url,
+      method: 'get',
+      muteHttpExceptions: true,
+      headers: { 'User-Agent': 'Interactive Demo Intake Assistant' }
+    };
+  });
+
+  const responses = UrlFetchApp.fetchAll(requests);
+
+  for (let i = 0; i < responses.length; i++) {
+    try {
+      const resp = responses[i];
       const status = resp.getResponseCode();
       if (status < 200 || status >= 300) {
         errors.push('HTTP ' + status + ' for image ' + (i + 1));
@@ -1799,8 +1835,6 @@ AI generation details rules:
 * Good notes explain what the model saw in the pulled content and how that shaped the draft.
 
 Taxonomy fallback rules:
-- If the guide is not tied to a specific event or project, use "No" for event_or_project_suggestion.
-- If the guide applies across industries, use "No, it is applicable to multiple verticals" for vertical_suggestion.
 - If a field has "N/A" as an allowed option and the guide does not provide enough evidence, use "N/A".
 - If a product is clearly mentioned but not available in the allowed Product options, use "Other" and add "Primary Product" or "Other Products" to fields_needing_creator_confirmation.
 - Do not guess a Sales Tactic or Marketing Program only from the product name. Use the guide's use case, task, and audience as evidence.
@@ -2061,7 +2095,8 @@ function ensureWorkflowTrackingColumns_(sheet) {
     'AI Workflow Started At',
     'AI Workflow Completed At',
     'AI Workflow Error',
-    'AI Workflow Result'
+    'AI Workflow Result',
+    'AI Workflow Attempts'
   ];
 
   let headers = sheet
@@ -2140,8 +2175,14 @@ function processPendingWorkflowRows() {
         sheet.getRange(rowIndex, columnMap['AI Workflow Completed At']).setValue(new Date().toISOString());
         sheet.getRange(rowIndex, columnMap['AI Workflow Result']).setValue(formatWorkflowResult_(result));
       } catch (error) {
-        sheet.getRange(rowIndex, columnMap['AI Workflow Status']).setValue('Error');
+        const attempts = (Number(values[i][columnMap['AI Workflow Attempts'] - 1]) || 0) + 1;
+        sheet.getRange(rowIndex, columnMap['AI Workflow Attempts']).setValue(attempts);
         sheet.getRange(rowIndex, columnMap['AI Workflow Error']).setValue(error.message || String(error));
+        if (attempts < 3) {
+          sheet.getRange(rowIndex, columnMap['AI Workflow Status']).setValue('Pending');
+        } else {
+          sheet.getRange(rowIndex, columnMap['AI Workflow Status']).setValue('Failed');
+        }
       }
 
       processed++;
