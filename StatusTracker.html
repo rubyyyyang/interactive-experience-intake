@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <meta charset="UTF-8">
+  <title>My Submissions</title>
+
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 1120px;
+      margin: 32px auto;
+      padding: 0 20px;
+      color: #1f1f1f;
+      background: #fafafa;
+    }
+
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 24px;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+
+    .header h1 {
+      font-size: 1.5rem;
+      margin: 0;
+    }
+
+    .header-actions a {
+      color: #0066cc;
+      text-decoration: none;
+      font-size: 0.9rem;
+    }
+
+    .header-actions a:hover {
+      text-decoration: underline;
+    }
+
+    .card {
+      background: #fff;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      padding: 20px 24px;
+      margin-bottom: 16px;
+    }
+
+    .card-clickable {
+      cursor: pointer;
+      transition: box-shadow 0.15s;
+    }
+
+    .card-clickable:hover {
+      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    }
+
+    .card-summary {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .card-title {
+      font-size: 1.05rem;
+      font-weight: 600;
+      margin: 0;
+      color: #1f1f1f;
+    }
+
+    .card-meta {
+      font-size: 0.85rem;
+      color: #666;
+      margin-top: 4px;
+    }
+
+    .card-detail {
+      display: none;
+      margin-top: 16px;
+      border-top: 1px solid #eee;
+      padding-top: 16px;
+    }
+
+    .card-detail.expanded {
+      display: block;
+    }
+
+    .detail-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px 24px;
+    }
+
+    @media (max-width: 600px) {
+      .detail-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .detail-item label {
+      display: block;
+      font-size: 0.75rem;
+      color: #888;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+      margin-bottom: 2px;
+    }
+
+    .detail-item span {
+      font-size: 0.95rem;
+      color: #1f1f1f;
+      word-break: break-word;
+    }
+
+    .detail-item a {
+      color: #0066cc;
+      text-decoration: none;
+    }
+
+    .detail-item a:hover {
+      text-decoration: underline;
+    }
+
+    .status-badge {
+      display: inline-block;
+      padding: 3px 10px;
+      border-radius: 12px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+
+    .status-request-open { background: #e8f0fe; color: #1a73e8; }
+    .status-request-approved { background: #e6f4ea; color: #137333; }
+    .status-ie-received { background: #fef7e0; color: #b06000; }
+    .status-ie-reviewed { background: #e8f0fe; color: #1a73e8; }
+    .status-ie-published { background: #e6f4ea; color: #137333; }
+    .status-ie-retired { background: #f4e8e8; color: #a33; }
+    .status-closed { background: #eee; color: #666; }
+
+    .loading {
+      text-align: center;
+      padding: 40px;
+      color: #888;
+    }
+
+    .error-message {
+      text-align: center;
+      padding: 40px;
+      color: #c00;
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 60px 20px;
+      color: #888;
+    }
+
+    .empty-state p {
+      margin: 8px 0;
+    }
+
+    .processing-message {
+      text-align: center;
+      padding: 40px 20px;
+      color: #666;
+    }
+
+    .processing-message p {
+      margin: 8px 0;
+    }
+  </style>
+</head>
+<body>
+
+<div class="header">
+  <h1 id="pageTitle">My Submissions</h1>
+  <div class="header-actions">
+    <a id="backLink" href="#" onclick="navigateToIntake(); return false;">Submit a new interactive demo</a>
+  </div>
+</div>
+
+<div id="loadingState" class="loading">Loading your submissions...</div>
+<div id="errorState" class="error-message" style="display:none;"></div>
+<div id="processingState" class="processing-message" style="display:none;">
+  <p>Your submission is being processed.</p>
+  <p>This usually takes a minute or two. Check back shortly.</p>
+</div>
+<div id="emptyState" class="empty-state" style="display:none;">
+  <p>No submissions found.</p>
+  <p>Once you submit an interactive demo, you can track its status here.</p>
+</div>
+<div id="submissionsList"></div>
+
+<script>
+  function navigateToIntake() {
+    var baseUrl = getBaseUrl();
+    window.top.location.href = baseUrl;
+  }
+
+  function getBaseUrl() {
+    var url = '';
+    try {
+      url = window.location.href.split('?')[0];
+    } catch (e) {}
+    return url || '';
+  }
+
+  function getUrlParam(name) {
+    try {
+      var params = new URLSearchParams(window.location.search);
+      return params.get(name) || '';
+    } catch (e) {
+      return '';
+    }
+  }
+
+  function escapeHtml(str) {
+    var div = document.createElement('div');
+    div.appendChild(document.createTextNode(str || ''));
+    return div.innerHTML;
+  }
+
+  function getStatusClass(status) {
+    var s = (status || '').toLowerCase().replace(/\s+/g, '-');
+    return 'status-' + s;
+  }
+
+  function formatDate(dateStr) {
+    if (!dateStr) return '';
+    try {
+      var d = new Date(dateStr);
+      if (isNaN(d.getTime())) return dateStr;
+      return d.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+    } catch (e) {
+      return dateStr;
+    }
+  }
+
+  function renderLink(url, label) {
+    if (!url) return '<span style="color:#aaa;">—</span>';
+    return '<a href="' + escapeHtml(url) + '" target="_blank">' + escapeHtml(label || url) + '</a>';
+  }
+
+  function renderSubmissionCard(sub, index) {
+    var card = document.createElement('div');
+    card.className = 'card card-clickable';
+    card.setAttribute('data-index', index);
+
+    var summary = document.createElement('div');
+    summary.className = 'card-summary';
+    summary.innerHTML =
+      '<div>' +
+        '<p class="card-title">' + escapeHtml(sub.title || 'Untitled Submission') + '</p>' +
+        '<p class="card-meta">' +
+          escapeHtml(sub.primaryProduct || '') +
+          (sub.primaryProduct && sub.dateSubmitted ? ' · ' : '') +
+          (sub.dateSubmitted ? 'Submitted ' + formatDate(sub.dateSubmitted) : '') +
+        '</p>' +
+      '</div>' +
+      '<span class="status-badge ' + getStatusClass(sub.status) + '">' +
+        escapeHtml(sub.status || 'Unknown') +
+      '</span>';
+
+    var detail = document.createElement('div');
+    detail.className = 'card-detail';
+    detail.id = 'detail-' + index;
+    detail.innerHTML =
+      '<div class="detail-grid">' +
+        '<div class="detail-item"><label>Content Type</label><span>' + escapeHtml(sub.contentType || '—') + '</span></div>' +
+        '<div class="detail-item"><label>Primary Product</label><span>' + escapeHtml(sub.primaryProduct || '—') + '</span></div>' +
+        '<div class="detail-item"><label>Creator</label><span>' + escapeHtml(sub.creatorName || '—') + '</span></div>' +
+        '<div class="detail-item"><label>Requestor</label><span>' + escapeHtml(sub.requestorName || '—') + '</span></div>' +
+        '<div class="detail-item"><label>Creation Link</label>' + renderLink(sub.creationLink, 'Open in editor') + '</div>' +
+        '<div class="detail-item"><label>Drupal Page</label>' + renderLink(sub.drupalPageUrl, 'View live page') + '</div>' +
+        '<div class="detail-item"><label>Date Submitted</label><span>' + escapeHtml(formatDate(sub.dateSubmitted) || '—') + '</span></div>' +
+        '<div class="detail-item"><label>Published Date</label><span>' + escapeHtml(formatDate(sub.publishedDate) || '—') + '</span></div>' +
+      '</div>';
+
+    card.appendChild(summary);
+    card.appendChild(detail);
+
+    card.addEventListener('click', function() {
+      var d = document.getElementById('detail-' + index);
+      d.classList.toggle('expanded');
+    });
+
+    return card;
+  }
+
+  function renderSubmissions(submissions) {
+    var list = document.getElementById('submissionsList');
+    var loading = document.getElementById('loadingState');
+    var empty = document.getElementById('emptyState');
+
+    loading.style.display = 'none';
+
+    if (!submissions || submissions.length === 0) {
+      empty.style.display = 'block';
+      return;
+    }
+
+    for (var i = 0; i < submissions.length; i++) {
+      list.appendChild(renderSubmissionCard(submissions[i], i));
+    }
+  }
+
+  function showError(message) {
+    document.getElementById('loadingState').style.display = 'none';
+    var el = document.getElementById('errorState');
+    el.textContent = message;
+    el.style.display = 'block';
+  }
+
+  function showProcessing() {
+    document.getElementById('loadingState').style.display = 'none';
+    document.getElementById('processingState').style.display = 'block';
+  }
+
+  function loadByGlobalId(globalId) {
+    document.getElementById('pageTitle').textContent = 'Submission Status';
+    google.script.run
+      .withSuccessHandler(function(result) {
+        if (result && result.success && result.submission) {
+          renderSubmissions([result.submission]);
+        } else if (result && result.processing) {
+          showProcessing();
+        } else {
+          showError((result && result.error) || 'Submission not found.');
+        }
+      })
+      .withFailureHandler(function(err) {
+        showError(err && err.message ? err.message : String(err));
+      })
+      .getSubmissionStatus(globalId);
+  }
+
+  function loadMySubmissions() {
+    google.script.run
+      .withSuccessHandler(function(result) {
+        if (result && result.success) {
+          renderSubmissions(result.submissions);
+        } else {
+          showError((result && result.error) || 'Could not load submissions.');
+        }
+      })
+      .withFailureHandler(function(err) {
+        showError(err && err.message ? err.message : String(err));
+      })
+      .getMySubmissions();
+  }
+
+  var token = getUrlParam('token');
+  if (token) {
+    loadByGlobalId(token);
+  } else {
+    loadMySubmissions();
+  }
+</script>
+</body>
+</html>
