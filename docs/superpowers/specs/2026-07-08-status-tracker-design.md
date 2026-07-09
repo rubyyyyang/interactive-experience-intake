@@ -47,7 +47,6 @@ Generated in `submitIntakeForReview()` at submission time. Passed through the we
 | `Tracking Token` | UUID (from Intake) | Links back to status page |
 | `Email Open Sent` | Checkmark | Prevents duplicate email |
 | `Email Approved Sent` | Checkmark | Prevents duplicate email |
-| `Email Received Sent` | Checkmark | Prevents duplicate email |
 | `Email Published Sent` | Checkmark | Prevents duplicate email |
 | `Email Closed Sent` | Checkmark | Prevents duplicate email |
 
@@ -104,26 +103,49 @@ Both read from `Request_Master` in the Master Spreadsheet (read-only). Uses `Spr
 
 - From main Intake form: link/tab to "Check Status"
 - From status page: "Submit another" link back to main form
-- From success screen: "Track your submission" link
+- From success screen: **"Submit Another"** (resets form, no email yet) and **"Finish"** (sends batched email, shows status page link)
 
 ## Email Notifications
 
-### Trigger Points
+### Submission Batching (IE Received)
 
-Emails are sent from Finder's `processStatusWorkflow()` in `RM_Workflow.js`, right after the existing Slack notification for each status.
+Creators often submit multiple demos in one session. Instead of sending a separate email per submission, the Intake app batches them:
+
+1. After submitting, the success screen shows **"Submit Another"** and **"Finish"**
+2. **"Submit Another"** resets the form for the next demo — no email sent yet
+3. **"Finish"** triggers one combined email covering all submissions from that session
+
+The batched email is sent directly from the **Intake app** (not Finder), since this is a submission-time event. Intake already tracks the session via `analyticsSessionId` and knows all submissions in the current session.
+
+Example batched email:
+> **Subject:** "Your interactive demo submissions have been received"
+>
+> You submitted 3 interactive demos:
+> - Demo Title A
+> - Demo Title B
+> - Demo Title C
+>
+> Track their status: [View My Submissions]
+
+For single submissions, the email simply says "Your interactive demo submission has been received" with the demo title.
+
+### Status Change Emails (from Finder)
+
+Later status transitions are emailed individually from Finder's `processStatusWorkflow()` in `RM_Workflow.js`, since those happen one-at-a-time as statuses change in the sheet.
 
 | Status Change | Email To | Subject Line |
 |---------------|----------|-------------|
 | Request Open | Requestor | "Your interactive demo request has been received" |
 | Request Approved | Requestor | "Your interactive demo request has been approved" |
-| IE Received | Creator + Requestor (if exists) | "Your interactive demo submission has been received" |
 | IE Published | Creator + Requestor (if exists) | "Your interactive demo is now live" |
 | Closed | Requestor + Creator (if exists) | "Your interactive demo request has been closed" |
+
+Note: IE Received is handled by the Intake batching above, not by Finder.
 
 ### Email Content
 
 Each email includes:
-- Demo title
+- Demo title(s)
 - Current status with a human-friendly message
 - Link to the status page: `https://<intake-app-url>?page=status`
 - For IE Published: include the Drupal Page URL directly so they can visit the live page
@@ -145,15 +167,15 @@ Add `interactive-experiences@redhat.com` as a sending alias in the deploying Goo
 
 | File | Changes |
 |------|---------|
-| `Code.js` | Generate tracking token in `submitIntakeForReview()`. Add `getSubmissionStatus(token)` and `getMySubmissions()` functions. Update `doGet()` to route `?page=status`. Pass tracking token through webhook payload. |
-| `Index.html` | Add "Track your submission" link to success section. Add "Check Status" navigation link. |
+| `Code.js` | Generate tracking token in `submitIntakeForReview()`. Add `getSubmissionStatus(token)` and `getMySubmissions()` functions. Update `doGet()` to route `?page=status`. Pass tracking token through webhook payload. Add `sendBatchedSubmissionEmail(sessionSubmissions)` to send one combined email when creator clicks "Finish". |
+| `Index.html` | Replace current success screen with **"Submit Another"** and **"Finish"** buttons. Track session submissions in JS array. "Finish" calls `sendBatchedSubmissionEmail()` then shows status page link. Add "Check Status" navigation link. |
 | `StatusTracker.html` | **New file.** Status page with My Submissions list view and single submission detail view. CSS consistent with existing Intake app styling. |
 
 ### Finder App (`Arcade Finder/`)
 
 | File | Changes |
 |------|---------|
-| `RM_Workflow.js` | Add `sendStatusEmail_()` helper. Call it from `processStatusWorkflow()` at Request Open, Request Approved, IE Received, IE Published, and Closed transitions. Add duplicate-prevention logic using "Email X Sent" columns. |
+| `RM_Workflow.js` | Add `sendStatusEmail_()` helper. Call it from `processStatusWorkflow()` at Request Open, Request Approved, IE Published, and Closed transitions. Add duplicate-prevention logic using "Email X Sent" columns. (IE Received email is handled by Intake's batching, not here.) |
 | `RM_Config.js` | Add email-related column name constants. Add sender alias config. |
 | `RM_CreatorIntake.js` | Read tracking token from webhook payload and store in `Request_Master` during `onCreatorFormSubmit()`. |
 
@@ -164,13 +186,20 @@ Add `interactive-experiences@redhat.com` as a sending alias in the deploying Goo
 | `Creator_Form_Raw` | Add `Tracking Token` column |
 | `Request_Master` | Add `Tracking Token` column. Add 5 email "sent?" columns. |
 
-## Scope Boundaries
+## Implementation Phases
 
-### In scope (this project)
+### Phase 1: Status Page (build first)
 - Status page (read-only) in Intake app
-- Email notifications from Finder on 5 status transitions
 - Tracking token generation and storage
 - My Submissions view (logged-in) and single-token view
+- "Submit Another" / "Finish" flow on success screen
+- "Check Status" navigation link
+
+### Phase 2: Email Notifications (build later)
+- Batched submission email from Intake on "Finish"
+- Status change emails from Finder (Request Open, Approved, Published, Closed)
+- Gmail alias setup for `interactive-experiences@redhat.com`
+- Email "sent?" columns in `Request_Master`
 
 ### Out of scope (future projects)
 - Editing submissions from the status page
