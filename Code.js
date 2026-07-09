@@ -38,6 +38,14 @@ const STATUS_TRACKER_COLUMNS = {
   GLOBAL_ID: 'Global ID'
 };
 
+const STATUS_TRACKER_ADMINS = [
+  'yunjyang@redhat.com'
+];
+
+function isAdmin_(email) {
+  return STATUS_TRACKER_ADMINS.some(a => a.toLowerCase() === email.toLowerCase());
+}
+
 const FIELD_OPTIONS = {
   contentTypes: [
     'Business Intro',
@@ -631,24 +639,36 @@ function getSubmissionStatus(globalId) {
   }
 }
 
-function getMySubmissions() {
+function getMySubmissions(searchName) {
   try {
     const email = Session.getActiveUser().getEmail();
     if (!email) return { success: false, error: 'Could not determine your email. Please make sure you are logged in.' };
 
     const { rows, headerMap } = getRequestMasterData_();
-    const creatorIdx = headerMap[STATUS_TRACKER_COLUMNS.CREATOR_EMAIL];
-    const requestorIdx = headerMap[STATUS_TRACKER_COLUMNS.REQUESTOR_EMAIL];
+    const creatorEmailIdx = headerMap[STATUS_TRACKER_COLUMNS.CREATOR_EMAIL];
+    const requestorEmailIdx = headerMap[STATUS_TRACKER_COLUMNS.REQUESTOR_EMAIL];
+    const creatorNameIdx = headerMap[STATUS_TRACKER_COLUMNS.CREATOR_NAME];
 
     const lowerEmail = email.toLowerCase();
+    const admin = isAdmin_(email);
+    const lowerSearch = searchName ? searchName.toLowerCase().trim() : '';
     const submissions = [];
 
     for (let i = 0; i < rows.length; i++) {
-      const creatorEmail = creatorIdx != null ? String(rows[i][creatorIdx] || '').toLowerCase().trim() : '';
-      const requestorEmail = requestorIdx != null ? String(rows[i][requestorIdx] || '').toLowerCase().trim() : '';
+      const creatorEmail = creatorEmailIdx != null ? String(rows[i][creatorEmailIdx] || '').toLowerCase().trim() : '';
+      const requestorEmail = requestorEmailIdx != null ? String(rows[i][requestorEmailIdx] || '').toLowerCase().trim() : '';
+      const creatorName = creatorNameIdx != null ? String(rows[i][creatorNameIdx] || '').toLowerCase().trim() : '';
 
-      if (creatorEmail === lowerEmail || requestorEmail === lowerEmail) {
+      if (lowerSearch) {
+        if (creatorName.includes(lowerSearch)) {
+          submissions.push(buildSubmissionFromRow_(rows[i], headerMap));
+        }
+      } else if (admin) {
         submissions.push(buildSubmissionFromRow_(rows[i], headerMap));
+      } else {
+        if (creatorEmail === lowerEmail || requestorEmail === lowerEmail) {
+          submissions.push(buildSubmissionFromRow_(rows[i], headerMap));
+        }
       }
     }
 
@@ -658,7 +678,7 @@ function getMySubmissions() {
       return dateB - dateA;
     });
 
-    return { success: true, submissions };
+    return { success: true, submissions, isAdmin: admin };
   } catch (e) {
     return { success: false, error: e.message || String(e) };
   }

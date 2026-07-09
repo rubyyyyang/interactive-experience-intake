@@ -482,6 +482,9 @@
     <button type="button" onclick="startAnotherSubmission()">Submit Another</button>
     <button type="button" onclick="finishSession()" style="background:#fff; color:#1f1f1f; border:1px solid #ccc;">Finish</button>
   </div>
+  <p style="margin-top: 16px; font-size: 0.9rem; color: #666;">
+    You can always <a href="#" onclick="finishSession(); return false;" style="color: #0066cc;">check your submission status</a>.
+  </p>
 </div>
 
   <script>
@@ -1358,14 +1361,14 @@ function setSubmitSuccessStatus(data) {
   const mainMessage = document.getElementById('successMainMessage');
   const reference = document.getElementById('successReference');
 
-  let friendlyAction = 'Your interactive demo has been submitted and sent into the review workflow.';
+  let friendlyAction = 'Your interactive demo has been saved and will appear on the status tracker within a few minutes.';
 
   if (action === 'created_new_creator_only') {
-    friendlyAction = 'Your interactive demo has been submitted as a new request and sent into the review workflow.';
+    friendlyAction = 'Your interactive demo has been saved as a new request and will appear on the status tracker within a few minutes.';
   }
 
   if (action === 'updated_existing_request') {
-    friendlyAction = 'Your interactive demo has been added to the existing request and sent back into the review workflow.';
+    friendlyAction = 'Your interactive demo has been added to the existing request and will appear on the status tracker within a few minutes.';
   }
 
   if (sessionSubmissions.length > 1) {

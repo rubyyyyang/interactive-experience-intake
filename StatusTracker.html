@@ -183,6 +183,12 @@
   </div>
 </div>
 
+<div id="searchSection" style="margin-bottom: 16px;">
+  <input type="text" id="searchInput" placeholder="Search by creator name..."
+    oninput="onSearchInput()"
+    style="width:100%; padding:10px 14px; border:1px solid #ddd; border-radius:6px; font-size:0.95rem; box-sizing:border-box;">
+</div>
+
 <div id="loadingState" class="loading">Loading your submissions...</div>
 <div id="errorState" class="error-message" style="display:none;"></div>
 <div id="processingState" class="processing-message" style="display:none;">
@@ -343,6 +349,9 @@
     google.script.run
       .withSuccessHandler(function(result) {
         if (result && result.success) {
+          if (result.isAdmin) {
+            document.getElementById('pageTitle').textContent = 'All Submissions';
+          }
           renderSubmissions(result.submissions);
         } else {
           showError((result && result.error) || 'Could not load submissions.');
@@ -354,8 +363,32 @@
       .getMySubmissions();
   }
 
+  var searchTimeout = null;
+  function onSearchInput() {
+    clearTimeout(searchTimeout);
+    searchTimeout = setTimeout(function() {
+      var term = document.getElementById('searchInput').value;
+      document.getElementById('submissionsList').innerHTML = '';
+      document.getElementById('emptyState').style.display = 'none';
+      document.getElementById('loadingState').style.display = 'block';
+      google.script.run
+        .withSuccessHandler(function(result) {
+          if (result && result.success) {
+            renderSubmissions(result.submissions);
+          } else {
+            showError((result && result.error) || 'Search failed.');
+          }
+        })
+        .withFailureHandler(function(err) {
+          showError(err && err.message ? err.message : String(err));
+        })
+        .getMySubmissions(term);
+    }, 400);
+  }
+
   var token = getUrlParam('token');
   if (token) {
+    document.getElementById('searchSection').style.display = 'none';
     loadByGlobalId(token);
   } else {
     loadMySubmissions();
