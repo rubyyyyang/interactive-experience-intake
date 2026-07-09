@@ -38,11 +38,11 @@ const FIELD_OPTIONS = {
   ],
 
   quarters: [
-    'CY25Q3',
-    'CY25Q4',
     'CY26Q1',
     'CY26Q2',
     'CY26Q3',
+    'CY26Q4',
+    'CY27Q1',
     'Other'
   ],
 
@@ -427,10 +427,6 @@ function toCtaCatalogText(items) {
 
 const PREFERRED_ARCADE_SHARE_URL_EXAMPLE = 'https://interact.redhat.com/share/ArcadeID';
 
-function buildGuideUrl(arcadeId) {
-  return `https://interact.redhat.com/share/${encodeURIComponent(arcadeId)}/guide`;
-}
-
 function normalizeArcadeUrlInput_(value) {
   const raw = cleanText(value);
   if (!raw) {
@@ -508,6 +504,11 @@ function cleanText(text) {
   return String(text || '')
     .replace(/\s+/g, ' ')
     .trim();
+}
+
+function stripFormulaPrefix_(value) {
+  const str = String(value || '');
+  return str.replace(/^[=+\-@]+/, '');
 }
 
 function toOptionList(options) {
@@ -752,32 +753,32 @@ function submitIntakeForReview(payload) {
   const submission = {
     'Timestamp': submittedAt,
     'Email Address': form.email || '',
-    'Creator Name(s)': form.creatorName || '',
-    'Creator Team(s)': creatorTeamFinal,
-    'Final Demo Title': form.demoTitle || '',
+    'Creator Name(s)': stripFormulaPrefix_(form.creatorName),
+    'Creator Team(s)': stripFormulaPrefix_(creatorTeamFinal),
+    'Final Demo Title': stripFormulaPrefix_(form.demoTitle),
     'Creation Link': form.creationLink || '',
     'Submitted Arcade URL': form.arcadeUrl || '',
     'Normalized Share URL': extractedGuide && extractedGuide.shareUrl || form.creationLink || '',
-    'Content Type': contentTypeFinal,
-    'What quarter was this content created in?': quarterFinal,
-    'Interactive Experience Description (50-150 words)': form.descriptionWithoutGid || '',
-    'Description (50-150 words)': form.descriptionWithGid || form.descriptionWithoutGid || '',
-    'Description for SEO': form.descriptionForSeo || '',
-    'Language': languageFinal,
+    'Content Type': stripFormulaPrefix_(contentTypeFinal),
+    'What quarter was this content created in?': stripFormulaPrefix_(quarterFinal),
+    'Interactive Experience Description (50-150 words)': stripFormulaPrefix_(form.descriptionWithoutGid),
+    'Description (50-150 words)': stripFormulaPrefix_(form.descriptionWithGid || form.descriptionWithoutGid),
+    'Description for SEO': stripFormulaPrefix_(form.descriptionForSeo),
+    'Language': stripFormulaPrefix_(languageFinal),
     'Links for next step call to action': ctaLinksFinal,
-    'Keywords for SEO': form.seoKeywords || '',
-    'Vertical': form.vertical || '',
-    'Is this for a specific event or project?': eventFinal,
-    'Primary product featured?': primaryProductFinal,
-    'Optional: Other related products?': otherProductsFinal,
-    'Related Technology Decision Point?': form.tdp || '',
-    'Related Sales Tactic?': form.salesTactic || '',
-    'Related Marketing Program?': form.marketingProgram || '',
+    'Keywords for SEO': stripFormulaPrefix_(form.seoKeywords),
+    'Vertical': stripFormulaPrefix_(form.vertical),
+    'Is this for a specific event or project?': stripFormulaPrefix_(eventFinal),
+    'Primary product featured?': stripFormulaPrefix_(primaryProductFinal),
+    'Optional: Other related products?': stripFormulaPrefix_(otherProductsFinal),
+    'Related Technology Decision Point?': stripFormulaPrefix_(form.tdp),
+    'Related Sales Tactic?': stripFormulaPrefix_(form.salesTactic),
+    'Related Marketing Program?': stripFormulaPrefix_(form.marketingProgram),
     'Synthetic Voice Used?': form.syntheticVoice || '',
     'Translation Used?': form.translation || '',
     'Mobile-friendly design considered?': form.mobileFriendly || '',
     'Duration': form.duration || '',
-    'Optional: Should this IE be grouped with another or part of a larger collection? If yes, add the name of the IE it belongs with.': form.group || '',
+    'Optional: Should this IE be grouped with another or part of a larger collection? If yes, add the name of the IE it belongs with.': stripFormulaPrefix_(form.group),
     'Optional: Have an Employee Advocacy link? Add it here.': form.employeeAdvocacy || '',
     'Requirements confirmed': form.requirementsConfirmed ? 'Yes' : 'No',
     'Arcade ID': form.arcadeId || '',
