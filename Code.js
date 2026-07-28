@@ -33,14 +33,42 @@ const STATUS_TRACKER_COLUMNS = {
   CREATOR_EMAIL: 'Creator Email',
   REQUESTOR_EMAIL: 'Requestor Email',
   CREATION_LINK: 'Creation Link',
+  DRUPAL_PAGE_URL: 'Drupal Page URL',
   PUBLIC_SITE_LINK: 'Public Site Link',
   RHAC_PAGE: 'RHAC page',
-  GLOBAL_ID: 'Global ID'
+  GLOBAL_ID: 'Global ID',
+  NUMBER: 'Number',
+  DESCRIPTION: 'Demo Description',
+  PRODUCTION_LINK: 'Production Link',
+  DURATION: 'Duration',
+  QUARTER: 'Quarter',
+  CREATOR_TEAM: 'Creator Team',
+  REQUESTOR_TEAM: 'Requestor Team',
+  ORIGIN_TYPE: 'Origin Type',
+  LANGUAGE: 'Language',
+  VERTICAL: 'Verticals',
+  EVENT: 'Event',
+  CTA_LINK: 'CTALink',
+  TDP: 'TDP',
+  SALES_TACTIC: 'Sales Tactic',
+  MARKETING_PROGRAM: 'Marketing Program',
+  SYNTHETIC_VOICE: 'Synthetic Voice Used?',
+  TRANSLATION: 'Translation Used?',
+  MOBILE_FRIENDLY: 'Mobile-friendly design considered?',
+  GROUP: 'Group',
+  EMPLOYEE_ADVOCACY: 'Creator Employee Advocacy Link',
+  PRODUCT: 'Product',
+  DESCRIPTION_FOR_SEO: 'Description for SEO',
+  CREATOR_SUBMITTED_TS: 'Creator Submission Timestamp',
+  CREATION_BRIEF_DOC_URL: 'Creation Brief Doc URL',
+  STATUS_OPEN_TS: 'Status Open Timestamp',
+  STATUS_APPROVED_TS: 'Status Approved Timestamp',
+  STATUS_REVIEWED_TS: 'Status Reviewed Timestamp',
+  STATUS_RETIRED_TS: 'Status Retired Timestamp',
+  STATUS_CLOSED_TS: 'Status Closed Timestamp'
 };
 
-const STATUS_TRACKER_ADMINS = [
-  'yunjyang@redhat.com'
-];
+const STATUS_TRACKER_ADMINS = [];
 
 function isAdmin_(email) {
   return STATUS_TRACKER_ADMINS.some(a => a.toLowerCase() === email.toLowerCase());
@@ -547,15 +575,21 @@ function toOptionList(options) {
 
 function doGet(e) {
   const page = e && e.parameter && e.parameter.page;
+  const baseUrl = ScriptApp.getService().getUrl() || '';
 
   if (page === 'status') {
-    return HtmlService.createHtmlOutputFromFile('StatusTracker')
+    const template = HtmlService.createTemplateFromFile('StatusTracker');
+    template.webAppBaseUrl = baseUrl;
+    template.token = (e && e.parameter && e.parameter.token) || '';
+    return template.evaluate()
       .setTitle('My Submissions — Interactive Demo Intake')
       .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
   }
 
   logAnalyticsEvent_('session_start', {});
-  return HtmlService.createHtmlOutputFromFile('Index')
+  const template = HtmlService.createTemplateFromFile('Index');
+  template.webAppBaseUrl = baseUrl;
+  return template.evaluate()
     .setTitle('Interactive Demo Intake Assistant')
     .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
 }
@@ -607,15 +641,47 @@ function buildSubmissionFromRow_(row, headerMap) {
   return {
     title: get(col.FINAL_DEMO_TITLE) || get(col.SUGGESTED_DEMO_TITLE),
     status: get(col.STATUS),
-    dateSubmitted: get(col.STATUS_RECEIVED_TS),
+    dateSubmitted: get(col.CREATOR_SUBMITTED_TS) || get(col.STATUS_RECEIVED_TS),
     primaryProduct: get(col.PRIMARY_PRODUCT),
     contentType: get(col.FINAL_CONTENT_TYPE) || get(col.CONTENT_TYPE),
     creatorName: get(col.CREATOR_NAME),
     requestorName: get(col.REQUESTOR_NAME),
     creationLink: get(col.CREATION_LINK),
-    drupalPageUrl: get(col.PUBLIC_SITE_LINK) || get(col.RHAC_PAGE),
+    drupalPageUrl: get(col.DRUPAL_PAGE_URL) || get(col.PUBLIC_SITE_LINK) || get(col.RHAC_PAGE),
     publishedDate: get(col.STATUS_PUBLISHED_TS),
-    globalId: get(col.GLOBAL_ID)
+    globalId: get(col.GLOBAL_ID),
+    requestNumber: get(col.NUMBER),
+    description: get(col.DESCRIPTION),
+    productionLink: get(col.PRODUCTION_LINK),
+    duration: get(col.DURATION),
+    quarter: get(col.QUARTER),
+    creatorTeam: get(col.CREATOR_TEAM),
+    requestorTeam: get(col.REQUESTOR_TEAM),
+    originType: get(col.ORIGIN_TYPE),
+    language: get(col.LANGUAGE),
+    vertical: get(col.VERTICAL),
+    event: get(col.EVENT),
+    ctaLink: get(col.CTA_LINK),
+    tdp: get(col.TDP),
+    salesTactic: get(col.SALES_TACTIC),
+    marketingProgram: get(col.MARKETING_PROGRAM),
+    syntheticVoice: get(col.SYNTHETIC_VOICE),
+    translation: get(col.TRANSLATION),
+    mobileFriendly: get(col.MOBILE_FRIENDLY),
+    group: get(col.GROUP),
+    employeeAdvocacy: get(col.EMPLOYEE_ADVOCACY),
+    otherProducts: get(col.PRODUCT),
+    descriptionForSeo: get(col.DESCRIPTION_FOR_SEO),
+    creationBriefDocUrl: get(col.CREATION_BRIEF_DOC_URL),
+    statusTimestamps: {
+      open: get(col.STATUS_OPEN_TS),
+      approved: get(col.STATUS_APPROVED_TS),
+      received: get(col.STATUS_RECEIVED_TS),
+      reviewed: get(col.STATUS_REVIEWED_TS),
+      published: get(col.STATUS_PUBLISHED_TS),
+      retired: get(col.STATUS_RETIRED_TS),
+      closed: get(col.STATUS_CLOSED_TS)
+    }
   };
 }
 
@@ -681,6 +747,121 @@ function getMySubmissions(searchName) {
     return { success: true, submissions, isAdmin: admin };
   } catch (e) {
     return { success: false, error: e.message || String(e) };
+  }
+}
+
+function getAllSubmissions() {
+  try {
+    const email = Session.getActiveUser().getEmail();
+    if (!email) return { success: false, error: 'Could not determine your email. Please make sure you are logged in.' };
+
+    const { rows, headerMap } = getRequestMasterData_();
+    const creatorEmailIdx = headerMap[STATUS_TRACKER_COLUMNS.CREATOR_EMAIL];
+    const requestorEmailIdx = headerMap[STATUS_TRACKER_COLUMNS.REQUESTOR_EMAIL];
+    const lowerEmail = email.toLowerCase();
+    const submissions = [];
+    const seenGlobalIds = new Set();
+
+    for (let i = 0; i < rows.length; i++) {
+      const ce = creatorEmailIdx != null ? String(rows[i][creatorEmailIdx] || '').toLowerCase().trim() : '';
+      const re = requestorEmailIdx != null ? String(rows[i][requestorEmailIdx] || '').toLowerCase().trim() : '';
+      const sub = buildSubmissionFromRow_(rows[i], headerMap);
+      if (!sub.status) continue;
+      sub.isMine = (ce === lowerEmail || re === lowerEmail);
+      if (sub.globalId) seenGlobalIds.add(sub.globalId);
+      submissions.push(sub);
+    }
+
+    const pending = getPendingIntakeSubmissions_(seenGlobalIds, lowerEmail);
+    for (let i = 0; i < pending.length; i++) {
+      submissions.push(pending[i]);
+    }
+
+    submissions.sort((a, b) => {
+      const da = a.dateSubmitted ? new Date(a.dateSubmitted).getTime() : 0;
+      const db = b.dateSubmitted ? new Date(b.dateSubmitted).getTime() : 0;
+      return db - da;
+    });
+
+    return { success: true, submissions, userEmail: lowerEmail, isAdmin: isAdmin_(email) };
+  } catch (e) {
+    return { success: false, error: e.message || String(e) };
+  }
+}
+
+function getPendingIntakeSubmissions_(seenGlobalIds, userEmail) {
+  try {
+    const ss = getTargetSpreadsheet_();
+    const sheet = ss.getSheetByName(INTAKE_SUBMISSIONS_SHEET);
+    if (!sheet) return [];
+
+    const lastRow = sheet.getLastRow();
+    if (lastRow <= 1) return [];
+
+    const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0]
+      .map(h => String(h || '').trim());
+
+    const col = (name) => headers.indexOf(name);
+
+    const globalIdIdx = col('Global ID');
+    const titleIdx = col('Final Demo Title');
+    const emailIdx = col('Email Address');
+    const creatorIdx = col('Creator Name(s)');
+    const creatorTeamIdx = col('Creator Team(s)');
+    const timestampIdx = col('Creator Submission Timestamp');
+    const contentTypeIdx = col('Content Type');
+    const productIdx = col('Primary product featured?');
+    const durationIdx = col('Duration');
+    const languageIdx = col('Language');
+    const quarterIdx = col('What quarter was this content created in?');
+    const creationLinkIdx = col('Creation Link');
+    const descIdx = col('Description (50-150 words)');
+    const tdpIdx = col('Related Technology Decision Point?');
+
+    const data = sheet.getRange(2, 1, lastRow - 1, headers.length).getValues();
+    const results = [];
+
+    for (let i = 0; i < data.length; i++) {
+      const row = data[i];
+      const gid = globalIdIdx >= 0 ? String(row[globalIdIdx] || '').trim() : '';
+      if (!gid || seenGlobalIds.has(gid)) continue;
+
+      const rowEmail = emailIdx >= 0 ? String(row[emailIdx] || '').toLowerCase().trim() : '';
+      const get = (idx) => idx >= 0 ? String(row[idx] || '').trim() : '';
+
+      results.push({
+        title: get(titleIdx),
+        status: 'Processing',
+        dateSubmitted: get(timestampIdx),
+        primaryProduct: get(productIdx),
+        contentType: get(contentTypeIdx),
+        creatorName: get(creatorIdx),
+        creatorTeam: get(creatorTeamIdx),
+        requestorName: '',
+        requestorTeam: '',
+        creationLink: get(creationLinkIdx),
+        drupalPageUrl: '',
+        publishedDate: '',
+        globalId: gid,
+        description: get(descIdx),
+        duration: get(durationIdx),
+        quarter: get(quarterIdx),
+        language: get(languageIdx),
+        tdp: get(tdpIdx),
+        originType: '',
+        productionLink: '',
+        vertical: '',
+        event: '',
+        ctaLink: '',
+        requestNumber: '',
+        isMine: rowEmail === userEmail,
+        statusTimestamps: {}
+      });
+    }
+
+    return results;
+  } catch (e) {
+    return [];
   }
 }
 
@@ -937,7 +1118,8 @@ function submitIntakeForReview(payload) {
     'Source': 'apps-script-pilot',
     'Raw Extracted Title': extractedGuide && extractedGuide.title || '',
     'Raw Extracted Text': extractedGuide && extractedGuide.bodyText || '',
-    'Global ID': globalId
+    'Global ID': globalId,
+    'Creator Submission Timestamp': submittedAt
   };
 
  const saveResult = saveSubmissionToSheet_(submission);
@@ -2378,6 +2560,28 @@ function processPendingWorkflowRows() {
   }
 }
 
+function resetFailedWorkflowRows() {
+  const ss = getTargetSpreadsheet_();
+  const sheet = ss.getSheetByName(INTAKE_SUBMISSIONS_SHEET);
+  const columnMap = getWorkflowColumnMap_(sheet);
+  const lastRow = sheet.getLastRow();
+  const values = sheet.getRange(2, 1, lastRow - 1, sheet.getLastColumn()).getValues();
+  let count = 0;
+  for (let i = 0; i < values.length; i++) {
+    const status = String(values[i][columnMap['AI Workflow Status'] - 1] || '').trim();
+    if (status === 'Failed') {
+      const rowIndex = i + 2;
+      sheet.getRange(rowIndex, columnMap['AI Workflow Status']).setValue('Pending');
+      sheet.getRange(rowIndex, columnMap['AI Workflow Attempts']).setValue(0);
+      sheet.getRange(rowIndex, columnMap['AI Workflow Error']).setValue('');
+      sheet.getRange(rowIndex, columnMap['AI Workflow Started At']).setValue('');
+      count++;
+    }
+  }
+  Logger.log('Reset ' + count + ' failed rows to Pending.');
+  return count;
+}
+
 function formatWorkflowResult_(result) {
   const payload = result && result.result ? result.result : {};
   const parts = [];
@@ -2388,12 +2592,56 @@ function formatWorkflowResult_(result) {
   return parts.length ? parts.join(' | ') : JSON.stringify(result).slice(0, 500);
 }
 
-/**
- * Backfill descriptions for rows in Request_Master that have an Arcade URL (col BK)
- * but no description (col BM). Writes description + tour highlights into col BM.
- *
- * Run from Apps Script editor or set up a manual trigger.
- */
+function backfillSubmittedDates() {
+  const SHEET_NAME = 'Request_Master';
+  const ss = getTargetSpreadsheet_();
+  const sheet = ss.getSheetByName(SHEET_NAME);
+  if (!sheet) throw new Error('Sheet "' + SHEET_NAME + '" not found.');
+
+  const lastRow = sheet.getLastRow();
+  if (lastRow <= 1) { Logger.log('No data rows.'); return; }
+
+  const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0]
+    .map(function(h) { return String(h || '').trim(); });
+
+  const receivedTsCol = headers.indexOf('Status Received Timestamp') + 1;
+  const publishedTsCol = headers.indexOf('Status Published Timestamp') + 1;
+  const openTsCol = headers.indexOf('Status Open Timestamp') + 1;
+  const quarterCol = headers.indexOf('Quarter') + 1;
+
+  if (!receivedTsCol) throw new Error('Column "Status Received Timestamp" not found.');
+
+  const data = sheet.getRange(2, 1, lastRow - 1, sheet.getLastColumn()).getValues();
+  let filled = 0;
+
+  for (let i = 0; i < data.length; i++) {
+    const existing = String(data[i][receivedTsCol - 1] || '').trim();
+    if (existing) continue;
+
+    let fallback = '';
+    if (publishedTsCol) fallback = String(data[i][publishedTsCol - 1] || '').trim();
+    if (!fallback && openTsCol) fallback = String(data[i][openTsCol - 1] || '').trim();
+
+    if (!fallback && quarterCol) {
+      const q = String(data[i][quarterCol - 1] || '').trim();
+      const m = q.match(/CY(\d{2})Q([1-4])/i);
+      if (m) {
+        const year = 2000 + parseInt(m[1], 10);
+        const month = (parseInt(m[2], 10) - 1) * 3;
+        fallback = new Date(year, month, 1).toISOString();
+      }
+    }
+
+    if (fallback) {
+      sheet.getRange(i + 2, receivedTsCol).setValue(fallback);
+      filled++;
+      Logger.log('Row ' + (i + 2) + ': set to ' + fallback);
+    }
+  }
+
+  Logger.log('Backfill complete. Filled ' + filled + ' rows.');
+}
+
 function backfillDescriptions() {
   const SHEET_NAME = 'Request_Master';
   const ELIGIBLE_STATUSES = ['IE Published', 'IE Reviewed'];
@@ -2494,4 +2742,33 @@ function backfillDescriptions() {
   }
 
   Logger.log('Backfill complete. Processed: ' + processed + ', Skipped: ' + skipped + ', Errors: ' + errors);
+}
+
+function buildGuideExtractionJson_(extractedGuide) {
+  const stepTexts = extractedGuide.stepTexts || [];
+  const stepsWithImages = extractedGuide.steps || [];
+  const maxLen = Math.max(stepTexts.length, stepsWithImages.length);
+
+  const steps = [];
+  for (let i = 0; i < maxLen; i++) {
+    const imgStep = stepsWithImages[i] || {};
+    steps.push({
+      stepNumber: i + 1,
+      text: stepTexts[i] || imgStep.text || '',
+      imageUrl: imgStep.imageUrl || '',
+      imageAlt: imgStep.text || ''
+    });
+  }
+
+  return {
+    arcadeId: extractedGuide.arcadeId || '',
+    title: extractedGuide.title || '',
+    guideUrl: extractedGuide.guideUrl || '',
+    shareUrl: extractedGuide.shareUrl || '',
+    duration: extractedGuide.duration || '',
+    steps: steps,
+    links: extractedGuide.links || [],
+    bodyText: extractedGuide.bodyText || '',
+    extractedAt: new Date().toISOString()
+  };
 }
