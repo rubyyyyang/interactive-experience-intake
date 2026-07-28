@@ -1122,6 +1122,14 @@ function submitIntakeForReview(payload) {
     'Creator Submission Timestamp': submittedAt
   };
 
+  try {
+    if (extractedGuide) {
+      submission['Guide Extraction JSON'] = JSON.stringify(buildGuideExtractionJson_(extractedGuide));
+    }
+  } catch (e) {
+    Logger.log('Guide extraction JSON storage failed: ' + e.message);
+  }
+
  const saveResult = saveSubmissionToSheet_(submission);
 
   logAnalyticsEvent_('form_submitted', {
