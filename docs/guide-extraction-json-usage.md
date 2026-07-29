@@ -85,79 +85,70 @@ function getGuideExtraction(sheetName, rowIndex) {
 
 ## Using with AI — Text Only
 
-If your AI feature only needs text (descriptions, summaries, categorization, search indexing), you can use the JSON directly — no image fetching needed.
+If your AI feature only needs text (descriptions, summaries, categorization, search indexing), you can use the JSON directly — no image fetching needed. Build your prompt from the step texts:
 
 ```js
-function generateSummary(rowIndex) {
-  const guide = getGuideExtraction('Request_Master', rowIndex);
-  if (!guide) return;
+const guide = getGuideExtraction('Request_Master', rowIndex);
 
-  const stepsText = guide.steps
-    .map(s => s.stepNumber + '. ' + s.text)
-    .join('\n');
+const stepsText = guide.steps
+  .map(s => s.stepNumber + '. ' + s.text)
+  .join('\n');
 
-  const prompt = `Summarize this interactive demo in 2 sentences.
+const prompt = 'Your prompt here.\n\n'
+  + 'Title: ' + guide.title + '\n'
+  + 'Duration: ' + (guide.duration || 'unknown') + '\n\n'
+  + 'Steps:\n' + stepsText;
 
-Title: ${guide.title}
-Duration: ${guide.duration || 'unknown'}
-
-Steps:
-${stepsText}`;
-
-  const result = callGemini_(prompt);
-  Logger.log(result);
-}
+// Send `prompt` to your AI model of choice.
 ```
+
+**Note:** The existing `callGemini_(prompt)` in Code.js is configured for structured JSON responses (`responseMimeType: 'application/json'`). If you need plain text responses, you'll need your own Gemini call function or a wrapper that sets a different `responseMimeType`.
 
 ## Using with AI — Text + Images
 
-To send screenshots to the AI model, fetch them as base64 first using the existing `fetchImagesAsBase64_()` helper in Code.js.
+To send screenshots to the AI model, you need to fetch the image URLs and convert them to base64 first. Code.js has a helper `fetchImagesAsBase64_(imageUrls)` that does this:
 
 ```js
-function analyzeWithImages(rowIndex) {
-  const guide = getGuideExtraction('Request_Master', rowIndex);
-  if (!guide || !guide.steps.length) return;
+// 1. Collect image URLs from steps
+const imageUrls = guide.steps
+  .map(s => s.imageUrl)
+  .filter(url => url);
 
-  // 1. Collect image URLs from steps
-  const imageUrls = guide.steps
-    .map(s => s.imageUrl)
-    .filter(url => url);
+// 2. Fetch images as base64
+const fetchResult = fetchImagesAsBase64_(imageUrls);
+// Returns { images: [...], errors: [...] }
+// Each image: { base64: '...', mimeType: 'image/png', sizeBytes: 12345 } or null on failure
 
-  // 2. Fetch images as base64 (uses UrlFetchApp.fetchAll for speed)
-  const fetchResult = fetchImagesAsBase64_(imageUrls);
+// 3. Build interleaved parts: step text + screenshot pairs
+const parts = [];
+let imageIdx = 0;
+for (const step of guide.steps) {
+  parts.push({ text: 'Step ' + step.stepNumber + ': ' + step.text });
 
-  // 3. Build interleaved parts: step text + screenshot pairs
-  const parts = [];
-  let imageIdx = 0;
-  for (const step of guide.steps) {
-    parts.push({ text: 'Step ' + step.stepNumber + ': ' + step.text });
-
-    if (step.imageUrl && fetchResult.images[imageIdx]) {
-      const img = fetchResult.images[imageIdx];
-      parts.push({
-        inlineData: {
-          mimeType: img.mimeType,
-          data: img.base64
-        }
-      });
-    }
-    if (step.imageUrl) imageIdx++;
+  if (step.imageUrl && fetchResult.images[imageIdx]) {
+    const img = fetchResult.images[imageIdx];
+    parts.push({
+      inlineData: {
+        mimeType: img.mimeType,
+        data: img.base64
+      }
+    });
   }
-
-  // 4. Send to Gemini with text prompt + image parts
-  const prompt = 'Analyze this demo walkthrough and describe what the user learns:';
-  const response = callGemini_(prompt, parts);
-  Logger.log(response);
+  if (step.imageUrl) imageIdx++;
 }
+
+// 4. Send `parts` as interleavedParts to your AI model.
+// The existing callGemini_(prompt, parts) works for JSON responses.
+// See generateDraftFromGuide() in Code.js for a working example.
 ```
 
-### How `fetchImagesAsBase64_()` Works
+### About `fetchImagesAsBase64_()`
 
+- Defined in `Code.js` (line 1982) — private helper (trailing underscore), usable within the same script file
 - Fetches all image URLs in parallel using `UrlFetchApp.fetchAll()`
 - Returns `{ images: [...], errors: [...] }`
 - Each image is `{ base64: '...', mimeType: 'image/png', sizeBytes: 12345 }` or `null` on failure
 - Skips images over 1MB
-- Defined in `Code.js` — available to any script in the same project
 
 ## Batch Processing Pattern
 
@@ -193,7 +184,7 @@ function batchProcess() {
 ## Tips
 
 - **Check `truncated`**: If `true`, the demo had too many steps to fit in the cell. The text fields and early steps are still there, but later steps may be missing.
-- **Image URLs can expire**: Arcade CDN URLs are generally stable, but if a fetch fails, the demo content is still accessible via `guideUrl`.
+- **Image URL fetch failures**: If an image URL fails to fetch, `fetchImagesAsBase64_()` returns `null` for that image and logs the error. The step text is still available.
 - **Text is usually enough**: For categorization, search, and description generation, the step text alone gives the AI enough context. Only fetch images when visual analysis is needed.
 - **Rate limits**: When batch-processing with image fetches, add `Utilities.sleep(1000)` between rows to avoid hitting Arcade CDN rate limits.
 - **Re-extract if needed**: If a demo's guide page changes, you can re-extract by clearing the `Guide Extraction JSON` cell and re-running `backfillGuideExtractions()`.
