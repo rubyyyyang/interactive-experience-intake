@@ -9,36 +9,50 @@ The `Guide Extraction JSON` column in `Request_Master` stores each demo's extrac
 | `Request_Master` | `Guide Extraction JSON` | `backfillGuideExtractions()` (batch) |
 | `Creator_Form_Raw` | `Guide Extraction JSON` | Intake submission flow (automatic) |
 
+## Current Data (as of 2026-07-29)
+
+- **255 rows populated** out of 300 in Request_Master
+- **45 rows empty** (status not `IE Published`/`IE Reviewed`, or no Arcade URL)
+- **4 rows truncated** (steps trimmed to fit the 50K cell limit — marked with `"truncated": true`)
+- **Longest cell:** 49,010 characters
+
 ## JSON Structure
 
-Each cell contains a JSON string with this shape:
+Each cell contains a JSON string. Here's a real example:
 
 ```json
 {
-  "arcadeId": "abc123",
-  "title": "Getting started with OpenShift AI",
-  "guideUrl": "https://app.arcade.software/flows/abc123/guide",
-  "shareUrl": "https://app.arcade.software/share/abc123",
-  "duration": "3 min",
+  "arcadeId": "TjY9dlrUlZJhhKLvz98I",
+  "title": "Updating Software with Web Console in Red Hat Enterprise Linux",
+  "guideUrl": "https://interact.redhat.com/share/TjY9dlrUlZJhhKLvz98I/guide",
+  "shareUrl": "https://interact.redhat.com/share/TjY9dlrUlZJhhKLvz98I",
+  "duration": "",
   "steps": [
     {
       "stepNumber": 1,
-      "text": "Navigate to the OpenShift console and click on AI/ML",
-      "imageUrl": "https://cdn.arcade.software/...",
-      "imageAlt": "OpenShift console screenshot"
+      "text": "Find out more",
+      "imageUrl": "https://worker.arcade.software/image-transform?image=https%3A%2F%2Fcdn.arcade.software%2Fextension-uploads%2FTjY9dlrUlZJhhKLvz98I%2Fimage%2Fcb419164-f4bb-4243-9736-0d87b8f10ce4.png&fit=contain&trim=0%3B1280%3B720%3B0",
+      "imageAlt": "Step 1"
     },
     {
       "stepNumber": 2,
-      "text": "Select your data science project",
-      "imageUrl": "https://cdn.arcade.software/...",
-      "imageAlt": "Project selection screen"
+      "text": "Updating Software with Web Console in Red Hat Enterprise Linux",
+      "imageUrl": "https://worker.arcade.software/image-transform?image=https%3A%2F%2Fcdn.arcade.software%2Fextension-uploads%2FTjY9dlrUlZJhhKLvz98I%2Fimage%2F75a29a21-6fd5-4f1c-89c4-98cfd5e38457.png&fit=contain",
+      "imageAlt": "Step 2"
+    },
+    {
+      "stepNumber": 3,
+      "text": "Our Red Hat Enterprise Linux system is now up to date.",
+      "imageUrl": "https://worker.arcade.software/image-transform?image=https%3A%2F%2Fcdn.arcade.software%2Fextension-uploads%2FTjY9dlrUlZJhhKLvz98I%2Fimage%2Fccc9df35-a7ac-4db0-9b0f-2352ec49d01f.png&fit=contain&trim=0%3B0%3B720%3B1280",
+      "imageAlt": "Step 3"
     }
   ],
   "links": [
-    { "label": "Try it free", "href": "https://console.redhat.com/..." }
+    { "label": "", "href": "https://www.redhat.com/" },
+    { "label": "Find out more", "href": "https://www.redhat.com/en" }
   ],
-  "bodyText": "Full body text from the guide page...",
-  "extractedAt": "2026-07-28T12:00:00Z"
+  "bodyText": "Updating Software with Web Console in Red Hat Enterprise Linux | Guide Find out more Updating Software with Web Console in Red Hat Enterprise Linux 1 2 3 4 5 6 7 Our Red Hat Enterprise Linux system is now up to date.",
+  "extractedAt": "2026-07-29T00:46:20.386Z"
 }
 ```
 
