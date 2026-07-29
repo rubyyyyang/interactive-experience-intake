@@ -1130,7 +1130,7 @@ function submitIntakeForReview(payload) {
     Logger.log('Guide extraction JSON storage failed: ' + e.message);
   }
 
- const saveResult = saveSubmissionToSheet_(submission);
+  const saveResult = saveSubmissionToSheet_(submission);
 
   logAnalyticsEvent_('form_submitted', {
     sessionId: (payload && payload.sessionId) || '',
