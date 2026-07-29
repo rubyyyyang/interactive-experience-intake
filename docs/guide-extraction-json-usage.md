@@ -38,8 +38,7 @@ Each cell contains a JSON string with this shape:
     { "label": "Try it free", "href": "https://console.redhat.com/..." }
   ],
   "bodyText": "Full body text from the guide page...",
-  "extractedAt": "2026-07-28T12:00:00Z",
-  "truncated": false
+  "extractedAt": "2026-07-28T12:00:00Z"
 }
 ```
 
@@ -56,7 +55,7 @@ Each cell contains a JSON string with this shape:
 | `links` | array | Links found on the guide page (up to 12) |
 | `bodyText` | string | Full page text, up to 3000 chars |
 | `extractedAt` | string | ISO timestamp of when extraction happened |
-| `truncated` | boolean | `true` if JSON was trimmed to fit the 50K cell limit |
+| `truncated` | boolean | Only present (set to `true`) if steps were trimmed to fit the 50K cell limit |
 
 ### Step Object
 
@@ -105,8 +104,7 @@ Duration: ${guide.duration || 'unknown'}
 Steps:
 ${stepsText}`;
 
-  const apiKey = PropertiesService.getScriptProperties().getProperty('GEMINI_API_KEY');
-  const result = callGeminiSimple_(apiKey, prompt);
+  const result = callGemini_(prompt);
   Logger.log(result);
 }
 ```
@@ -137,8 +135,8 @@ function analyzeWithImages(rowIndex) {
     if (step.imageUrl && fetchResult.images[imageIdx]) {
       const img = fetchResult.images[imageIdx];
       parts.push({
-        inline_data: {
-          mime_type: img.mimeType,
+        inlineData: {
+          mimeType: img.mimeType,
           data: img.base64
         }
       });
