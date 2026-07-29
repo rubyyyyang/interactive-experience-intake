@@ -2780,3 +2780,72 @@ function buildGuideExtractionJson_(extractedGuide) {
     extractedAt: new Date().toISOString()
   };
 }
+
+function backfillGuideExtractions() {
+  const SHEET_NAME = 'Request_Master';
+  const ELIGIBLE_STATUSES = ['IE Published', 'IE Reviewed'];
+
+  const ss = getTargetSpreadsheet_();
+  const sheet = ss.getSheetByName(SHEET_NAME);
+  if (!sheet) throw new Error('Sheet "' + SHEET_NAME + '" not found.');
+
+  const lastRow = sheet.getLastRow();
+  if (lastRow <= 1) {
+    Logger.log('No data rows found.');
+    return;
+  }
+
+  const headers = sheet
+    .getRange(1, 1, 1, sheet.getLastColumn())
+    .getValues()[0]
+    .map(function(h) { return String(h || '').trim(); });
+
+  const statusCol = headers.indexOf('Status') + 1;
+  const primaryUrlCol = headers.indexOf('Production Link') + 1;
+  const fallbackUrlCol = headers.indexOf('Creation Link') + 1;
+  const jsonCol = headers.indexOf('Guide Extraction JSON') + 1;
+
+  if (!statusCol || !primaryUrlCol || !jsonCol) {
+    throw new Error('Required columns (Status, Production Link, Guide Extraction JSON) not found in ' + SHEET_NAME);
+  }
+
+  const statuses = sheet.getRange(2, statusCol, lastRow - 1, 1).getValues();
+  const primaryUrls = sheet.getRange(2, primaryUrlCol, lastRow - 1, 1).getValues();
+  const fallbackUrls = fallbackUrlCol ? sheet.getRange(2, fallbackUrlCol, lastRow - 1, 1).getValues() : [];
+  const existingJson = sheet.getRange(2, jsonCol, lastRow - 1, 1).getValues();
+
+  let processed = 0;
+  let skipped = 0;
+  let errors = 0;
+
+  for (let i = 0; i < statuses.length; i++) {
+    const status = String(statuses[i][0] || '').trim();
+    const fallbackVal = fallbackUrls.length ? String(fallbackUrls[i][0] || '').trim() : '';
+    const rawUrl = String(primaryUrls[i][0] || '').trim() || fallbackVal;
+    const arcadeUrl = rawUrl.split(/[\n\r]/)[0].trim();
+    const existing = String(existingJson[i][0] || '').trim();
+    const rowIndex = i + 2;
+
+    if (!ELIGIBLE_STATUSES.includes(status) || !arcadeUrl || existing) {
+      skipped++;
+      continue;
+    }
+
+    try {
+      Logger.log('Row ' + rowIndex + ': Processing ' + arcadeUrl);
+
+      const extractedGuide = fetchGuideContent_(arcadeUrl);
+      const json = JSON.stringify(buildGuideExtractionJson_(extractedGuide));
+
+      sheet.getRange(rowIndex, jsonCol).setValue(json);
+
+      processed++;
+      Logger.log('Row ' + rowIndex + ': Done (' + json.length + ' chars)');
+    } catch (e) {
+      errors++;
+      Logger.log('Row ' + rowIndex + ': ERROR - ' + e.message);
+    }
+  }
+
+  Logger.log('Backfill complete. Processed: ' + processed + ', Skipped: ' + skipped + ', Errors: ' + errors);
+}
