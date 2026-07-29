@@ -1124,7 +1124,7 @@ function submitIntakeForReview(payload) {
 
   try {
     if (extractedGuide) {
-      submission['Guide Extraction JSON'] = JSON.stringify(buildGuideExtractionJson_(extractedGuide));
+      submission['Guide Extraction JSON'] = truncateGuideJson_(JSON.stringify(buildGuideExtractionJson_(extractedGuide)));
     }
   } catch (e) {
     Logger.log('Guide extraction JSON storage failed: ' + e.message);
@@ -2781,6 +2781,23 @@ function buildGuideExtractionJson_(extractedGuide) {
   };
 }
 
+function truncateGuideJson_(json) {
+  const MAX_CHARS = 49000;
+  if (json.length <= MAX_CHARS) return json;
+
+  const obj = JSON.parse(json);
+  obj.bodyText = '';
+  let trimmed = JSON.stringify(obj);
+  if (trimmed.length <= MAX_CHARS) return trimmed;
+
+  while (obj.steps.length > 0 && trimmed.length > MAX_CHARS) {
+    obj.steps.pop();
+    trimmed = JSON.stringify(obj);
+  }
+  obj.truncated = true;
+  return JSON.stringify(obj);
+}
+
 function backfillGuideExtractions() {
   const SHEET_NAME = 'Request_Master';
   const ELIGIBLE_STATUSES = ['IE Published', 'IE Reviewed'];
@@ -2835,7 +2852,7 @@ function backfillGuideExtractions() {
       Logger.log('Row ' + rowIndex + ': Processing ' + arcadeUrl);
 
       const extractedGuide = fetchGuideContent_(arcadeUrl);
-      const json = JSON.stringify(buildGuideExtractionJson_(extractedGuide));
+      const json = truncateGuideJson_(JSON.stringify(buildGuideExtractionJson_(extractedGuide)));
 
       sheet.getRange(rowIndex, jsonCol).setValue(json);
 
