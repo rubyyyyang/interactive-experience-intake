@@ -3,12 +3,13 @@
 <head>
   <base target="_top">
   <meta charset="UTF-8">
-  <title>My Submissions</title>
-
+  <title>Interactive Demo Tracker</title>
   <style>
+    * { box-sizing: border-box; }
+
     body {
       font-family: Arial, sans-serif;
-      max-width: 1120px;
+      max-width: 1400px;
       margin: 32px auto;
       padding: 0 20px;
       color: #1f1f1f;
@@ -19,120 +20,161 @@
       display: flex;
       justify-content: space-between;
       align-items: center;
-      margin-bottom: 24px;
+      margin-bottom: 20px;
       flex-wrap: wrap;
       gap: 12px;
     }
 
-    .header h1 {
-      font-size: 1.5rem;
-      margin: 0;
-    }
+    .header h1 { font-size: 1.5rem; margin: 0; }
 
-    .header-actions a {
+    .header a {
       color: #0066cc;
       text-decoration: none;
       font-size: 0.9rem;
     }
+    .header a:hover { text-decoration: underline; }
 
-    .header-actions a:hover {
-      text-decoration: underline;
-    }
-
-    .card {
-      background: #fff;
-      border: 1px solid #ddd;
-      border-radius: 8px;
-      padding: 20px 24px;
-      margin-bottom: 16px;
-    }
-
-    .card-clickable {
-      cursor: pointer;
-      transition: box-shadow 0.15s;
-    }
-
-    .card-clickable:hover {
-      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-    }
-
-    .card-summary {
+    /* Controls bar */
+    .controls-bar {
       display: flex;
       justify-content: space-between;
       align-items: center;
       flex-wrap: wrap;
-      gap: 8px;
+      gap: 12px;
+      margin-bottom: 12px;
     }
 
-    .card-title {
-      font-size: 1.05rem;
+    .tabs { display: flex; gap: 0; }
+
+    .tab {
+      padding: 8px 18px;
+      border: 1px solid #ddd;
+      background: #fff;
+      cursor: pointer;
+      font-size: 0.9rem;
+      color: #666;
+      transition: all 0.15s;
+    }
+    .tab:first-child { border-radius: 6px 0 0 6px; }
+    .tab:last-child { border-radius: 0 6px 6px 0; }
+    .tab + .tab { border-left: none; }
+    .tab.active {
+      background: #e8f0fe;
+      color: #1a73e8;
       font-weight: 600;
-      margin: 0;
+      border-color: #1a73e8;
+    }
+    .tab:hover:not(.active) { background: #f5f5f5; }
+
+    .controls-right {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    .controls-right select {
+      padding: 8px 12px;
+      border: 1px solid #ddd;
+      border-radius: 6px;
+      font-size: 0.85rem;
+      background: #fff;
       color: #1f1f1f;
     }
 
-    .card-meta {
+    .controls-right input {
+      padding: 8px 12px;
+      border: 1px solid #ddd;
+      border-radius: 6px;
       font-size: 0.85rem;
-      color: #666;
-      margin-top: 4px;
+      width: 220px;
     }
-
-    .card-detail {
-      display: none;
-      margin-top: 16px;
-      border-top: 1px solid #eee;
-      padding-top: 16px;
+    .reset-all-btn {
+      padding: 6px 12px;
+      border: 1px solid #dadce0;
+      border-radius: 6px;
+      background: #fff;
+      font-size: 0.78rem;
+      color: #1a73e8;
+      cursor: pointer;
+      white-space: nowrap;
     }
+    .reset-all-btn:hover { background: #f1f3f4; }
 
-    .card-detail.expanded {
-      display: block;
-    }
-
-    .detail-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 12px 24px;
-    }
-
-    @media (max-width: 600px) {
-      .detail-grid {
-        grid-template-columns: 1fr;
-      }
-    }
-
-    .detail-item label {
-      display: block;
-      font-size: 0.75rem;
+    .results-count {
+      font-size: 0.8rem;
       color: #888;
+      margin-bottom: 8px;
+    }
+
+    /* Table */
+    .table-wrapper { overflow-x: auto; }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      background: #fff;
+      border: 1px solid #ddd;
+      table-layout: fixed;
+      border-radius: 8px;
+      overflow: hidden;
+    }
+
+    thead th {
+      text-align: left;
+      padding: 10px 14px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      color: #666;
       text-transform: uppercase;
       letter-spacing: 0.03em;
-      margin-bottom: 2px;
+      background: #f8f9fa;
+      border-bottom: 1px solid #ddd;
+      white-space: nowrap;
+      user-select: none;
     }
 
-    .detail-item span {
-      font-size: 0.95rem;
-      color: #1f1f1f;
-      word-break: break-word;
+    th.sortable { cursor: pointer; }
+    th.sortable:hover { color: #1a73e8; }
+    th.sort-asc::after { content: ' \25B2'; font-size: 0.6rem; }
+    th.sort-desc::after { content: ' \25BC'; font-size: 0.6rem; }
+
+    tbody td {
+      padding: 10px 14px;
+      font-size: 0.9rem;
+      border-bottom: 1px solid #eee;
+      vertical-align: middle;
     }
 
-    .detail-item a {
-      color: #0066cc;
-      text-decoration: none;
-    }
+    tr.data-row { cursor: pointer; transition: background 0.1s; }
+    tr.data-row:hover { background: #f8f9fb; }
+    tr.data-row.expanded { background: #f0f4f8; }
 
-    .detail-item a:hover {
-      text-decoration: underline;
+    .title-cell { font-weight: 500; }
+    .creator-cell { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .row-chevron {
+      display: inline-block;
+      margin-right: 6px;
+      font-size: 0.6rem;
+      color: #bbb;
+      transition: transform 0.15s;
     }
+    tr.data-row.expanded .row-chevron { transform: rotate(90deg); color: #1a73e8; }
+    .action-tags { display: flex; flex-direction: column; gap: 3px; }
+    .drupal-cell a { color: #0066cc; text-decoration: none; white-space: nowrap; }
+    .drupal-cell a:hover { text-decoration: underline; }
+    .drupal-cell .no-link { color: #ccc; }
+    .date-cell { white-space: nowrap; color: #666; }
 
+    /* Status badges */
     .status-badge {
       display: inline-block;
       padding: 3px 10px;
       border-radius: 12px;
-      font-size: 0.8rem;
+      font-size: 0.78rem;
       font-weight: 600;
       white-space: nowrap;
     }
-
     .status-request-open { background: #e8f0fe; color: #1a73e8; }
     .status-request-approved { background: #e6f4ea; color: #137333; }
     .status-ie-received { background: #fef7e0; color: #b06000; }
@@ -140,88 +182,889 @@
     .status-ie-published { background: #e6f4ea; color: #137333; }
     .status-ie-retired { background: #f4e8e8; color: #a33; }
     .status-closed { background: #eee; color: #666; }
+    .status-processing { background: #fff3e0; color: #e65100; }
 
-    .loading {
+    /* Expanded detail row */
+    tr.detail-row td {
+      padding: 0;
+      border-bottom: 1px solid #ddd;
+    }
+
+    .detail-panel {
+      background: #fafbfc;
+      padding: 24px 28px;
+    }
+
+    /* Lifecycle progress */
+    .lifecycle {
+      display: flex;
+      align-items: flex-start;
+      padding: 8px 0 20px;
+      overflow-x: auto;
+    }
+
+    .lc-step {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-width: 70px;
+      flex: 0 0 auto;
+    }
+
+    .lc-connector {
+      flex: 1;
+      min-width: 20px;
+      display: flex;
+      align-items: center;
+      padding-top: 2px;
+    }
+
+    .lc-connector .lc-line {
+      width: 100%;
+      height: 2px;
+    }
+
+    .lc-line.completed { background: #999; }
+    .lc-line.current { background: #999; }
+    .lc-line.future { background: #ddd; border-top: 2px dashed #ddd; height: 0; }
+
+    .lc-node {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.7rem;
+      font-weight: 700;
+      position: relative;
+    }
+
+    .lc-node.completed { background: #eee; color: #666; border: 2px solid #999; }
+    .lc-node.current { box-shadow: 0 0 0 4px rgba(0,0,0,0.08); }
+    .lc-node.future { background: #fff; color: #bbb; border: 2px solid #ddd; }
+
+    .lc-node.stage-open.completed,
+    .lc-node.stage-open.current { background: #e8f0fe; color: #1a73e8; border: 2px solid #1a73e8; }
+    .lc-node.stage-approved.completed,
+    .lc-node.stage-approved.current { background: #e6f4ea; color: #137333; border: 2px solid #137333; }
+    .lc-node.stage-received.completed,
+    .lc-node.stage-received.current { background: #fef7e0; color: #b06000; border: 2px solid #b06000; }
+    .lc-node.stage-reviewed.completed,
+    .lc-node.stage-reviewed.current { background: #e8f0fe; color: #1a73e8; border: 2px solid #1a73e8; }
+    .lc-node.stage-published.completed,
+    .lc-node.stage-published.current { background: #e6f4ea; color: #137333; border: 2px solid #137333; }
+    .lc-node.stage-retired.completed,
+    .lc-node.stage-retired.current { background: #f4e8e8; color: #a33; border: 2px solid #a33; }
+    .lc-node.stage-closed.completed,
+    .lc-node.stage-closed.current { background: #eee; color: #666; border: 2px solid #999; }
+
+    .lc-label {
+      font-size: 0.65rem;
+      color: #555;
+      margin-top: 6px;
       text-align: center;
-      padding: 40px;
+      line-height: 1.2;
+      max-width: 72px;
+    }
+
+    .lc-date {
+      font-size: 0.6rem;
+      color: #999;
+      margin-top: 2px;
+      text-align: center;
+    }
+
+    /* Detail sections */
+    .detail-sections {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px 40px;
+      margin-top: 16px;
+      border-top: 1px solid #e5e7eb;
+      padding-top: 18px;
+    }
+
+    .detail-section h4 {
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
       color: #888;
+      margin: 0 0 10px;
     }
 
-    .error-message {
-      text-align: center;
-      padding: 40px;
-      color: #c00;
+    .detail-section a {
+      color: #0066cc;
+      text-decoration: none;
+    }
+    .detail-section a:hover { text-decoration: underline; }
+
+    .detail-meta-row {
+      display: flex;
+      gap: 24px;
+      flex-wrap: wrap;
+      font-size: 0.8rem;
+      color: #888;
+      line-height: 1.5;
+      border-top: 1px solid #e5e7eb;
+      padding-top: 14px;
+      margin-top: 8px;
     }
 
-    .empty-state {
+    .detail-kv {
+      font-size: 0.85rem;
+      line-height: 2;
+    }
+
+    .detail-kv .label {
+      color: #888;
+      font-size: 0.78rem;
+    }
+
+    .detail-desc {
+      font-size: 0.88rem;
+      color: #333;
+      line-height: 1.6;
+      margin: 0;
+    }
+
+    .cta-list { font-size: 0.85rem; line-height: 2; }
+    .cta-item a { word-break: break-all; }
+
+    .desc-toggle {
+      color: #0066cc;
+      cursor: pointer;
+      font-size: 0.82rem;
+      border: none;
+      background: none;
+      padding: 0;
+      margin-top: 6px;
+    }
+
+    .links-bar {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      padding-bottom: 4px;
+    }
+
+    .link-row {
+      flex: 1;
+      min-width: 200px;
+      padding: 10px 14px;
+      border: 1px solid #e0e0e0;
+      border-radius: 8px;
+      background: #fff;
+      font-size: 0.82rem;
+    }
+    .link-row strong { display: block; font-size: 0.78rem; color: #3c4043; margin-bottom: 2px; }
+    .link-row .link-desc { color: #888; font-size: 0.72rem; margin-bottom: 6px; }
+    .link-row a { word-break: break-all; font-size: 0.78rem; }
+
+    /* States */
+    .loading, .error-message, .empty-state {
       text-align: center;
       padding: 60px 20px;
       color: #888;
     }
-
-    .empty-state p {
-      margin: 8px 0;
-    }
+    .error-message { color: #c00; }
+    .empty-state p { margin: 8px 0; }
 
     .processing-message {
       text-align: center;
       padding: 40px 20px;
       color: #666;
     }
+    .processing-message p { margin: 8px 0; }
 
-    .processing-message p {
-      margin: 8px 0;
+    /* Token single-view */
+    .single-view {
+      background: #fff;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      padding: 24px;
+    }
+
+    .single-view h2 {
+      font-size: 1.2rem;
+      margin: 0 0 4px;
+    }
+
+    .single-view .sv-meta {
+      font-size: 0.85rem;
+      color: #666;
+      margin-bottom: 16px;
+    }
+
+    .back-link {
+      display: inline-block;
+      margin-top: 16px;
+      color: #0066cc;
+      text-decoration: none;
+      font-size: 0.9rem;
+    }
+    .back-link:hover { text-decoration: underline; }
+
+    /* ===== Dashboard ===== */
+    .reports-container { padding: 8px 0; }
+
+    .dash-controls {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+    }
+
+    .dash-controls select {
+      padding: 8px 12px;
+      border: 1px solid #ddd;
+      border-radius: 6px;
+      font-size: 0.85rem;
+      background: #fff;
+    }
+
+    .kpi-row {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 14px;
+      margin-bottom: 28px;
+    }
+
+    .kpi-card {
+      background: #fff;
+      border: 1px solid #e5e7eb;
+      border-radius: 10px;
+      padding: 18px 20px;
+      cursor: pointer;
+      transition: border-color 0.15s, box-shadow 0.15s;
+    }
+
+    .kpi-card:hover { border-color: #6d28d9; }
+    .kpi-card.active { border-color: #6d28d9; box-shadow: 0 0 0 2px rgba(109,40,217,0.12); }
+
+    .kpi-demo-list {
+      background: #fff;
+      border: 1px solid #e5e7eb;
+      border-radius: 8px;
+      margin-bottom: 28px;
+      overflow: hidden;
+    }
+
+    .kpi-demo-list-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px 16px;
+      background: #f8f9fa;
+      border-bottom: 1px solid #e5e7eb;
+      font-size: 0.82rem;
+      font-weight: 600;
+      color: #555;
+    }
+
+    .kpi-demo-list-close {
+      background: none;
+      border: none;
+      font-size: 1rem;
+      color: #888;
+      cursor: pointer;
+      padding: 0 4px;
+    }
+
+    .kpi-demo-list-close:hover { color: #333; }
+
+    .kpi-demo-list table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    .kpi-demo-list th {
+      text-align: left;
+      padding: 8px 14px;
+      font-size: 0.72rem;
+      font-weight: 600;
+      color: #666;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+      background: #f8f9fa;
+      border-bottom: 1px solid #ddd;
+    }
+
+    .kpi-demo-list td {
+      padding: 8px 14px;
+      font-size: 0.84rem;
+      border-bottom: 1px solid #eee;
+    }
+
+    .kpi-demo-list tr:last-child td { border-bottom: none; }
+
+    .kpi-value {
+      font-size: 1.8rem;
+      font-weight: 700;
+      color: #1f1f1f;
+      line-height: 1.1;
+    }
+
+    .kpi-label {
+      font-size: 0.78rem;
+      color: #888;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      margin-top: 4px;
+    }
+
+    .kpi-detail {
+      font-size: 0.78rem;
+      color: #555;
+      margin-top: 6px;
+    }
+
+    .kpi-detail .trend-up { color: #137333; }
+    .kpi-detail .trend-down { color: #c5221f; }
+    .kpi-detail .trend-flat { color: #888; }
+
+    .dash-section {
+      margin-bottom: 32px;
+    }
+
+    .dash-section h3 {
+      font-size: 1rem;
+      font-weight: 600;
+      margin: 0 0 14px;
+      color: #1f1f1f;
+    }
+
+    .dash-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 24px;
+      margin-bottom: 32px;
+    }
+
+    /* Stacked bar rows */
+    .stacked-bar-chart { display: flex; flex-direction: column; gap: 6px; }
+
+    .stacked-bar-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .stacked-bar-label {
+      width: 80px;
+      font-size: 0.82rem;
+      color: #555;
+      text-align: right;
+      flex-shrink: 0;
+    }
+
+    .stacked-bar-track {
+      flex: 1;
+      background: #f0f0f0;
+      border-radius: 4px;
+      height: 22px;
+      display: flex;
+      overflow: hidden;
+    }
+
+    .stacked-bar-segment {
+      height: 100%;
+      min-width: 1px;
+      transition: width 0.3s;
+    }
+
+    .stacked-bar-count {
+      width: 36px;
+      font-size: 0.82rem;
+      font-weight: 600;
+      color: #1f1f1f;
+      flex-shrink: 0;
+    }
+
+    /* Pipeline */
+    .pipeline-bar {
+      display: flex;
+      height: 36px;
+      border-radius: 6px;
+      overflow: hidden;
+      margin-bottom: 8px;
+    }
+
+    .pipeline-segment {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.75rem;
+      font-weight: 600;
+      min-width: 28px;
+      transition: width 0.3s;
+    }
+
+    .pipeline-legend {
+      display: flex;
+      gap: 14px;
+      flex-wrap: wrap;
+      font-size: 0.78rem;
+      color: #555;
+    }
+
+    .pipeline-legend-item {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .pipeline-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    /* Horizontal bar chart */
+    .h-bar-chart { display: flex; flex-direction: column; gap: 5px; }
+
+    .h-bar-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .h-bar-label {
+      width: 200px;
+      font-size: 0.8rem;
+      color: #555;
+      text-align: right;
+      flex-shrink: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .h-bar-track {
+      flex: 1;
+      background: #f0f0f0;
+      border-radius: 4px;
+      height: 20px;
+      overflow: hidden;
+    }
+
+    .h-bar-fill {
+      height: 100%;
+      border-radius: 4px;
+      min-width: 2px;
+      transition: width 0.3s;
+    }
+
+    .h-bar-count {
+      width: 32px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: #1f1f1f;
+      flex-shrink: 0;
+    }
+
+    /* Heatmap */
+    .heatmap-wrap { overflow-x: auto; }
+
+    .heatmap {
+      border-collapse: collapse;
+      background: #fff;
+      border: 1px solid #e5e7eb;
+      border-radius: 8px;
+      overflow: hidden;
+      font-size: 0.82rem;
+      width: 100%;
+    }
+
+    .heatmap th {
+      padding: 8px 10px;
+      font-size: 0.68rem;
+      font-weight: 600;
+      color: #666;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+      background: #f8f9fa;
+      border-bottom: 1px solid #ddd;
+      text-align: center;
+      max-width: 100px;
+      white-space: normal;
+      line-height: 1.3;
+    }
+
+    .heatmap th:first-child { text-align: left; max-width: none; white-space: nowrap; min-width: 240px; }
+
+    .heatmap td {
+      padding: 8px 10px;
+      text-align: center;
+      border-bottom: 1px solid #eee;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .heatmap td:first-child {
+      text-align: left;
+      font-weight: 500;
+      color: #333;
+      min-width: 240px;
+    }
+
+    .heatmap tr:last-child td { border-bottom: none; }
+
+    .hm-cell {
+      display: inline-block;
+      min-width: 28px;
+      padding: 3px 8px;
+      border-radius: 4px;
+      font-weight: 600;
+    }
+
+    .hm-0 { color: #ccc; }
+    .hm-low { background: #ede9fe; color: #5b21b6; }
+    .hm-med { background: #c4b5fd; color: #4c1d95; }
+    .hm-high { background: #6d28d9; color: #fff; }
+
+    .hm-gap {
+      color: #c5221f;
+      font-size: 0.75rem;
+      font-weight: 600;
+    }
+
+    .heatmap-legend {
+      display: flex;
+      gap: 14px;
+      margin-top: 10px;
+      font-size: 0.75rem;
+      color: #666;
+      align-items: center;
+    }
+
+    .heatmap-legend-swatch {
+      display: inline-block;
+      width: 14px;
+      height: 14px;
+      border-radius: 3px;
+      vertical-align: middle;
+      margin-right: 4px;
+    }
+
+    .dash-table .mini-bar-fill { background: #6d28d9; }
+    .dash-table .mini-bar { background: #ede9fe; }
+
+    @media (max-width: 768px) {
+      .dash-grid { grid-template-columns: 1fr; }
+      .kpi-row { grid-template-columns: repeat(2, 1fr); }
+      .h-bar-label { width: 120px; }
+      .stacked-bar-label { width: 60px; }
+    }
+
+    /* Action & priority badges */
+    .action-badge {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 10px;
+      font-size: 0.7rem;
+      font-weight: 400;
+      white-space: nowrap;
+      background: transparent;
+      border: 1px solid #dadce0;
+      color: #3c4043;
+    }
+
+    .priority-badge {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 10px;
+      font-size: 0.7rem;
+      font-weight: 400;
+      white-space: nowrap;
+      background: transparent;
+      border: 1px solid #dadce0;
+      color: #3c4043;
+    }
+
+    .tier-badge {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 10px;
+      font-size: 0.7rem;
+      font-weight: 400;
+      white-space: nowrap;
+      background: transparent;
+      border: 1px solid #dadce0;
+      color: #3c4043;
+    }
+
+    .flag-badge {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 10px;
+      font-size: 0.68rem;
+      font-weight: 400;
+      white-space: nowrap;
+      margin: 1px 0;
+      background: transparent;
+      border: 1px solid #dadce0;
+      color: #3c4043;
+    }
+    .perf-cell { display: inline-flex; gap: 4px; flex-wrap: wrap; align-items: center; }
+
+    .rs-text {
+      font-size: 0.72rem;
+      font-weight: 600;
+      white-space: nowrap;
+      margin-bottom: 3px;
+    }
+    .rs-action-needed { color: #e37400; }
+    .rs-pending-review { color: #1a73e8; }
+    .rs-complete { color: #137333; }
+    .rs-resubmit { color: #c5221f; }
+
+    /* Action banner */
+    .action-banner {
+      border-radius: 8px;
+      padding: 16px;
+      margin-bottom: 16px;
+    }
+    .action-banner.action-needed { background: #fef7e0; border: 1px solid #f9d67a; }
+    .action-banner.response-pending { background: #e8f0fe; border: 1px solid #a8c7fa; }
+    .action-banner.action-complete { background: #e6f4ea; border: 1px solid #a8dab5; }
+    .action-banner .banner-title {
+      font-size: 0.75rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      margin-bottom: 8px;
+    }
+    .action-banner.action-needed .banner-title { color: #e37400; }
+    .action-banner.response-pending .banner-title { color: #1a73e8; }
+    .action-banner.action-complete .banner-title { color: #137333; }
+    .action-banner .banner-detail { font-size: 0.85rem; color: #333; margin: 6px 0; }
+    .action-banner .banner-reason { font-size: 0.82rem; color: #555; margin: 4px 0; line-height: 1.5; }
+    .action-banner .banner-perf { display: flex; gap: 14px; flex-wrap: wrap; font-size: 0.78rem; color: #777; margin-top: 8px; }
+
+    .response-form { margin-top: 12px; }
+    .response-form .form-row { margin-bottom: 10px; }
+    .response-form .form-row label { display: block; font-size: 0.78rem; font-weight: 600; color: #555; margin-bottom: 3px; }
+    .response-form .form-row select,
+    .response-form .form-row input,
+    .response-form .form-row textarea { width: 100%; padding: 7px 10px; border: 1px solid #ddd; border-radius: 5px; font-size: 0.85rem; font-family: inherit; }
+    .response-form .form-row textarea { resize: vertical; min-height: 50px; }
+    .response-form .form-actions { display: flex; gap: 8px; margin-top: 10px; }
+
+    .btn-primary { padding: 8px 18px; background: #1a73e8; color: #fff; border: none; border-radius: 5px; font-size: 0.85rem; font-weight: 600; cursor: pointer; }
+    .btn-primary:hover { background: #1557b0; }
+    .btn-primary:disabled { background: #ccc; cursor: default; }
+    .btn-secondary { padding: 8px 18px; background: #fff; color: #1a73e8; border: 1px solid #1a73e8; border-radius: 5px; font-size: 0.85rem; font-weight: 600; cursor: pointer; }
+    .btn-secondary:hover { background: #e8f0fe; }
+    .btn-danger { padding: 8px 18px; background: #c5221f; color: #fff; border: none; border-radius: 5px; font-size: 0.85rem; font-weight: 600; cursor: pointer; }
+    .btn-danger:hover { background: #a31b19; }
+
+    .admin-review { margin-top: 14px; padding-top: 14px; border-top: 1px solid rgba(0,0,0,0.1); }
+    .admin-review h4 { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.04em; color: #555; margin: 0 0 8px; }
+    .diff-row { display: flex; gap: 12px; font-size: 0.82rem; margin-bottom: 4px; }
+    .diff-field { font-weight: 600; color: #333; min-width: 140px; }
+    .diff-old { color: #c5221f; text-decoration: line-through; }
+    .diff-new { color: #137333; font-weight: 600; }
+    .review-actions { display: flex; gap: 8px; margin-top: 12px; }
+
+    /* Multi-select dropdown */
+    .multi-select { position: relative; display: inline-block; vertical-align: middle; }
+    .multi-select-btn { display: inline-flex; align-items: center; gap: 6px; padding: 8px 12px; border: 1px solid #ddd; border-radius: 6px; background: #fff; font-size: 0.85rem; cursor: pointer; min-width: 140px; color: #1f1f1f; }
+    .multi-select-btn .arrow { margin-left: auto; font-size: 0.6rem; color: #888; }
+    .multi-select-panel { display: none; position: absolute; top: calc(100% + 4px); left: 0; z-index: 100; background: #fff; border: 1px solid #dadce0; border-radius: 8px; box-shadow: 0 4px 16px rgba(0,0,0,0.12); width: 240px; max-height: 340px; overflow-y: auto; padding: 6px 0; }
+    .multi-select-panel.open { display: block; }
+    .ms-group { font-size: 0.65rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: #5f6368; padding: 10px 14px 4px; }
+    .ms-option { display: -webkit-flex; display: flex; -webkit-align-items: center; align-items: center; padding: 6px 14px; cursor: pointer; }
+    .ms-option:hover { background: #f1f3f4; }
+    .ms-option input[type=checkbox] { -webkit-flex-shrink: 0; flex-shrink: 0; width: 14px; height: 14px; margin: 0 10px 0 0; cursor: pointer; }
+    .ms-option .ms-label { -webkit-flex: 1; flex: 1; font-size: 0.82rem; color: #3c4043; }
+    .ms-option .ms-count { font-size: 0.72rem; color: #9aa0a6; }
+    .ms-divider { border-top: 1px solid #e8eaed; margin: 6px 0; }
+    .ms-reset { padding: 6px 14px; font-size: 0.78rem; color: #1a73e8; cursor: pointer; text-align: right; border-bottom: 1px solid #e8eaed; }
+
+    /* Edit metadata */
+    .edit-meta-panel { display: none; margin-top: 12px; }
+    .edit-meta-panel.visible { display: block; }
+
+    .detail-edit-actions { display: inline-flex; gap: 8px; align-items: center; }
+    .detail-sections.inline-editing { background: #f8fafd; border: 1px solid #c2d7f2; border-radius: 8px; padding: 16px 20px; margin-top: 12px; }
+    .detail-sections.inline-editing .detail-header-row h4 { color: #1a73e8; }
+    .kv-row-empty { display: none; }
+    .detail-sections.inline-editing .kv-row-empty { display: block; }
+    .kv-row.editing .kv-value { display: none; }
+    .kv-row .kv-input { display: none; }
+    .kv-row.editing .kv-input { display: inline-block; width: 60%; padding: 4px 8px; border: 1px solid #dadce0; border-radius: 4px; font-size: 0.85rem; font-family: inherit; background: #fff; }
+    .kv-row.editing .kv-input:focus { border-color: #1a73e8; outline: none; box-shadow: 0 0 0 2px rgba(26,115,232,0.15); }
+    .kv-row.editing .kv-input.changed { border-color: #1a73e8; background: #e8f0fe; }
+    .inline-edit-footer { grid-column: 1 / -1; display: flex; gap: 8px; align-items: center; justify-content: flex-end; padding-top: 12px; border-top: 1px solid #d4e3f5; margin-top: 8px; }
+
+    .toast { position: fixed; bottom: 24px; right: 24px; background: #1b7e2e; color: #fff; padding: 12px 20px; border-radius: 8px; font-size: 0.88rem; box-shadow: 0 4px 12px rgba(0,0,0,0.15); z-index: 200; animation: toastIn 0.2s; }
+    @keyframes toastIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+    @media (max-width: 768px) {
+      .controls-bar { flex-direction: column; align-items: stretch; }
+      .controls-right { flex-direction: column; }
+      .controls-right input { width: 100%; }
+      .hide-mobile { display: none; }
+      .detail-sections { grid-template-columns: 1fr; }
     }
   </style>
 </head>
 <body>
 
 <div class="header">
-  <h1 id="pageTitle">My Submissions</h1>
-  <div class="header-actions">
-    <a id="backLink" href="#" onclick="navigateToIntake(); return false;">Submit a new interactive demo</a>
+  <h1 id="pageTitle">Interactive Demo Tracker</h1>
+  <a href="#" onclick="navigateToIntake(); return false;">Submit a new interactive demo</a>
+</div>
+
+<div id="mainView">
+  <div class="controls-bar">
+    <div class="tabs">
+      <button class="tab active" data-tab="my" onclick="switchTab('my')">My Demos</button>
+      <button class="tab" data-tab="all" onclick="switchTab('all')">All Demos</button>
+      <button class="tab" data-tab="reports" onclick="switchTab('reports')">Reports</button>
+    </div>
+    <div class="controls-right">
+      <select id="statusFilter" onchange="onStatusFilterChange()">
+        <option value="" data-status="">All Statuses</option>
+        <option value="Processing" data-status="Processing">Processing</option>
+        <option value="Request Open" data-status="Request Open">Request Open</option>
+        <option value="Request Approved" data-status="Request Approved">Request Approved</option>
+        <option value="IE Received" data-status="IE Received">IE Received</option>
+        <option value="IE Reviewed" data-status="IE Reviewed">IE Reviewed</option>
+        <option value="IE Published" data-status="IE Published">IE Published</option>
+        <option value="IE Retired" data-status="IE Retired">IE Retired</option>
+        <option value="Closed" data-status="Closed">Closed</option>
+      </select>
+      <div class="multi-select" id="perfFilterWrap">
+        <button class="multi-select-btn" onclick="event.stopPropagation(); togglePerfPanel();" id="perfFilterBtn"><span>All Performance</span><span class="arrow">&#9662;</span></button>
+        <div class="multi-select-panel" id="perfFilterPanel">
+          <div id="perfResetBtn" class="ms-reset" style="display:none;" onclick="event.stopPropagation(); resetPerfFilter();">Reset</div>
+          <div class="ms-group">Tier</div>
+          <label class="ms-option"><input type="checkbox" value="tier:Top" onchange="onPerfFilterChange()"><span class="ms-label">Top</span><span class="ms-count" data-key="tier:Top"></span></label>
+          <label class="ms-option"><input type="checkbox" value="tier:Mid" onchange="onPerfFilterChange()"><span class="ms-label">Mid</span><span class="ms-count" data-key="tier:Mid"></span></label>
+          <label class="ms-option"><input type="checkbox" value="tier:Low" onchange="onPerfFilterChange()"><span class="ms-label">Low</span><span class="ms-count" data-key="tier:Low"></span></label>
+          <label class="ms-option"><input type="checkbox" value="tier:Inactive" onchange="onPerfFilterChange()"><span class="ms-label">Inactive</span><span class="ms-count" data-key="tier:Inactive"></span></label>
+          <div class="ms-divider"></div>
+          <div class="ms-group">Flags</div>
+          <label class="ms-option"><input type="checkbox" value="flag:High usage" onchange="onPerfFilterChange()"><span class="ms-label">High usage</span><span class="ms-count" data-key="flag:High usage"></span></label>
+          <label class="ms-option"><input type="checkbox" value="flag:High engagement" onchange="onPerfFilterChange()"><span class="ms-label">High engagement</span><span class="ms-count" data-key="flag:High engagement"></span></label>
+          <label class="ms-option"><input type="checkbox" value="flag:Low completion" onchange="onPerfFilterChange()"><span class="ms-label">Low completion</span><span class="ms-count" data-key="flag:Low completion"></span></label>
+          <label class="ms-option"><input type="checkbox" value="flag:High business impact" onchange="onPerfFilterChange()"><span class="ms-label">High business impact</span><span class="ms-count" data-key="flag:High business impact"></span></label>
+          <label class="ms-option"><input type="checkbox" value="flag:High-value niche" onchange="onPerfFilterChange()"><span class="ms-label">High-value niche</span><span class="ms-count" data-key="flag:High-value niche"></span></label>
+          <label class="ms-option"><input type="checkbox" value="flag:Low opportunity value" onchange="onPerfFilterChange()"><span class="ms-label">Low opportunity value</span><span class="ms-count" data-key="flag:Low opportunity value"></span></label>
+          <label class="ms-option"><input type="checkbox" value="flag:Sporadic activity" onchange="onPerfFilterChange()"><span class="ms-label">Sporadic activity</span><span class="ms-count" data-key="flag:Sporadic activity"></span></label>
+        </div>
+      </div>
+      <div class="multi-select" id="actionFilterWrap">
+        <button class="multi-select-btn" onclick="event.stopPropagation(); toggleActionPanel();" id="actionFilterBtn"><span>All Actions</span><span class="arrow">&#9662;</span></button>
+        <div class="multi-select-panel" id="actionFilterPanel">
+          <div id="actionResetBtn" class="ms-reset" style="display:none;" onclick="event.stopPropagation(); resetActionFilter();">Reset</div>
+          <div class="ms-group">Action Type</div>
+          <label class="ms-option"><input type="checkbox" value="action:Improve completion" onchange="onActionFilterChange()"><span class="ms-label">Improve completion</span><span class="ms-count" data-action-key="action:Improve completion"></span></label>
+          <label class="ms-option"><input type="checkbox" value="action:Boost sales impact" onchange="onActionFilterChange()"><span class="ms-label">Boost sales impact</span><span class="ms-count" data-action-key="action:Boost sales impact"></span></label>
+          <label class="ms-option"><input type="checkbox" value="action:Consider retirement" onchange="onActionFilterChange()"><span class="ms-label">Consider retirement</span><span class="ms-count" data-action-key="action:Consider retirement"></span></label>
+          <div class="ms-divider"></div>
+          <div class="ms-group">Priority</div>
+          <label class="ms-option"><input type="checkbox" value="priority:High" onchange="onActionFilterChange()"><span class="ms-label">High</span><span class="ms-count" data-action-key="priority:High"></span></label>
+          <label class="ms-option"><input type="checkbox" value="priority:Medium" onchange="onActionFilterChange()"><span class="ms-label">Medium</span><span class="ms-count" data-action-key="priority:Medium"></span></label>
+          <label class="ms-option"><input type="checkbox" value="priority:Low" onchange="onActionFilterChange()"><span class="ms-label">Low</span><span class="ms-count" data-action-key="priority:Low"></span></label>
+          <div class="ms-divider"></div>
+          <div class="ms-group">Response Status</div>
+          <label class="ms-option"><input type="checkbox" value="response:Action needed" onchange="onActionFilterChange()"><span class="ms-label">Action needed</span><span class="ms-count" data-action-key="response:Action needed"></span></label>
+          <label class="ms-option"><input type="checkbox" value="response:Pending review" onchange="onActionFilterChange()"><span class="ms-label">Pending review</span><span class="ms-count" data-action-key="response:Pending review"></span></label>
+          <label class="ms-option"><input type="checkbox" value="response:Complete" onchange="onActionFilterChange()"><span class="ms-label">Complete</span><span class="ms-count" data-action-key="response:Complete"></span></label>
+          <label class="ms-option"><input type="checkbox" value="response:Resubmit required" onchange="onActionFilterChange()"><span class="ms-label">Resubmit required</span><span class="ms-count" data-action-key="response:Resubmit required"></span></label>
+        </div>
+      </div>
+      <input type="text" id="searchInput" placeholder="Search title or creator..." oninput="onSearchInput()">
+      <button id="resetAllFiltersBtn" class="reset-all-btn" style="display:none;" onclick="resetAllFilters()">Reset all</button>
+    </div>
   </div>
+
+  <div id="resultsCount" class="results-count"></div>
+
+  <div id="tableWrapper" class="table-wrapper" style="display:none;">
+    <table>
+      <thead>
+        <tr>
+          <th class="sortable" data-sort="title" onclick="onSortClick('title')" style="width:28%;">Title</th>
+          <th class="hide-mobile" style="width:7%;">Live Page</th>
+          <th class="sortable" data-sort="creatorName" onclick="onSortClick('creatorName')" style="width:15%;">Creator</th>
+          <th class="sortable" data-sort="status" onclick="onSortClick('status')" style="width:10%;">Status</th>
+          <th class="sortable sort-desc" data-sort="dateSubmitted" onclick="onSortClick('dateSubmitted')" style="width:12%;">Submitted</th>
+          <th class="sortable" data-sort="perfTier" onclick="onSortClick('perfTier')" style="width:16%;">Performance</th>
+          <th class="sortable" data-sort="perfAction" onclick="onSortClick('perfAction')" style="width:12%;">Recommendation</th>
+        </tr>
+      </thead>
+      <tbody id="tableBody"></tbody>
+    </table>
+  </div>
+  <div id="reportsView" class="reports-container" style="display:none;"></div>
 </div>
 
-<div id="searchSection" style="margin-bottom: 16px;">
-  <input type="text" id="searchInput" placeholder="Search by creator name..."
-    oninput="onSearchInput()"
-    style="width:100%; padding:10px 14px; border:1px solid #ddd; border-radius:6px; font-size:0.95rem; box-sizing:border-box;">
-</div>
-
-<div id="loadingState" class="loading">Loading your submissions...</div>
+<div id="tokenView" style="display:none;"></div>
+<div id="loadingState" class="loading">Loading submissions...</div>
 <div id="errorState" class="error-message" style="display:none;"></div>
-<div id="processingState" class="processing-message" style="display:none;">
-  <p>Your submission is being processed.</p>
-  <p>This usually takes a minute or two. Check back shortly.</p>
-</div>
 <div id="emptyState" class="empty-state" style="display:none;">
   <p>No submissions found.</p>
   <p>Once you submit an interactive demo, you can track its status here.</p>
 </div>
-<div id="submissionsList"></div>
+<div id="processingState" class="processing-message" style="display:none;">
+  <p>Your submission is being processed.</p>
+  <p>This usually takes a minute or two. Check back shortly.</p>
+</div>
 
 <script>
-  function navigateToIntake() {
-    var baseUrl = getBaseUrl();
-    window.top.location.href = baseUrl;
-  }
+  var webAppBaseUrl = <?!= JSON.stringify(webAppBaseUrl) ?>;
+  var serverToken = <?!= JSON.stringify(token) ?>;
 
-  function getBaseUrl() {
-    var url = '';
+  var allSubmissions = [];
+  var userEmail = '';
+  var isAdmin = false;
+  var activeTab = 'my';
+  var currentSort = { key: 'dateSubmitted', dir: 'desc' };
+  var currentStatusFilter = '';
+  var currentPerfFilters = [];
+  var currentActionFilters = [];
+  var currentSearch = '';
+  var EDITABLE_FIELDS = [];
+
+  function trackEvent(eventType, metadata) {
     try {
-      url = window.location.href.split('?')[0];
+      google.script.run.logAnalyticsEventFromClient(eventType, {
+        metadata: metadata || {}
+      });
     } catch (e) {}
-    return url || '';
   }
 
-  function getUrlParam(name) {
-    try {
-      var params = new URLSearchParams(window.location.search);
-      return params.get(name) || '';
-    } catch (e) {
-      return '';
-    }
+  var LIFECYCLE_STAGES = [
+    { key: 'open',      label: 'Request Open' },
+    { key: 'approved',  label: 'Request Approved' },
+    { key: 'received',  label: 'IE Received' },
+    { key: 'reviewed',  label: 'IE Reviewed' },
+    { key: 'published', label: 'IE Published' },
+    { key: 'retired',   label: 'IE Retired' },
+    { key: 'closed',    label: 'Closed' }
+  ];
+
+  function quarterToDate(q) {
+    if (!q) return '';
+    var m = q.match(/CY(\d{2})Q([1-4])/i);
+    if (!m) return '';
+    var year = 2000 + parseInt(m[1], 10);
+    var month = (parseInt(m[2], 10) - 1) * 3;
+    return new Date(year, month, 1).toISOString();
+  }
+
+  function getDisplayDate(sub) {
+    if (sub.status === 'Processing') return sub.dateSubmitted || '';
+    return sub.dateSubmitted || sub.publishedDate || quarterToDate(sub.quarter);
+  }
+
+  function navigateToIntake() {
+    window.top.location.href = webAppBaseUrl;
   }
 
   function escapeHtml(str) {
@@ -231,7 +1074,7 @@
   }
 
   function getStatusClass(status) {
-    var s = (status || '').toLowerCase().replace(/[^a-z0-9-]/g, '').replace(/\s+/g, '-');
+    var s = (status || '').toLowerCase().trim().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
     return 'status-' + s;
   }
 
@@ -239,100 +1082,1570 @@
     if (!dateStr) return '';
     try {
       var d = new Date(dateStr);
-      if (isNaN(d.getTime())) return dateStr;
+      if (isNaN(d.getTime())) return String(dateStr);
       return d.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
     } catch (e) {
-      return dateStr;
+      return String(dateStr);
+    }
+  }
+
+  function formatDateShort(dateStr) {
+    if (!dateStr) return '';
+    try {
+      var d = new Date(dateStr);
+      if (isNaN(d.getTime())) return '';
+      return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    } catch (e) {
+      return '';
     }
   }
 
   function renderLink(url, label) {
-    if (!url) return '<span style="color:#aaa;">—</span>';
-    if (!/^https?:\/\//i.test(url)) return '<span>' + escapeHtml(url) + '</span>';
-    return '<a href="' + escapeHtml(url) + '" target="_blank">' + escapeHtml(label || url) + '</a>';
+    if (!url) return '';
+    if (!/^https?:\/\//i.test(url)) return '';
+    return '<a href="' + escapeHtml(url) + '" target="_blank" onclick="event.stopPropagation();">' + escapeHtml(label || 'Open') + '</a>';
   }
 
-  function renderSubmissionCard(sub, index) {
-    var card = document.createElement('div');
-    card.className = 'card card-clickable';
-    card.setAttribute('data-index', index);
+  function getActionBadgeClass(action) {
+    if (!action || action === 'No action needed') return '';
+    if (action.indexOf('completion') !== -1) return 'action-improve-cr';
+    if (action.indexOf('sales') !== -1) return 'action-improve-mt';
+    if (action.indexOf('retirement') !== -1) return 'action-retire';
+    if (action.indexOf('page') !== -1) return 'action-create-page';
+    if (action.indexOf('visibility') !== -1) return 'action-promotion';
+    if (action.indexOf('linkage') !== -1) return 'action-verify';
+    if (action.indexOf('review') !== -1) return 'action-review';
+    return '';
+  }
 
-    var summary = document.createElement('div');
-    summary.className = 'card-summary';
-    summary.innerHTML =
-      '<div>' +
-        '<p class="card-title">' + escapeHtml(sub.title || 'Untitled Submission') + '</p>' +
-        '<p class="card-meta">' +
-          escapeHtml(sub.primaryProduct || '') +
-          (sub.primaryProduct && sub.dateSubmitted ? ' · ' : '') +
-          (sub.dateSubmitted ? 'Submitted ' + formatDate(sub.dateSubmitted) : '') +
-        '</p>' +
-      '</div>' +
-      '<span class="status-badge ' + getStatusClass(sub.status) + '">' +
-        escapeHtml(sub.status || 'Unknown') +
-      '</span>';
+  function getPriorityBadgeClass(p) {
+    if (p === 'High') return 'priority-high';
+    if (p === 'Medium') return 'priority-medium';
+    if (p === 'Low') return 'priority-low';
+    return '';
+  }
 
-    var detail = document.createElement('div');
-    detail.className = 'card-detail';
-    detail.id = 'detail-' + index;
-    detail.innerHTML =
-      '<div class="detail-grid">' +
-        '<div class="detail-item"><label>Content Type</label><span>' + escapeHtml(sub.contentType || '—') + '</span></div>' +
-        '<div class="detail-item"><label>Primary Product</label><span>' + escapeHtml(sub.primaryProduct || '—') + '</span></div>' +
-        '<div class="detail-item"><label>Creator</label><span>' + escapeHtml(sub.creatorName || '—') + '</span></div>' +
-        '<div class="detail-item"><label>Requestor</label><span>' + escapeHtml(sub.requestorName || '—') + '</span></div>' +
-        '<div class="detail-item"><label>Creation Link</label>' + renderLink(sub.creationLink, 'Open in editor') + '</div>' +
-        '<div class="detail-item"><label>Drupal Page</label>' + renderLink(sub.drupalPageUrl, 'View live page') + '</div>' +
-        '<div class="detail-item"><label>Date Submitted</label><span>' + escapeHtml(formatDate(sub.dateSubmitted) || '—') + '</span></div>' +
-        '<div class="detail-item"><label>Published Date</label><span>' + escapeHtml(formatDate(sub.publishedDate) || '—') + '</span></div>' +
-      '</div>';
+  function getTierBadgeClass(t) {
+    if (t === 'Top') return 'tier-top';
+    if (t === 'Mid') return 'tier-mid';
+    if (t === 'Low') return 'tier-low';
+    if (t === 'Inactive') return 'tier-inactive';
+    return '';
+  }
 
-    card.appendChild(summary);
-    card.appendChild(detail);
+  var CREATOR_ACTIONS = ['Improve completion', 'Boost sales impact', 'Consider retirement'];
+  var ADMIN_ACTIONS = ['Review data linkage', 'Create page', 'Increase visibility', 'Needs review'];
 
-    card.addEventListener('click', function() {
-      var d = document.getElementById('detail-' + index);
-      d.classList.toggle('expanded');
+  function isCreatorAction(action) {
+    return action && CREATOR_ACTIONS.indexOf(action) !== -1;
+  }
+
+  function hasAction(sub) {
+    return sub.perfAction && sub.perfAction !== 'No action needed';
+  }
+
+  function getResponseStatus_(sub) {
+    if (!hasAction(sub) || !isCreatorAction(sub.perfAction)) return null;
+    var s = (sub.perfActionStatus || '').trim();
+    if (s === 'Completed') return 'Complete';
+    if (s === 'Pending Review') return 'Pending review';
+    if (s === 'Resubmit') return 'Resubmit required';
+    return 'Action needed';
+  }
+
+  function matchesActionFilters_(s) {
+    var actions = [];
+    var priorities = [];
+    var responses = [];
+    for (var i = 0; i < currentActionFilters.length; i++) {
+      var parts = currentActionFilters[i].split(':');
+      var val = parts.slice(1).join(':');
+      if (parts[0] === 'action') actions.push(val);
+      else if (parts[0] === 'priority') priorities.push(val);
+      else if (parts[0] === 'response') responses.push(val);
+    }
+    if (actions.length && actions.indexOf(s.perfAction) === -1) return false;
+    if (priorities.length && (!isCreatorAction(s.perfAction) || priorities.indexOf(s.perfActionPriority) === -1)) return false;
+    if (responses.length) {
+      var rs = getResponseStatus_(s);
+      if (!rs || responses.indexOf(rs) === -1) return false;
+    }
+    return true;
+  }
+
+  // --- Filtering, sorting, rendering ---
+
+  function applyFilters_(pool, exclude) {
+    if (exclude !== 'status' && currentStatusFilter) {
+      pool = pool.filter(function(s) { return s.status === currentStatusFilter; });
+    }
+    if (exclude !== 'perf' && currentPerfFilters.length) {
+      pool = pool.filter(function(s) {
+        var flags = s.perfFlags ? s.perfFlags.split(',').map(function(f) { return f.trim(); }) : [];
+        return currentPerfFilters.every(function(pf) {
+          var parts = pf.split(':');
+          if (parts[0] === 'tier') return s.perfTier === parts[1];
+          return flags.indexOf(parts[1]) !== -1;
+        });
+      });
+    }
+    if (exclude !== 'action' && currentActionFilters.length) {
+      pool = pool.filter(function(s) { return matchesActionFilters_(s); });
+    }
+    if (currentSearch) {
+      var term = currentSearch.toLowerCase();
+      pool = pool.filter(function(s) {
+        return (s.title || '').toLowerCase().indexOf(term) !== -1
+            || (s.creatorName || '').toLowerCase().indexOf(term) !== -1;
+      });
+    }
+    return pool;
+  }
+
+  function getFilteredSubmissions() {
+    var pool = allSubmissions;
+
+    if (activeTab === 'my' && !isAdmin) {
+      pool = pool.filter(function(s) { return s.isMine; });
+    }
+
+    if (currentStatusFilter) {
+      pool = pool.filter(function(s) { return s.status === currentStatusFilter; });
+    }
+
+    if (currentPerfFilters.length) {
+      pool = pool.filter(function(s) {
+        var flags = s.perfFlags ? s.perfFlags.split(',').map(function(f) { return f.trim(); }) : [];
+        return currentPerfFilters.every(function(pf) {
+          var parts = pf.split(':');
+          if (parts[0] === 'tier') return s.perfTier === parts[1];
+          return flags.indexOf(parts[1]) !== -1;
+        });
+      });
+    }
+
+    if (currentActionFilters.length) {
+      pool = pool.filter(function(s) { return matchesActionFilters_(s); });
+    }
+
+    if (currentSearch) {
+      var term = currentSearch.toLowerCase();
+      pool = pool.filter(function(s) {
+        return (s.title || '').toLowerCase().indexOf(term) !== -1
+            || (s.creatorName || '').toLowerCase().indexOf(term) !== -1;
+      });
+    }
+
+    pool = pool.slice().sort(function(a, b) {
+      var va = a[currentSort.key] || '';
+      var vb = b[currentSort.key] || '';
+
+      if (currentSort.key === 'dateSubmitted') {
+        va = getDisplayDate(a);
+        vb = getDisplayDate(b);
+        va = va ? new Date(va).getTime() : 0;
+        vb = vb ? new Date(vb).getTime() : 0;
+      } else if (currentSort.key === 'perfActionPriority') {
+        var pOrder = { High: 0, Medium: 1, Low: 2 };
+        va = pOrder[a.perfActionPriority] != null ? pOrder[a.perfActionPriority] : 3;
+        vb = pOrder[b.perfActionPriority] != null ? pOrder[b.perfActionPriority] : 3;
+      } else {
+        va = String(va).toLowerCase();
+        vb = String(vb).toLowerCase();
+      }
+
+      if (va < vb) return currentSort.dir === 'asc' ? -1 : 1;
+      if (va > vb) return currentSort.dir === 'asc' ? 1 : -1;
+      return 0;
     });
 
-    return card;
+    return pool;
   }
 
-  function renderSubmissions(submissions) {
-    var list = document.getElementById('submissionsList');
-    var loading = document.getElementById('loadingState');
-    var empty = document.getElementById('emptyState');
+  function renderTable() {
+    var tbody = document.getElementById('tableBody');
+    tbody.innerHTML = '';
 
-    loading.style.display = 'none';
+    var filtered = getFilteredSubmissions();
+    var myCount = isAdmin ? allSubmissions.length : allSubmissions.filter(function(s) { return s.isMine; }).length;
 
-    if (!submissions || submissions.length === 0) {
-      empty.style.display = 'block';
+    document.querySelector('[data-tab="my"]').textContent = 'My Demos (' + myCount + ')';
+    document.querySelector('[data-tab="all"]').textContent = 'All Demos (' + allSubmissions.length + ')';
+
+    var tabTotal = activeTab === 'my' && !isAdmin ? myCount : allSubmissions.length;
+    document.getElementById('resultsCount').textContent = 'Showing ' + filtered.length + ' of ' + tabTotal;
+
+    var basePool = activeTab === 'my' && !isAdmin
+      ? allSubmissions.filter(function(s) { return s.isMine; })
+      : allSubmissions;
+    updateStatusFilterCounts(applyFilters_(basePool, 'status'), filtered.length);
+    updatePerfFilterCounts(applyFilters_(basePool, 'perf'), filtered.length);
+    updateActionFilterCounts(applyFilters_(basePool, 'action'), filtered.length);
+
+    var anyFilter = currentStatusFilter || currentPerfFilters.length || currentActionFilters.length || currentSearch;
+    var resetAllBtn = document.getElementById('resetAllFiltersBtn');
+    if (resetAllBtn) resetAllBtn.style.display = anyFilter ? '' : 'none';
+
+    if (filtered.length === 0) {
+      document.getElementById('tableWrapper').style.display = 'none';
+      document.getElementById('emptyState').style.display = 'block';
       return;
     }
 
-    for (var i = 0; i < submissions.length; i++) {
-      list.appendChild(renderSubmissionCard(submissions[i], i));
+    document.getElementById('emptyState').style.display = 'none';
+    document.getElementById('tableWrapper').style.display = 'block';
+
+    // Update sort indicators on headers
+    document.querySelectorAll('th.sortable').forEach(function(th) {
+      th.classList.remove('sort-asc', 'sort-desc');
+      if (th.getAttribute('data-sort') === currentSort.key) {
+        th.classList.add(currentSort.dir === 'asc' ? 'sort-asc' : 'sort-desc');
+      }
+    });
+
+    for (var i = 0; i < filtered.length; i++) {
+      var sub = filtered[i];
+      var tr = document.createElement('tr');
+      tr.className = 'data-row';
+      var isProcessing = sub.status === 'Processing';
+
+      var drupalHtml = sub.drupalPageUrl && /^https?:\/\//i.test(sub.drupalPageUrl)
+        ? '<a href="' + escapeHtml(sub.drupalPageUrl) + '" target="_blank" onclick="event.stopPropagation();">View</a>'
+        : '<span class="no-link">—</span>';
+
+      var perfHtml = '';
+      if (sub.perfTier && sub.perfTier !== 'Inactive') {
+        perfHtml += '<span class="tier-badge ' + getTierBadgeClass(sub.perfTier) + '">Tier: ' + escapeHtml(sub.perfTier) + '</span>';
+      }
+      if (sub.perfFlags) {
+        var allFlags = sub.perfFlags.split(',');
+        for (var fi = 0; fi < allFlags.length; fi++) {
+          var flag = allFlags[fi].trim();
+          if (flag) {
+            var fc = flag.indexOf('Low') === 0 || flag.indexOf('Sporadic') === 0 ? 'flag-negative' : flag.indexOf('High') === 0 ? 'flag-positive' : 'flag-neutral';
+            perfHtml += '<span class="flag-badge ' + fc + '">' + escapeHtml(flag) + '</span>';
+          }
+        }
+      }
+
+      var actionTags = '';
+      if (hasAction(sub) && isCreatorAction(sub.perfAction)) {
+        var rs = getResponseStatus_(sub);
+        var rc = rs === 'Complete' ? 'rs-complete' : rs === 'Pending review' ? 'rs-pending-review' : rs === 'Resubmit required' ? 'rs-resubmit' : 'rs-action-needed';
+        actionTags = '<div class="rs-text ' + rc + '">' + escapeHtml(rs) + '</div>' +
+          '<div><span class="action-badge ' + getActionBadgeClass(sub.perfAction) + '">' + escapeHtml(sub.perfAction) + '</span>' +
+          (sub.perfActionPriority ? ' <span class="priority-badge ' + getPriorityBadgeClass(sub.perfActionPriority) + '">Priority: ' + escapeHtml(sub.perfActionPriority) + '</span>' : '') +
+          '</div>';
+      }
+
+      tr.innerHTML =
+        '<td class="title-cell">' + (isProcessing ? '' : '<span class="row-chevron">&#9654;</span>') + escapeHtml(sub.title || 'Untitled') + '</td>' +
+        '<td class="drupal-cell hide-mobile">' + drupalHtml + '</td>' +
+        '<td class="creator-cell" title="' + escapeHtml(sub.creatorName || '') + '">' + escapeHtml(sub.creatorName || '—') + '</td>' +
+        '<td><span class="status-badge ' + getStatusClass(sub.status) + '">' + escapeHtml(sub.status || '—') + '</span></td>' +
+        '<td class="date-cell">' + formatDate(getDisplayDate(sub)) + '</td>' +
+        '<td><span class="perf-cell">' + perfHtml + '</span></td>' +
+        '<td><div class="action-tags">' + actionTags + '</div></td>';
+
+      if (!isProcessing) {
+        tr.addEventListener('click', (function(submission, row) {
+          return function() { toggleDetailRow(submission, row); };
+        })(sub, tr));
+      } else {
+        tr.style.cursor = 'default';
+      }
+
+      tbody.appendChild(tr);
     }
   }
 
-  function showError(message) {
+  // --- Row expansion ---
+
+  function toggleDetailRow(sub, row) {
+    var existing = row.nextElementSibling;
+    if (existing && existing.classList.contains('detail-row')) {
+      existing.remove();
+      row.classList.remove('expanded');
+      return;
+    }
+
+    trackEvent('submission_detail_view', { status: sub.status, title: sub.title });
+    document.querySelectorAll('.detail-row').forEach(function(r) { r.remove(); });
+    document.querySelectorAll('.data-row.expanded').forEach(function(r) { r.classList.remove('expanded'); });
+
+    var detailTr = document.createElement('tr');
+    detailTr.className = 'detail-row';
+    var td = document.createElement('td');
+    td.setAttribute('colspan', '7');
+    td.innerHTML = '<div class="detail-panel">' + buildLifecycle(sub) + buildDetailSections(sub) + '</div>';
+    detailTr.appendChild(td);
+
+    row.parentNode.insertBefore(detailTr, row.nextSibling);
+    row.classList.add('expanded');
+  }
+
+  function buildLifecycle(sub) {
+    var ts = sub.statusTimestamps || {};
+    var currentStatus = (sub.status || '').trim();
+
+    var isCreatorOnly = (sub.originType || '').toLowerCase().indexOf('creator') !== -1
+                     && (sub.originType || '').toLowerCase().indexOf('no request') !== -1;
+
+    var stages = isCreatorOnly
+      ? LIFECYCLE_STAGES.filter(function(s) { return s.key !== 'open' && s.key !== 'approved'; })
+      : LIFECYCLE_STAGES;
+
+    var currentIdx = -1;
+    for (var i = 0; i < stages.length; i++) {
+      if (stages[i].label === currentStatus) {
+        currentIdx = i;
+        break;
+      }
+    }
+
+    var html = '<div class="lifecycle">';
+
+    for (var i = 0; i < stages.length; i++) {
+      var stage = stages[i];
+      var date = ts[stage.key] || '';
+      var state = i < currentIdx ? 'completed' : (i === currentIdx ? 'current' : 'future');
+
+      if (i > 0) {
+        var lineClass = i <= currentIdx ? (i === currentIdx ? 'current' : 'completed') : 'future';
+        html += '<div class="lc-connector"><div class="lc-line ' + lineClass + '"></div></div>';
+      }
+
+      var nodeContent = state === 'completed' ? '✓' : String(i + 1);
+      html += '<div class="lc-step">' +
+        '<div class="lc-node ' + state + ' stage-' + stage.key + '">' + nodeContent + '</div>' +
+        '<div class="lc-label">' + escapeHtml(stage.label) + '</div>' +
+        '<div class="lc-date">' + (formatDateShort(date) || '—') + '</div>' +
+        '</div>';
+    }
+
+    html += '</div>';
+    return html;
+  }
+
+  function buildDetailSections(sub) {
+    var canEdit = sub.isMine || isAdmin;
+    var linksHtml = '';
+    if (sub.creationLink && /^https?:\/\//i.test(sub.creationLink)) {
+      linksHtml += '<div class="link-row"><strong>Creation Link' +
+        (canEdit && !hasAction(sub) ? ' <a href="#" style="font-weight:400;font-size:0.72rem;" onclick="event.preventDefault();event.stopPropagation();toggleNewLink(\'' + sub.requestNumber + '\');">Update</a>' : '') +
+        '</strong><div class="link-desc">The link submitted by creator previously</div>' + renderLink(sub.creationLink, sub.creationLink) + '</div>';
+    } else if (canEdit && !hasAction(sub)) {
+      linksHtml += '<div class="link-row"><strong>Creation Link <a href="#" style="font-weight:400;font-size:0.72rem;" onclick="event.preventDefault();event.stopPropagation();toggleNewLink(\'' + sub.requestNumber + '\');">Add</a></strong><div class="link-desc">No creation link submitted yet</div></div>';
+    }
+    if (sub.productionLink && /^https?:\/\//i.test(sub.productionLink)) {
+      linksHtml += '<div class="link-row"><strong>Production Link</strong><div class="link-desc">Version-controlled copy, published for live use</div>' + renderLink(sub.productionLink, sub.productionLink) + '</div>';
+    }
+    if (sub.drupalPageUrl && /^https?:\/\//i.test(sub.drupalPageUrl)) {
+      linksHtml += '<div class="link-row"><strong>Demo Page</strong><div class="link-desc">The live page with production version</div>' + renderLink(sub.drupalPageUrl, sub.drupalPageUrl) + '</div>';
+    }
+
+    var descHtml = '';
+
+    var detailHtml = '';
+
+    if (linksHtml) {
+      detailHtml += '<div class="detail-section" style="grid-column: 1 / -1;"><div class="links-bar">' + linksHtml + '</div>';
+      if (canEdit && !hasAction(sub)) {
+        detailHtml += '<div class="edit-meta-panel" id="new-link-panel-' + sub.requestNumber + '">' +
+          '<div style="padding:12px 0; max-width:600px;">' +
+            '<label style="font-size:0.82rem; font-weight:600; color:#3c4043;">New Creation Link</label>' +
+            '<div style="font-size:0.72rem; color:#888; margin-bottom:6px;">Submit an updated Arcade link to replace the current creation link</div>' +
+            '<input type="text" id="standalone-link-' + sub.requestNumber + '" placeholder="https://app.arcade.software/share/..." style="width:100%; padding:8px 10px; border:1px solid #ddd; border-radius:6px; font-size:0.85rem; margin-bottom:8px;" onclick="event.stopPropagation();">' +
+            '<textarea id="standalone-link-notes-' + sub.requestNumber + '" placeholder="Notes (optional)" rows="2" style="width:100%; padding:8px 10px; border:1px solid #ddd; border-radius:6px; font-size:0.85rem; margin-bottom:8px; resize:vertical;" onclick="event.stopPropagation();"></textarea>' +
+            '<div style="display:flex; gap:8px;">' +
+              '<button class="btn-primary" onclick="event.stopPropagation(); submitNewLink(\'' + sub.requestNumber + '\');">Submit</button>' +
+              '<button class="btn-secondary" onclick="event.stopPropagation(); toggleNewLink(\'' + sub.requestNumber + '\');">Cancel</button>' +
+            '</div>' +
+          '</div>' +
+        '</div>';
+      }
+      detailHtml += '</div>';
+    }
+
+    // Metadata header with edit action
+    detailHtml += '<div class="detail-header-row" id="detail-header-' + sub.requestNumber + '" style="grid-column: 1 / -1; display:flex; justify-content:space-between; align-items:center; margin-bottom:-12px;">' +
+      '<h4 style="font-size:0.7rem;text-transform:uppercase;letter-spacing:0.04em;color:#888;margin:0;">Details</h4>' +
+      (canEdit ? '<span class="detail-edit-actions"><a href="#" style="font-size:0.78rem; color:#1a73e8;" onclick="event.preventDefault();event.stopPropagation();toggleEditMetadata(\'' + sub.requestNumber + '\');">Edit</a></span>' : '') +
+      '</div>';
+
+    // Left column: content info + audience + program
+    detailHtml += '<div class="detail-section"><div class="detail-kv">';
+    detailHtml += kvRow('Final Demo Title', sub.title, 'Final Demo Title');
+    detailHtml += kvRow('Product', sub.primaryProduct, 'Primary Product');
+    detailHtml += kvRow('Other Products', sub.otherProducts, 'Product');
+    detailHtml += kvRow('Content Type', sub.contentType, 'Content Type');
+    detailHtml += kvRow('Duration', sub.duration, 'Duration');
+    detailHtml += kvRow('Language', sub.language, 'Language');
+    detailHtml += kvRow('Quarter', sub.quarter, 'Quarter');
+    detailHtml += kvRow('Vertical', sub.vertical, 'Verticals');
+    detailHtml += kvRow('Event', sub.event, 'Event');
+    detailHtml += kvRow('TDP', sub.tdp, 'TDP');
+    detailHtml += kvRow('Sales Tactic', sub.salesTactic, 'Sales Tactic');
+    detailHtml += kvRow('Marketing Program', sub.marketingProgram, 'Marketing Program');
+    detailHtml += kvRow('Primary Audience', sub.primaryAudience, 'Primary Audience');
+    detailHtml += kvRow('Personas', sub.personas, 'Personas');
+    detailHtml += kvRow('Pain Points', sub.painPoints, 'Pain Points');
+    detailHtml += kvRow('SEO Words', sub.seoWords, 'SEOWords');
+    detailHtml += kvRow('SEO Description', sub.descriptionForSeo, 'Description for SEO');
+    detailHtml += '</div></div>';
+
+    // Right column: people + technical
+    detailHtml += '<div class="detail-section"><div class="detail-kv">';
+    detailHtml += kvRow('Creator', sub.creatorName, 'Creator Name');
+    detailHtml += kvRow('Creator Team', sub.creatorTeam, 'Creator Team');
+    detailHtml += '</div></div>';
+
+    // Description as full-width row inside grid
+    var desc = sub.description || '';
+    var descFormatted = escapeHtml(desc).replace(/\n/g, '<br>');
+    var truncated = desc.length > 200;
+    var shortDesc = truncated ? escapeHtml(desc.substring(0, 200) + '...').replace(/\n/g, '<br>') : '';
+    detailHtml += '<div class="detail-section" style="grid-column: 1 / -1;">' +
+      '<h4 style="font-size:0.7rem;text-transform:uppercase;letter-spacing:0.04em;color:#888;margin:0 0 8px;">Description</h4>' +
+      '<div class="desc-block" data-field="Demo Description" data-original="' + escapeHtml(desc) + '">' +
+      (desc
+        ? (truncated
+          ? '<div class="detail-desc desc-read desc-short">' + shortDesc + '</div>' +
+            '<div class="detail-desc desc-read desc-full" style="display:none;">' + descFormatted + '</div>' +
+            '<button class="desc-toggle desc-read" onclick="event.stopPropagation(); toggleDesc(this);">Show more</button>'
+          : '<div class="detail-desc desc-read">' + descFormatted + '</div>')
+        : '<div class="detail-desc desc-read" style="color:#aaa;font-style:italic;">No description</div>') +
+      '</div></div>';
+
+    // CTA links as full-width clickable list
+    if (sub.ctaLink) {
+      var ctaLines = sub.ctaLink.split(/[\n\r]+/).filter(function(l) { return l.trim(); });
+      var ctaHtml = '<div class="detail-section" style="grid-column: 1 / -1;"><h4>Call-to-Action Links</h4><div class="cta-list">';
+      for (var c = 0; c < ctaLines.length; c++) {
+        var line = ctaLines[c].trim();
+        var urlMatch = line.match(/(https?:\/\/[^\s]+)/);
+        if (urlMatch) {
+          var label = line.replace(urlMatch[0], '').replace(/^\s*[-:]\s*|\s*[-:]\s*$/g, '').trim();
+          ctaHtml += '<div class="cta-item">' + renderLink(urlMatch[0], label || urlMatch[0]) + '</div>';
+        } else {
+          ctaHtml += '<div class="cta-item">' + escapeHtml(line) + '</div>';
+        }
+      }
+      ctaHtml += '</div></div>';
+      detailHtml += ctaHtml;
+    }
+
+    // Reference row
+    var metaHtml = '<div class="detail-meta-row">' +
+      '<h4 style="font-size:0.7rem;text-transform:uppercase;letter-spacing:0.04em;color:#888;margin:0;width:100%;">Reference</h4>';
+    if (sub.originType) metaHtml += '<span><span class="label">Origin:</span> ' + escapeHtml(sub.originType) + '</span>';
+    if (sub.globalId) metaHtml += '<span><span class="label">Global ID:</span> ' + escapeHtml(sub.globalId) + '</span>';
+    if (sub.creationBriefDocUrl && /^https?:\/\//i.test(sub.creationBriefDocUrl)) {
+      metaHtml += '<span>' + renderLink(sub.creationBriefDocUrl, 'Creation Brief') + '</span>';
+    }
+    metaHtml += '</div>';
+
+    return buildActionBanner(sub) + '<div class="detail-sections" id="detail-grid-' + sub.requestNumber + '">' + detailHtml + '</div>' + descHtml + metaHtml;
+  }
+
+  function kvRow(label, value, fieldKey) {
+    var empty = !value;
+    var safeVal = value ? escapeHtml(value) : '';
+    return '<div class="kv-row' + (empty ? ' kv-row-empty' : '') + '"><span class="label">' + escapeHtml(label) + ':</span> <span class="kv-value"' + (fieldKey ? ' data-field="' + escapeHtml(fieldKey) + '" data-original="' + safeVal + '"' : '') + '>' + safeVal + '</span></div>';
+  }
+
+  function toggleDesc(btn) {
+    var panel = btn.closest('.desc-block');
+    var short = panel.querySelector('.desc-short');
+    var full = panel.querySelector('.desc-full');
+    if (full.style.display === 'none') {
+      short.style.display = 'none';
+      full.style.display = 'block';
+      btn.textContent = 'Show less';
+    } else {
+      short.style.display = 'block';
+      full.style.display = 'none';
+      btn.textContent = 'Show more';
+    }
+  }
+
+  // --- Action banner & response form ---
+
+  function buildActionBanner(sub) {
+    if (!hasAction(sub)) return '';
+
+    var pending = sub.pendingResponse;
+    var num = sub.requestNumber;
+
+    if (pending && pending.approval === 'Approved') {
+      return '<div class="action-banner action-complete">' +
+        '<div class="banner-title">Action Complete</div>' +
+        '<div class="banner-detail">Approved' + (pending.processed ? ' on ' + escapeHtml(pending.processed.split('T')[0]) : '') + '</div>' +
+        '<div style="margin-top:10px;"><button class="btn-secondary" onclick="event.stopPropagation(); showResponseForm(\'' + num + '\');">Submit New Response</button></div>' +
+        '<div class="response-form" id="response-form-' + num + '" style="display:none;">' + buildResponseFormFields(sub) + '</div>' +
+        '</div>';
+    }
+
+    if (pending && !pending.processed) {
+      var html = '<div class="action-banner response-pending">' +
+        '<div class="banner-title">Response Submitted — Pending Review</div>' +
+        '<div class="banner-detail">Response: <strong>' + escapeHtml(pending.response) + '</strong></div>';
+      if (pending.newLink) html += '<div class="banner-detail">New Link: ' + escapeHtml(pending.newLink) + '</div>';
+      if (pending.notes) html += '<div class="banner-detail">Notes: ' + escapeHtml(pending.notes) + '</div>';
+      html += '<div class="banner-detail" style="font-size:0.78rem;color:#888;">Submitted ' + escapeHtml(pending.timestamp ? pending.timestamp.split('T')[0] : '') + '</div>';
+      html += '<div style="margin-top:10px;"><button class="btn-secondary" onclick="event.stopPropagation(); showResponseForm(\'' + num + '\');">Update Response</button></div>';
+      html += '<div class="response-form" id="response-form-' + num + '" style="display:none;">' + buildResponseFormFields(sub) + '</div>';
+
+      if (isAdmin) {
+        html += buildAdminReview(sub, pending);
+      }
+
+      html += '</div>';
+      return html;
+    }
+
+    var actionStatus = (sub.perfActionStatus || '').trim();
+    if (actionStatus === 'Resubmit') {
+      var html = '<div class="action-banner action-needed" style="background:#fce8e6;border-color:#f5c6cb;">' +
+        '<div class="banner-title" style="color:#c5221f;">Resubmit Required</div>' +
+        '<div class="banner-detail"><strong>' + escapeHtml(sub.perfAction) + '</strong></div>';
+      if (pending && pending.approval === 'Rejected') {
+        if (pending.notes) html += '<div class="banner-reason">Rejection notes: ' + escapeHtml(pending.notes) + '</div>';
+      }
+      html += (sub.perfActionReason ? '<div class="banner-reason">' + escapeHtml(sub.perfActionReason) + '</div>' : '') +
+        '<div class="response-form" id="response-form-' + num + '">' + buildResponseFormFields(sub) + '</div>' +
+        '</div>';
+      return html;
+    }
+
+    return '<div class="action-banner action-needed">' +
+      '<div class="banner-title">Action Needed</div>' +
+      '<div class="banner-detail"><strong>' + escapeHtml(sub.perfAction) + '</strong></div>' +
+      (sub.perfActionReason ? '<div class="banner-reason">' + escapeHtml(sub.perfActionReason) + '</div>' : '') +
+      '<div class="banner-perf">' +
+        (sub.perfScore ? '<span>Score: ' + escapeHtml(sub.perfScore) + '</span>' : '') +
+        (sub.perfTier ? '<span>Tier: ' + escapeHtml(sub.perfTier) + '</span>' : '') +
+        (sub.perfTrend ? '<span>Trend: ' + escapeHtml(sub.perfTrend) + '</span>' : '') +
+        (sub.perfSignals ? '<span>Signals: ' + escapeHtml(sub.perfSignals) + '</span>' : '') +
+        (sub.perfFlags ? '<span>Flags: ' + escapeHtml(sub.perfFlags) + '</span>' : '') +
+      '</div>' +
+      '<div class="response-form" id="response-form-' + sub.requestNumber + '">' + buildResponseFormFields(sub) + '</div>' +
+      '</div>';
+  }
+
+  function buildResponseFormFields(sub) {
+    var num = sub.requestNumber;
+    return '<div class="form-row">' +
+        '<label>Response *</label>' +
+        '<select id="resp-sel-' + num + '">' +
+          '<option value="">Select...</option>' +
+          '<option value="Done">Done — I\'ve made the changes</option>' +
+          '<option value="Declined">Declined — no action needed</option>' +
+          '<option value="Need help">Need help — I need support</option>' +
+        '</select>' +
+      '</div>' +
+      '<div class="form-row">' +
+        '<label>New Creation / Version Link</label>' +
+        '<input type="url" id="resp-link-' + num + '" placeholder="Paste new link if applicable">' +
+      '</div>' +
+      '<div class="form-row">' +
+        '<label>Notes</label>' +
+        '<textarea id="resp-notes-' + num + '" placeholder="Context about what you did or why you declined..."></textarea>' +
+      '</div>' +
+      '<div class="form-actions">' +
+        '<button class="btn-primary" id="resp-btn-' + num + '" onclick="event.stopPropagation(); submitActionResponse(\'' + num + '\');">Submit Response</button>' +
+      '</div>';
+  }
+
+  function showResponseForm(num) {
+    var form = document.getElementById('response-form-' + num);
+    if (form) form.style.display = form.style.display === 'none' ? 'block' : 'none';
+  }
+
+  function submitActionResponse(num) {
+    var sub = allSubmissions.find(function(s) { return s.requestNumber === num; });
+    if (!sub) return;
+
+    var response = document.getElementById('resp-sel-' + num).value;
+    var metaChanges = collectMetadataChanges(num);
+    var hasMetaChanges = metaChanges && Object.keys(metaChanges).length > 0;
+
+    if (!response && !hasMetaChanges) {
+      alert('Please select a response or make metadata changes.');
+      return;
+    }
+
+    var payload = {
+      number: num,
+      title: sub.title || '',
+      action: sub.perfAction || '',
+      response: response || '',
+      newLink: (document.getElementById('resp-link-' + num) || {}).value || '',
+      notes: (document.getElementById('resp-notes-' + num) || {}).value || '',
+      metadataChanges: hasMetaChanges ? metaChanges : {}
+    };
+
+    var btn = document.getElementById('resp-btn-' + num);
+    if (btn) { btn.disabled = true; btn.textContent = 'Submitting...'; }
+
+    google.script.run
+      .withSuccessHandler(function(result) {
+        if (result.success) {
+          showToast('Response submitted for #' + num);
+          reloadSubmissions();
+        } else {
+          alert('Error: ' + result.error);
+          if (btn) { btn.disabled = false; btn.textContent = 'Submit Response'; }
+        }
+      })
+      .withFailureHandler(function(err) {
+        alert('Failed: ' + (err.message || err));
+        if (btn) { btn.disabled = false; btn.textContent = 'Submit Response'; }
+      })
+      .submitCreatorResponse(payload);
+  }
+
+  function collectMetadataChanges(num) {
+    var grid = document.getElementById('detail-grid-' + num);
+    if (!grid) return {};
+    var inputs = grid.querySelectorAll('.kv-input');
+    var changes = {};
+    for (var i = 0; i < inputs.length; i++) {
+      if (inputs[i].value !== inputs[i].dataset.original) {
+        changes[inputs[i].dataset.field] = inputs[i].value;
+      }
+    }
+    return changes;
+  }
+
+  function buildAdminReview(sub, pending) {
+    var html = '<div class="admin-review">' +
+      '<h4>Admin Review</h4>';
+
+    if (pending.response) {
+      html += '<div class="diff-row"><span class="diff-field">Response:</span> <span>' + escapeHtml(pending.response) + '</span></div>';
+    }
+    if (pending.newLink) {
+      html += '<div class="diff-row"><span class="diff-field">New Link:</span> <span class="diff-new">' + escapeHtml(pending.newLink) + '</span></div>';
+    }
+    if (pending.notes) {
+      html += '<div class="diff-row"><span class="diff-field">Notes:</span> <span>' + escapeHtml(pending.notes) + '</span></div>';
+    }
+
+    if (pending.metadataChanges) {
+      try {
+        var changes = JSON.parse(pending.metadataChanges);
+        var keys = Object.keys(changes);
+        if (keys.length > 0) {
+          html += '<h4 style="margin-top:10px;">Metadata Changes</h4>';
+          for (var i = 0; i < keys.length; i++) {
+            var oldVal = sub.metadata ? (sub.metadata[keys[i]] || '') : '';
+            html += '<div class="diff-row">' +
+              '<span class="diff-field">' + escapeHtml(keys[i]) + ':</span> ' +
+              (oldVal ? '<span class="diff-old">' + escapeHtml(oldVal) + '</span> ' : '') +
+              '<span class="diff-new">' + escapeHtml(changes[keys[i]]) + '</span>' +
+              '</div>';
+          }
+        }
+      } catch (e) {}
+    }
+
+    html += '<div class="review-actions">' +
+      '<button class="btn-primary" onclick="event.stopPropagation(); handleApproveResponse(' + pending.queueRowIndex + ', \'' + sub.requestNumber + '\');">Approve &amp; Apply</button>' +
+      '<button class="btn-danger" onclick="event.stopPropagation(); handleRejectResponse(' + pending.queueRowIndex + ', \'' + sub.requestNumber + '\');">Reject</button>' +
+      '</div>';
+    html += '</div>';
+    return html;
+  }
+
+  function handleApproveResponse(queueRowIndex, num) {
+    if (!confirm('Approve and apply changes for demo #' + num + '?')) return;
+    google.script.run
+      .withSuccessHandler(function(result) {
+        if (result.success) {
+          showToast('Approved and applied for #' + num);
+          reloadSubmissions();
+        } else {
+          alert('Error: ' + result.error);
+        }
+      })
+      .withFailureHandler(function(err) { alert('Failed: ' + (err.message || err)); })
+      .approveResponse(queueRowIndex);
+  }
+
+  function handleRejectResponse(queueRowIndex, num) {
+    if (!confirm('Reject the response for demo #' + num + '?')) return;
+    google.script.run
+      .withSuccessHandler(function(result) {
+        if (result.success) {
+          showToast('Rejected response for #' + num);
+          reloadSubmissions();
+        } else {
+          alert('Error: ' + result.error);
+        }
+      })
+      .withFailureHandler(function(err) { alert('Failed: ' + (err.message || err)); })
+      .rejectResponse(queueRowIndex);
+  }
+
+  function reloadSubmissions() {
+    google.script.run
+      .withSuccessHandler(function(result) {
+        if (result && result.success) {
+          allSubmissions = result.submissions || [];
+          userEmail = result.userEmail || '';
+          isAdmin = result.isAdmin || false;
+          EDITABLE_FIELDS = result.editableFields || [];
+          document.querySelectorAll('.detail-row').forEach(function(r) { r.remove(); });
+          document.querySelectorAll('.data-row.expanded').forEach(function(r) { r.classList.remove('expanded'); });
+          renderTable();
+        }
+      })
+      .withFailureHandler(function() {})
+      .getAllSubmissions();
+  }
+
+  function showToast(msg) {
+    var toast = document.createElement('div');
+    toast.className = 'toast';
+    toast.textContent = msg;
+    document.body.appendChild(toast);
+    setTimeout(function() { toast.remove(); }, 3000);
+  }
+
+  // --- Inline Edit Metadata ---
+
+  function createEditInput(fieldKey, originalValue) {
+    var input = document.createElement('input');
+    input.className = 'kv-input';
+    input.type = 'text';
+    input.value = originalValue;
+    input.dataset.field = fieldKey;
+    input.dataset.original = originalValue;
+    input.onclick = function(e) { e.stopPropagation(); };
+    input.oninput = function() {
+      if (this.value !== this.dataset.original) this.classList.add('changed');
+      else this.classList.remove('changed');
+    };
+    return input;
+  }
+
+  function toggleEditMetadata(num) {
+    var grid = document.getElementById('detail-grid-' + num);
+    var header = document.getElementById('detail-header-' + num);
+    if (!grid || !header) return;
+    var editing = grid.classList.toggle('inline-editing');
+    var actions = header.querySelector('.detail-edit-actions');
+
+    if (editing) {
+      if (actions) {
+        actions.innerHTML = '<span style="font-size:0.72rem; color:#1a73e8; font-weight:500;">Editing</span>';
+      }
+
+      // Convert all value spans (including hidden empty ones) to inputs
+      var values = grid.querySelectorAll('.kv-value[data-field]');
+      for (var i = 0; i < values.length; i++) {
+        var span = values[i];
+        var row = span.closest('.kv-row');
+        row.classList.add('editing');
+        row.appendChild(createEditInput(span.dataset.field, span.dataset.original || ''));
+      }
+
+      // Convert description block to textarea
+      var descBlock = grid.querySelector('.desc-block[data-field]');
+      if (descBlock) {
+        var readEls = descBlock.querySelectorAll('.desc-read');
+        for (var i = 0; i < readEls.length; i++) readEls[i].style.display = 'none';
+        var ta = document.createElement('textarea');
+        ta.className = 'kv-input desc-edit';
+        ta.rows = 4;
+        ta.value = descBlock.dataset.original || '';
+        ta.dataset.field = descBlock.dataset.field;
+        ta.dataset.original = descBlock.dataset.original || '';
+        ta.onclick = function(e) { e.stopPropagation(); };
+        ta.oninput = function() {
+          if (this.value !== this.dataset.original) this.classList.add('changed');
+          else this.classList.remove('changed');
+        };
+        ta.style.cssText = 'width:100%;padding:6px 8px;border:1px solid #dadce0;border-radius:4px;font-size:0.85rem;font-family:inherit;background:#fff;resize:vertical;';
+        descBlock.appendChild(ta);
+      }
+
+      var footer = document.createElement('div');
+      footer.className = 'inline-edit-footer';
+      footer.innerHTML = '<span style="font-size:0.72rem;color:#888;margin-right:auto;">Changes require admin approval</span>' +
+        '<button class="btn-secondary" onclick="event.stopPropagation(); cancelInlineEdits(\'' + num + '\');">Cancel</button>' +
+        '<button class="btn-primary" onclick="event.stopPropagation(); saveInlineEdits(\'' + num + '\');">Save</button>';
+      grid.appendChild(footer);
+    } else {
+      cancelInlineEdits(num);
+    }
+  }
+
+  function cancelInlineEdits(num) {
+    var grid = document.getElementById('detail-grid-' + num);
+    var header = document.getElementById('detail-header-' + num);
+    if (!grid) return;
+    grid.classList.remove('inline-editing');
+    if (header) {
+      var actions = header.querySelector('.detail-edit-actions');
+      if (actions) {
+        actions.innerHTML = '<a href="#" style="font-size:0.78rem; color:#1a73e8;" onclick="event.preventDefault();event.stopPropagation();toggleEditMetadata(\'' + num + '\');">Edit</a>';
+      }
+    }
+    var footer = grid.querySelector('.inline-edit-footer');
+    if (footer) footer.remove();
+    var descEdit = grid.querySelector('.desc-edit');
+    if (descEdit) {
+      var descBlock = descEdit.closest('.desc-block');
+      descEdit.remove();
+      var readEls = descBlock.querySelectorAll('.desc-read');
+      for (var i = 0; i < readEls.length; i++) readEls[i].style.display = '';
+    }
+    var inputs = grid.querySelectorAll('.kv-input');
+    for (var i = 0; i < inputs.length; i++) {
+      inputs[i].closest('.kv-row').classList.remove('editing');
+      inputs[i].remove();
+    }
+  }
+
+  function saveInlineEdits(num) {
+    var grid = document.getElementById('detail-grid-' + num);
+    if (!grid) return;
+    var inputs = grid.querySelectorAll('.kv-input');
+    var changes = {};
+    for (var i = 0; i < inputs.length; i++) {
+      if (inputs[i].value !== inputs[i].dataset.original) {
+        changes[inputs[i].dataset.field] = inputs[i].value;
+      }
+    }
+    if (Object.keys(changes).length === 0) {
+      alert('No changes to save.');
+      return;
+    }
+    var sub = allSubmissions.find(function(s) { return String(s.requestNumber) === String(num); });
+    var payload = {
+      number: num,
+      title: sub ? sub.title : '',
+      type: 'metadata_edit',
+      action: '',
+      response: '',
+      newLink: '',
+      notes: '',
+      metadataChanges: JSON.stringify(changes)
+    };
+    google.script.run
+      .withSuccessHandler(function(result) {
+        if (result && result.success) {
+          showToast('Changes submitted for review');
+          reloadSubmissions();
+        } else {
+          alert('Error: ' + (result ? result.error : 'Unknown error'));
+        }
+      })
+      .withFailureHandler(function(err) { alert('Failed: ' + (err.message || err)); })
+      .submitCreatorResponse(payload);
+  }
+
+  function toggleNewLink(num) {
+    var panel = document.getElementById('new-link-panel-' + num);
+    if (panel) panel.classList.toggle('visible');
+  }
+
+  function submitNewLink(num) {
+    var linkInput = document.getElementById('standalone-link-' + num);
+    var notesInput = document.getElementById('standalone-link-notes-' + num);
+    var newLink = (linkInput ? linkInput.value.trim() : '');
+    var notes = (notesInput ? notesInput.value.trim() : '');
+    if (!newLink) { alert('Please enter a link.'); return; }
+    var sub = allSubmissions.find(function(s) { return String(s.requestNumber) === String(num); });
+    var payload = {
+      number: num,
+      title: sub ? sub.title : '',
+      type: 'metadata_edit',
+      action: '',
+      response: '',
+      newLink: newLink,
+      notes: notes,
+      metadataChanges: '{}'
+    };
+    google.script.run
+      .withSuccessHandler(function(result) {
+        if (result && result.success) {
+          showToast('New link submitted');
+          reloadSubmissions();
+        } else {
+          alert('Failed: ' + (result ? result.error : 'Unknown error'));
+        }
+      })
+      .withFailureHandler(function(err) { alert('Error: ' + err.message); })
+      .submitCreatorResponse(payload);
+  }
+
+
+  // --- Controls ---
+
+  function switchTab(tab) {
+    trackEvent('status_tab_switch', { tab: tab });
+    activeTab = tab;
+    document.querySelectorAll('.tab').forEach(function(btn) {
+      btn.classList.toggle('active', btn.getAttribute('data-tab') === tab);
+    });
+
+    var isReports = tab === 'reports';
+    document.getElementById('tableWrapper').style.display = isReports ? 'none' : '';
+    document.getElementById('resultsCount').style.display = isReports ? 'none' : '';
+    document.getElementById('reportsView').style.display = isReports ? 'block' : 'none';
+    document.getElementById('emptyState').style.display = 'none';
+    document.querySelector('.controls-right').style.display = isReports ? 'none' : '';
+
+    if (isReports) {
+      renderReports();
+    } else {
+      renderTable();
+    }
+  }
+
+  function onSortClick(key) {
+    if (currentSort.key === key) {
+      currentSort.dir = currentSort.dir === 'asc' ? 'desc' : 'asc';
+    } else {
+      currentSort.key = key;
+      currentSort.dir = key === 'dateSubmitted' ? 'desc' : 'asc';
+    }
+    renderTable();
+  }
+
+  function updateStatusFilterCounts(pool, filteredTotal) {
+    var counts = {};
+    for (var i = 0; i < pool.length; i++) {
+      var s = pool[i].status || '';
+      counts[s] = (counts[s] || 0) + 1;
+    }
+    var select = document.getElementById('statusFilter');
+    for (var j = 0; j < select.options.length; j++) {
+      var opt = select.options[j];
+      var baseStatus = opt.getAttribute('data-status');
+      if (baseStatus === '') {
+        opt.textContent = 'All Statuses (' + filteredTotal + ')';
+      } else {
+        opt.textContent = baseStatus + ' (' + (counts[baseStatus] || 0) + ')';
+      }
+    }
+  }
+
+  function updatePerfFilterCounts(pool, filteredTotal) {
+    var counts = {};
+    for (var i = 0; i < pool.length; i++) {
+      var t = pool[i].perfTier;
+      if (t) counts['tier:' + t] = (counts['tier:' + t] || 0) + 1;
+      if (pool[i].perfFlags) {
+        var flags = pool[i].perfFlags.split(',');
+        for (var fi = 0; fi < flags.length; fi++) {
+          var f = flags[fi].trim();
+          if (f) counts['flag:' + f] = (counts['flag:' + f] || 0) + 1;
+        }
+      }
+    }
+    var spans = document.querySelectorAll('.ms-count[data-key]');
+    for (var j = 0; j < spans.length; j++) {
+      var key = spans[j].dataset.key;
+      spans[j].textContent = counts[key] ? '(' + counts[key] + ')' : '(0)';
+    }
+    updatePerfBtnLabel(filteredTotal);
+  }
+
+  function updatePerfBtnLabel(total) {
+    var btn = document.getElementById('perfFilterBtn');
+    var btnLabel = btn.querySelector('span:first-child');
+    if (currentPerfFilters.length === 0) {
+      btnLabel.textContent = 'All Performance (' + total + ')';
+    } else if (currentPerfFilters.length === 1) {
+      btnLabel.textContent = currentPerfFilters[0].split(':')[1] + ' (' + total + ')';
+    } else {
+      btnLabel.textContent = currentPerfFilters.length + ' selected (' + total + ')';
+    }
+  }
+
+  function updateActionFilterCounts(pool, filteredTotal) {
+    var counts = {};
+    for (var i = 0; i < pool.length; i++) {
+      var s = pool[i];
+      if (s.perfAction && s.perfAction !== 'No action needed') {
+        var aKey = 'action:' + s.perfAction;
+        counts[aKey] = (counts[aKey] || 0) + 1;
+      }
+      if (s.perfActionPriority && isCreatorAction(s.perfAction)) {
+        var pKey = 'priority:' + s.perfActionPriority;
+        counts[pKey] = (counts[pKey] || 0) + 1;
+      }
+      var rs = getResponseStatus_(s);
+      if (rs) {
+        var rKey = 'response:' + rs;
+        counts[rKey] = (counts[rKey] || 0) + 1;
+      }
+    }
+    var spans = document.querySelectorAll('.ms-count[data-action-key]');
+    for (var j = 0; j < spans.length; j++) {
+      var key = spans[j].getAttribute('data-action-key');
+      var c = counts[key] || 0;
+      spans[j].textContent = c ? c : '';
+    }
+    var total = currentActionFilters.length ? filteredTotal : pool.length;
+    var btnLabel = document.querySelector('#actionFilterBtn span:first-child');
+    if (currentActionFilters.length === 0) {
+      btnLabel.textContent = 'All Actions (' + total + ')';
+    } else {
+      btnLabel.textContent = currentActionFilters.length + ' selected (' + filteredTotal + ')';
+    }
+  }
+
+  function onStatusFilterChange() {
+    currentStatusFilter = document.getElementById('statusFilter').value;
+    renderTable();
+  }
+
+  function togglePerfPanel() {
+    var panel = document.getElementById('perfFilterPanel');
+    panel.classList.toggle('open');
+  }
+
+  document.addEventListener('click', function(e) {
+    var perfWrap = document.getElementById('perfFilterWrap');
+    if (perfWrap && !perfWrap.contains(e.target)) {
+      document.getElementById('perfFilterPanel').classList.remove('open');
+    }
+    var actionWrap = document.getElementById('actionFilterWrap');
+    if (actionWrap && !actionWrap.contains(e.target)) {
+      document.getElementById('actionFilterPanel').classList.remove('open');
+    }
+  });
+
+  function resetPerfFilter() {
+    var checks = document.querySelectorAll('#perfFilterPanel input[type=checkbox]:checked');
+    for (var i = 0; i < checks.length; i++) checks[i].checked = false;
+    onPerfFilterChange();
+  }
+
+  function onPerfFilterChange() {
+    var checks = document.querySelectorAll('#perfFilterPanel input[type=checkbox]:checked');
+    currentPerfFilters = [];
+    for (var i = 0; i < checks.length; i++) currentPerfFilters.push(checks[i].value);
+    var resetBtn = document.getElementById('perfResetBtn');
+    if (resetBtn) resetBtn.style.display = currentPerfFilters.length ? 'block' : 'none';
+    renderTable();
+  }
+
+  function onActionFilterChange() {
+    var checks = document.querySelectorAll('#actionFilterPanel input[type=checkbox]:checked');
+    currentActionFilters = [];
+    for (var i = 0; i < checks.length; i++) currentActionFilters.push(checks[i].value);
+    var resetBtn = document.getElementById('actionResetBtn');
+    if (resetBtn) resetBtn.style.display = currentActionFilters.length ? 'block' : 'none';
+    renderTable();
+  }
+
+  function toggleActionPanel() {
+    var panel = document.getElementById('actionFilterPanel');
+    panel.classList.toggle('open');
+  }
+
+  function resetActionFilter() {
+    var checks = document.querySelectorAll('#actionFilterPanel input[type=checkbox]:checked');
+    for (var i = 0; i < checks.length; i++) checks[i].checked = false;
+    onActionFilterChange();
+  }
+
+  function resetAllFilters() {
+    document.getElementById('statusFilter').value = '';
+    currentStatusFilter = '';
+    var perfChecks = document.querySelectorAll('#perfFilterPanel input[type=checkbox]:checked');
+    for (var i = 0; i < perfChecks.length; i++) perfChecks[i].checked = false;
+    currentPerfFilters = [];
+    var perfReset = document.getElementById('perfResetBtn');
+    if (perfReset) perfReset.style.display = 'none';
+    var actionChecks = document.querySelectorAll('#actionFilterPanel input[type=checkbox]:checked');
+    for (var j = 0; j < actionChecks.length; j++) actionChecks[j].checked = false;
+    currentActionFilters = [];
+    var actionReset = document.getElementById('actionResetBtn');
+    if (actionReset) actionReset.style.display = 'none';
+    document.getElementById('searchInput').value = '';
+    currentSearch = '';
+    renderTable();
+  }
+
+  var searchTimeout = null;
+  function onSearchInput() {
+    clearTimeout(searchTimeout);
+    searchTimeout = setTimeout(function() {
+      currentSearch = document.getElementById('searchInput').value.trim();
+      renderTable();
+    }, 300);
+  }
+
+  // --- Dashboard ---
+
+  var TEAM_COLORS = [
+    '#6d28d9', '#155e75', '#5b21b6', '#0e7490',
+    '#7c3aed', '#0891b2', '#4c1d95', '#164e63'
+  ];
+
+  var PIPELINE_COLORS = {
+    'Processing': '#fff3e0', 'Request Open': '#e8f0fe', 'Request Approved': '#e6f4ea',
+    'IE Received': '#fef7e0', 'IE Reviewed': '#e8f0fe', 'IE Published': '#e6f4ea',
+    'IE Retired': '#f4e8e8', 'Closed': '#eee'
+  };
+  var PIPELINE_TEXT = {
+    'Processing': '#e65100', 'Request Open': '#1a73e8', 'Request Approved': '#137333',
+    'IE Received': '#b06000', 'IE Reviewed': '#1a73e8', 'IE Published': '#137333',
+    'IE Retired': '#a33', 'Closed': '#666'
+  };
+  var PIPELINE_ORDER = [
+    'Processing', 'Request Open', 'Request Approved',
+    'IE Received', 'IE Reviewed', 'IE Published', 'IE Retired', 'Closed'
+  ];
+
+  var dashboardMonthsBack = 12;
+
+  function getDashboardData(submissions, monthsBack) {
+    var now = new Date();
+    var cutoff = null;
+    if (monthsBack) {
+      cutoff = new Date(now.getFullYear(), now.getMonth() - monthsBack, 1);
+    }
+
+    var DASHBOARD_STATUSES = ['IE Reviewed', 'IE Published'];
+    var filtered = [];
+    for (var i = 0; i < submissions.length; i++) {
+      if (DASHBOARD_STATUSES.indexOf(submissions[i].status) === -1) continue;
+      var d = getDisplayDate(submissions[i]);
+      if (!d) continue;
+      var dt = new Date(d);
+      if (isNaN(dt.getTime())) continue;
+      if (cutoff && dt < cutoff) continue;
+      filtered.push({ sub: submissions[i], date: dt });
+    }
+
+    var months = {};
+    var teamSet = {};
+    var productMap = {};
+    var statusMap = {};
+    var tdpMap = {};
+    var productTdpMap = {};
+
+    for (var i = 0; i < filtered.length; i++) {
+      var sub = filtered[i].sub;
+      var dt = filtered[i].date;
+      var mk = dt.getFullYear() + '-' + String(dt.getMonth() + 1).padStart(2, '0');
+
+      if (!months[mk]) months[mk] = { total: 0, teams: {}, tdps: {} };
+      months[mk].total++;
+
+      var team = sub.creatorTeam || 'Unknown';
+      months[mk].teams[team] = (months[mk].teams[team] || 0) + 1;
+      teamSet[team] = (teamSet[team] || 0) + 1;
+
+      var product = sub.primaryProduct || 'Not specified';
+      productMap[product] = (productMap[product] || 0) + 1;
+
+      var status = sub.status || 'Unknown';
+      statusMap[status] = (statusMap[status] || 0) + 1;
+
+      var tdp = sub.tdp || 'No TDP assigned';
+      tdpMap[tdp] = (tdpMap[tdp] || 0) + 1;
+      months[mk].tdps[tdp] = (months[mk].tdps[tdp] || 0) + 1;
+
+      var hmKey = product + '||' + tdp;
+      productTdpMap[hmKey] = (productTdpMap[hmKey] || 0) + 1;
+    }
+
+    var monthKeys = Object.keys(months).sort();
+    var teams = Object.keys(teamSet).sort();
+
+    var curMk = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0');
+    var prevDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    var prevMk = prevDate.getFullYear() + '-' + String(prevDate.getMonth() + 1).padStart(2, '0');
+
+    var published = statusMap['IE Published'] || 0;
+    var inPipeline = filtered.length - published - (statusMap['IE Retired'] || 0) - (statusMap['Closed'] || 0);
+
+    var tdps = Object.keys(tdpMap).sort(function(a, b) { return tdpMap[b] - tdpMap[a]; });
+
+    var products = Object.keys(productMap).sort(function(a, b) { return productMap[b] - productMap[a]; });
+
+    return {
+      months: months, monthKeys: monthKeys, teams: teams, teamSet: teamSet,
+      tdps: tdps, products: products, productTdpMap: productTdpMap,
+      productMap: productMap, statusMap: statusMap, tdpMap: tdpMap,
+      curMk: curMk, prevMk: prevMk, total: filtered.length,
+      thisMonth: months[curMk] ? months[curMk].total : 0,
+      lastMonth: months[prevMk] ? months[prevMk].total : 0
+    };
+  }
+
+  function renderReports() {
+    var data = getDashboardData(allSubmissions, dashboardMonthsBack);
+    var container = document.getElementById('reportsView');
+
+    var html = '';
+
+    // Controls
+    html += '<div class="dash-controls">' +
+      '<select id="dashMonthsBack" onchange="onDashRangeChange()">' +
+      '<option value="6"' + (dashboardMonthsBack === 6 ? ' selected' : '') + '>Last 6 months</option>' +
+      '<option value="12"' + (dashboardMonthsBack === 12 ? ' selected' : '') + '>Last 12 months</option>' +
+      '<option value="0"' + (dashboardMonthsBack === 0 ? ' selected' : '') + '>All time</option>' +
+      '</select>' +
+      '' +
+      '</div>';
+
+    // KPI cards — pipeline counts from unfiltered data
+    var pipelineStatuses = ['Processing', 'Request Open', 'Request Approved', 'IE Received'];
+    var pipelineCount = 0;
+    for (var i = 0; i < allSubmissions.length; i++) {
+      if (pipelineStatuses.indexOf(allSubmissions[i].status) !== -1) pipelineCount++;
+    }
+
+    html += '<div class="kpi-row">' +
+      '<div class="kpi-card" onclick="toggleKpiDemos(\'reviewed\')" id="kpi-reviewed"><div class="kpi-value">' + data.total + '</div><div class="kpi-label">Reviewed & Published</div></div>' +
+      '<div class="kpi-card" onclick="toggleKpiDemos(\'thisMonth\')" id="kpi-thisMonth"><div class="kpi-value">' + data.thisMonth + '</div><div class="kpi-label">This Month</div></div>' +
+      '<div class="kpi-card" onclick="toggleKpiDemos(\'pipeline\')" id="kpi-pipeline"><div class="kpi-value">' + pipelineCount + '</div><div class="kpi-label">In Pipeline</div></div>' +
+      '</div>' +
+      '<div id="kpiDemoList"></div>';
+
+    // Monthly trend by TDP
+    html += renderMonthlyTdpTrendSection(data);
+
+    // Product + TDP side by side
+    html += '<div class="dash-grid">' +
+      '<div>' + renderProductSection(data) + '</div>' +
+      '<div>' + renderTdpSection(data) + '</div>' +
+      '</div>';
+
+    // Product × TDP heatmap
+    html += renderProductTdpHeatmap(data);
+
+    // Team output
+    html += renderTeamSection(data);
+
+    container.innerHTML = html;
+  }
+
+  function onDashRangeChange() {
+    var val = parseInt(document.getElementById('dashMonthsBack').value, 10);
+    dashboardMonthsBack = val || 0;
+    trackEvent('dashboard_range_change', { monthsBack: dashboardMonthsBack });
+    activeKpi = null;
+    renderReports();
+  }
+
+  var activeKpi = null;
+
+  function toggleKpiDemos(type) {
+    trackEvent('dashboard_kpi_click', { kpiType: type });
+    var container = document.getElementById('kpiDemoList');
+
+    if (activeKpi === type) {
+      activeKpi = null;
+      container.innerHTML = '';
+      document.querySelectorAll('.kpi-card').forEach(function(c) { c.classList.remove('active'); });
+      return;
+    }
+
+    activeKpi = type;
+    document.querySelectorAll('.kpi-card').forEach(function(c) { c.classList.remove('active'); });
+    var card = document.getElementById('kpi-' + type);
+    if (card) card.classList.add('active');
+
+    var data = getDashboardData(allSubmissions, dashboardMonthsBack);
+    var now = new Date();
+    var curMk = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0');
+    var demos = [];
+
+    var reviewedStatuses = ['IE Reviewed', 'IE Published'];
+    var pipelineStatuses = ['Processing', 'Request Open', 'Request Approved', 'IE Received'];
+
+    for (var i = 0; i < allSubmissions.length; i++) {
+      var sub = allSubmissions[i];
+
+      if (type === 'pipeline') {
+        if (pipelineStatuses.indexOf(sub.status) !== -1) demos.push(sub);
+        continue;
+      }
+
+      if (reviewedStatuses.indexOf(sub.status) === -1) continue;
+      var d = getDisplayDate(sub);
+      if (!d) continue;
+      var dt = new Date(d);
+      if (isNaN(dt.getTime())) continue;
+
+      if (dashboardMonthsBack) {
+        var cutoff = new Date(now.getFullYear(), now.getMonth() - dashboardMonthsBack, 1);
+        if (dt < cutoff) continue;
+      }
+
+      var match = false;
+      if (type === 'reviewed') {
+        match = true;
+      } else if (type === 'thisMonth') {
+        var mk = dt.getFullYear() + '-' + String(dt.getMonth() + 1).padStart(2, '0');
+        match = mk === curMk;
+      }
+
+      if (match) demos.push(sub);
+    }
+
+    var labels = { reviewed: 'Reviewed & Published', thisMonth: 'This Month', pipeline: 'In Pipeline' };
+    var html = '<div class="kpi-demo-list">' +
+      '<div class="kpi-demo-list-header"><span>' + escapeHtml(labels[type]) + ' (' + demos.length + ')</span>' +
+      '<button class="kpi-demo-list-close" onclick="toggleKpiDemos(\'' + type + '\')">&times;</button></div>';
+
+    if (demos.length === 0) {
+      html += '<div style="padding:20px;text-align:center;color:#888;font-size:0.85rem;">No demos</div>';
+    } else {
+      html += '<table><thead><tr><th>Title</th><th>Creator</th><th>TDP</th><th>Status</th><th>Date</th></tr></thead><tbody>';
+      for (var i = 0; i < demos.length; i++) {
+        var s = demos[i];
+        html += '<tr>' +
+          '<td>' + (s.drupalPageUrl && /^https?:\/\//i.test(s.drupalPageUrl)
+            ? '<a href="' + escapeHtml(s.drupalPageUrl) + '" target="_blank" style="color:#0066cc;text-decoration:none;">' + escapeHtml(s.title || 'Untitled') + '</a>'
+            : s.productionLink && /^https?:\/\//i.test(s.productionLink)
+            ? '<a href="' + escapeHtml(s.productionLink) + '" target="_blank" style="color:#0066cc;text-decoration:none;">' + escapeHtml(s.title || 'Untitled') + '</a>'
+            : escapeHtml(s.title || 'Untitled')) + '</td>' +
+          '<td>' + escapeHtml(s.creatorName || '—') + '</td>' +
+          '<td>' + escapeHtml(s.tdp || '—') + '</td>' +
+          '<td><span class="status-badge ' + getStatusClass(s.status) + '">' + escapeHtml(s.status || '—') + '</span></td>' +
+          '<td style="white-space:nowrap;color:#666;">' + formatDate(getDisplayDate(s)) + '</td>' +
+          '</tr>';
+      }
+      html += '</tbody></table>';
+    }
+
+    html += '</div>';
+    container.innerHTML = html;
+  }
+
+  // --- Monthly Trend by TDP (stacked bars) ---
+
+  var TDP_COLORS = [
+    '#a142f4', '#1a73e8', '#e8710a', '#137333',
+    '#e52592', '#0d652d', '#b06000', '#5e35b1'
+  ];
+
+  function renderMonthlyTdpTrendSection(data) {
+    if (data.monthKeys.length === 0) return '';
+
+    var maxTotal = 0;
+    for (var k = 0; k < data.monthKeys.length; k++) {
+      if (data.months[data.monthKeys[k]].total > maxTotal) maxTotal = data.months[data.monthKeys[k]].total;
+    }
+
+    var monthNames = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    var html = '<div class="dash-section"><h3>Monthly Creations by TDP</h3>';
+
+    html += '<div class="pipeline-legend" style="margin-bottom:12px;">';
+    for (var t = 0; t < data.tdps.length; t++) {
+      var color = TDP_COLORS[t % TDP_COLORS.length];
+      html += '<div class="pipeline-legend-item">' +
+        '<span class="pipeline-dot" style="background:' + color + ';"></span>' +
+        escapeHtml(data.tdps[t]) + '</div>';
+    }
+    html += '</div>';
+
+    html += '<div class="stacked-bar-chart">';
+    for (var k = 0; k < data.monthKeys.length; k++) {
+      var mk = data.monthKeys[k];
+      var m = data.months[mk];
+      var parts = mk.split('-');
+      var label = monthNames[parseInt(parts[1], 10) - 1] + ' \'' + parts[0].slice(2);
+
+      html += '<div class="stacked-bar-row">' +
+        '<div class="stacked-bar-label">' + label + '</div>' +
+        '<div class="stacked-bar-track">';
+
+      for (var t = 0; t < data.tdps.length; t++) {
+        var tdp = data.tdps[t];
+        var count = m.tdps[tdp] || 0;
+        if (count === 0) continue;
+        var pct = maxTotal > 0 ? (count / maxTotal) * 100 : 0;
+        var color = TDP_COLORS[t % TDP_COLORS.length];
+        html += '<div class="stacked-bar-segment" style="width:' + pct.toFixed(1) + '%;background:' + color + ';" title="' + escapeHtml(tdp) + ': ' + count + '"></div>';
+      }
+
+      html += '</div><div class="stacked-bar-count">' + m.total + '</div></div>';
+    }
+    html += '</div></div>';
+    return html;
+  }
+
+  // --- Product Coverage ---
+
+  function renderProductTdpHeatmap(data) {
+    if (data.products.length === 0 || data.tdps.length === 0) return '';
+
+    // Only show products with 2+ demos
+    var products = data.products.filter(function(p) { return data.productMap[p] >= 2; });
+    if (products.length === 0) return '';
+
+    var maxCount = 0;
+    for (var p = 0; p < products.length; p++) {
+      for (var t = 0; t < data.tdps.length; t++) {
+        var c = data.productTdpMap[products[p] + '||' + data.tdps[t]] || 0;
+        if (c > maxCount) maxCount = c;
+      }
+    }
+
+    var omitted = data.products.length - products.length;
+    var html = '<div class="dash-section"><h3>Product × TDP Coverage</h3>' +
+      '<div class="heatmap-wrap"><table class="heatmap"><thead><tr><th>Product</th>';
+
+    for (var t = 0; t < data.tdps.length; t++) {
+      html += '<th>' + escapeHtml(data.tdps[t]) + '</th>';
+    }
+    html += '</tr></thead><tbody>';
+
+    for (var p = 0; p < products.length; p++) {
+      var product = products[p];
+      var rowTotal = data.productMap[product] || 0;
+      html += '<tr><td>' + escapeHtml(product) + '</td>';
+
+      for (var t = 0; t < data.tdps.length; t++) {
+        var count = data.productTdpMap[product + '||' + data.tdps[t]] || 0;
+        var cls = 'hm-0';
+        var display = '<span class="hm-gap">—</span>';
+        if (count > 0) {
+          if (maxCount > 0 && count >= maxCount * 0.6) cls = 'hm-high';
+          else if (count >= maxCount * 0.3) cls = 'hm-med';
+          else cls = 'hm-low';
+          display = '<span class="hm-cell ' + cls + '">' + count + '</span>';
+        }
+        html += '<td>' + display + '</td>';
+      }
+
+      html += '</tr>';
+    }
+
+    html += '</tbody></table></div>';
+    html += '<div class="heatmap-legend">' +
+      '<span><span class="heatmap-legend-swatch" style="background:#ede9fe;"></span>Low</span>' +
+      '<span><span class="heatmap-legend-swatch" style="background:#c4b5fd;"></span>Medium</span>' +
+      '<span><span class="heatmap-legend-swatch" style="background:#6d28d9;"></span>High</span>' +
+      '</div></div>';
+    return html;
+  }
+
+  function renderProductSection(data) {
+    var entries = Object.keys(data.productMap).map(function(k) {
+      return { name: k, count: data.productMap[k] };
+    });
+    entries.sort(function(a, b) { return b.count - a.count; });
+    var max = entries.length > 0 ? entries[0].count : 0;
+
+    var html = '<div class="dash-section"><h3>Product Coverage</h3><div class="h-bar-chart">';
+    for (var i = 0; i < entries.length; i++) {
+      var pct = max > 0 ? Math.round((entries[i].count / max) * 100) : 0;
+      html += '<div class="h-bar-row">' +
+        '<div class="h-bar-label" title="' + escapeHtml(entries[i].name) + '">' + escapeHtml(entries[i].name) + '</div>' +
+        '<div class="h-bar-track"><div class="h-bar-fill" style="width:' + pct + '%;background:#c4b5fd;"></div></div>' +
+        '<div class="h-bar-count">' + entries[i].count + '</div></div>';
+    }
+    html += '</div></div>';
+    return html;
+  }
+
+  // --- Status Pipeline ---
+
+
+  // --- TDP Distribution ---
+
+  function renderTdpSection(data) {
+    var entries = Object.keys(data.tdpMap).map(function(k) {
+      return { name: k, count: data.tdpMap[k] };
+    });
+    entries.sort(function(a, b) { return b.count - a.count; });
+    var max = entries.length > 0 ? entries[0].count : 0;
+
+    var html = '<div class="dash-section"><h3>TDP Distribution</h3><div class="h-bar-chart">';
+    for (var i = 0; i < entries.length; i++) {
+      var pct = max > 0 ? Math.round((entries[i].count / max) * 100) : 0;
+      html += '<div class="h-bar-row">' +
+        '<div class="h-bar-label" title="' + escapeHtml(entries[i].name) + '">' + escapeHtml(entries[i].name) + '</div>' +
+        '<div class="h-bar-track"><div class="h-bar-fill" style="width:' + pct + '%;background:#c4b5fd;"></div></div>' +
+        '<div class="h-bar-count">' + entries[i].count + '</div></div>';
+    }
+    html += '</div></div>';
+    return html;
+  }
+
+  // --- Team Output ---
+
+  function renderTeamSection(data) {
+    var entries = Object.keys(data.teamSet).map(function(k) {
+      return { name: k, count: data.teamSet[k] };
+    });
+    entries.sort(function(a, b) { return b.count - a.count; });
+    var max = entries.length > 0 ? entries[0].count : 0;
+
+    var html = '<div class="dash-section"><h3>Team Output</h3><div class="h-bar-chart">';
+    for (var i = 0; i < entries.length; i++) {
+      var pct = max > 0 ? Math.round((entries[i].count / max) * 100) : 0;
+      html += '<div class="h-bar-row">' +
+        '<div class="h-bar-label" title="' + escapeHtml(entries[i].name) + '">' + escapeHtml(entries[i].name) + '</div>' +
+        '<div class="h-bar-track"><div class="h-bar-fill" style="width:' + pct + '%;background:#c4b5fd;"></div></div>' +
+        '<div class="h-bar-count">' + entries[i].count + '</div></div>';
+    }
+    html += '</div></div>';
+    return html;
+  }
+
+  // --- Token single-view ---
+
+  function renderTokenView(sub) {
+    document.getElementById('mainView').style.display = 'none';
     document.getElementById('loadingState').style.display = 'none';
-    var el = document.getElementById('errorState');
-    el.textContent = message;
-    el.style.display = 'block';
+
+    var view = document.getElementById('tokenView');
+    view.style.display = 'block';
+    view.innerHTML = '<div class="single-view">' +
+      '<h2>' + escapeHtml(sub.title || 'Untitled') + '</h2>' +
+      '<div class="sv-meta">' +
+        escapeHtml(sub.creatorName || '') +
+        (sub.primaryProduct ? ' · ' + escapeHtml(sub.primaryProduct) : '') +
+        (sub.dateSubmitted ? ' · Submitted ' + formatDate(sub.dateSubmitted) : '') +
+        ' · <span class="status-badge ' + getStatusClass(sub.status) + '">' + escapeHtml(sub.status || 'Unknown') + '</span>' +
+      '</div>' +
+      buildLifecycle(sub) +
+      buildDetailSections(sub) +
+      '</div>' +
+      '<a class="back-link" href="#" onclick="navigateToAllSubmissions(); return false;">← View all submissions</a>';
+  }
+
+  function navigateToAllSubmissions() {
+    window.top.location.href = webAppBaseUrl + '?page=status';
   }
 
   function showProcessing() {
     document.getElementById('loadingState').style.display = 'none';
+    document.getElementById('mainView').style.display = 'none';
     document.getElementById('processingState').style.display = 'block';
   }
 
-  function loadByGlobalId(globalId) {
-    document.getElementById('pageTitle').textContent = 'Submission Status';
+  function showError(msg) {
+    document.getElementById('loadingState').style.display = 'none';
+    var el = document.getElementById('errorState');
+    el.textContent = msg;
+    el.style.display = 'block';
+  }
+
+  // --- Init ---
+
+  if (serverToken) {
+    document.getElementById('mainView').style.display = 'none';
     google.script.run
       .withSuccessHandler(function(result) {
         if (result && result.success && result.submission) {
-          renderSubmissions([result.submission]);
+          trackEvent('status_token_view', { status: result.submission.status });
+          renderTokenView(result.submission);
         } else if (result && result.processing) {
           showProcessing();
         } else {
@@ -342,17 +2655,24 @@
       .withFailureHandler(function(err) {
         showError(err && err.message ? err.message : String(err));
       })
-      .getSubmissionStatus(globalId);
-  }
-
-  function loadMySubmissions() {
+      .getSubmissionStatus(serverToken);
+  } else {
     google.script.run
       .withSuccessHandler(function(result) {
+        document.getElementById('loadingState').style.display = 'none';
         if (result && result.success) {
-          if (result.isAdmin) {
-            document.getElementById('pageTitle').textContent = 'All Submissions';
+          allSubmissions = result.submissions || [];
+          userEmail = result.userEmail || '';
+          isAdmin = result.isAdmin || false;
+          EDITABLE_FIELDS = result.editableFields || [];
+
+          trackEvent('status_page_view', { submissionCount: allSubmissions.length });
+          var myCount = isAdmin ? allSubmissions.length : allSubmissions.filter(function(s) { return s.isMine; }).length;
+          if (myCount === 0 && !isAdmin) {
+            switchTab('all');
+          } else {
+            renderTable();
           }
-          renderSubmissions(result.submissions);
         } else {
           showError((result && result.error) || 'Could not load submissions.');
         }
@@ -360,38 +2680,7 @@
       .withFailureHandler(function(err) {
         showError(err && err.message ? err.message : String(err));
       })
-      .getMySubmissions();
-  }
-
-  var searchTimeout = null;
-  function onSearchInput() {
-    clearTimeout(searchTimeout);
-    searchTimeout = setTimeout(function() {
-      var term = document.getElementById('searchInput').value;
-      document.getElementById('submissionsList').innerHTML = '';
-      document.getElementById('emptyState').style.display = 'none';
-      document.getElementById('loadingState').style.display = 'block';
-      google.script.run
-        .withSuccessHandler(function(result) {
-          if (result && result.success) {
-            renderSubmissions(result.submissions);
-          } else {
-            showError((result && result.error) || 'Search failed.');
-          }
-        })
-        .withFailureHandler(function(err) {
-          showError(err && err.message ? err.message : String(err));
-        })
-        .getMySubmissions(term);
-    }, 400);
-  }
-
-  var token = getUrlParam('token');
-  if (token) {
-    document.getElementById('searchSection').style.display = 'none';
-    loadByGlobalId(token);
-  } else {
-    loadMySubmissions();
+      .getAllSubmissions();
   }
 </script>
 </body>
