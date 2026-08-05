@@ -138,10 +138,16 @@ const EDITABLE_METADATA_FIELDS_ = [
   { key: 'Guide Extraction JSON', label: 'Guide Extraction JSON', group: 'Technical', wide: true, multiline: true }
 ];
 
-const STATUS_TRACKER_ADMINS = ['yunjyang@redhat.com'];
+function getAdminList_() {
+  try {
+    var prop = PropertiesService.getScriptProperties().getProperty('STATUS_TRACKER_ADMINS');
+    if (prop) return prop.split(',').map(function(e) { return e.trim().toLowerCase(); }).filter(Boolean);
+  } catch (e) {}
+  return ['yunjyang@redhat.com'];
+}
 
 function isAdmin_(email) {
-  return STATUS_TRACKER_ADMINS.some(a => a.toLowerCase() === email.toLowerCase());
+  return getAdminList_().indexOf(email.toLowerCase()) !== -1;
 }
 
 const FIELD_OPTIONS = {
@@ -266,6 +272,24 @@ const FIELD_OPTIONS = {
     'Yes',
     'No'
   ]
+};
+
+const FIELD_TO_OPTIONS_ = {
+  'Content Type': 'contentTypes',
+  'Creator Team': 'creatorTeams',
+  'Quarter': 'quarters',
+  'Language': 'languages',
+  'Verticals': 'verticals',
+  'Event': 'events',
+  'Primary Product': 'products',
+  'Product': 'products',
+  'TDP': 'tdps',
+  'Sales Tactic': 'salesTactics',
+  'Marketing Program': 'marketingPrograms',
+  'Synthetic Voice Used?': 'yesNo',
+  'Translation Used?': 'yesNo',
+  'Mobile-friendly design considered?': 'yesNo',
+  'Checked Existing Demo': 'yesNo'
 };
 
 const FOLLOW_UP_QUESTIONS = {
@@ -708,6 +732,11 @@ function buildSubmissionFromRow_(row, headerMap) {
     return idx != null ? String(row[idx] || '') : '';
   };
 
+  var meta = {};
+  for (var fi = 0; fi < EDITABLE_METADATA_FIELDS_.length; fi++) {
+    meta[EDITABLE_METADATA_FIELDS_[fi].key] = get(EDITABLE_METADATA_FIELDS_[fi].key);
+  }
+
   return {
     title: get(col.FINAL_DEMO_TITLE) || get(col.SUGGESTED_DEMO_TITLE),
     status: get(col.STATUS),
@@ -776,7 +805,8 @@ function buildSubmissionFromRow_(row, headerMap) {
     requestAdvocacy: get(col.REQUEST_ADVOCACY),
     demoDescCreator: get(col.DEMO_DESC_CREATOR),
     seoWords: get(col.SEO_WORDS),
-    guideExtractionJson: get(col.GUIDE_EXTRACTION_JSON)
+    guideExtractionJson: get(col.GUIDE_EXTRACTION_JSON),
+    metadata: meta
   };
 }
 
@@ -879,6 +909,12 @@ function getAllSubmissions() {
       if (entry.processed) continue;
       pendingByNumber[entry.number] = entry;
     }
+    for (let q2 = queueEntries.length - 1; q2 >= 0; q2--) {
+      var rej = queueEntries[q2];
+      if (rej.processed && rej.approval === 'Rejected' && !pendingByNumber[rej.number]) {
+        pendingByNumber[rej.number] = rej;
+      }
+    }
     for (let s = 0; s < submissions.length; s++) {
       const num = submissions[s].requestNumber;
       if (num && pendingByNumber[num]) {
@@ -892,7 +928,7 @@ function getAllSubmissions() {
       return db - da;
     });
 
-    return { success: true, submissions, userEmail: lowerEmail, isAdmin: isAdmin_(email), editableFields: EDITABLE_METADATA_FIELDS_ };
+    return { success: true, submissions, userEmail: lowerEmail, isAdmin: isAdmin_(email), editableFields: EDITABLE_METADATA_FIELDS_, fieldOptions: FIELD_OPTIONS };
   } catch (e) {
     return { success: false, error: e.message || String(e) };
   }
@@ -981,7 +1017,7 @@ function getPendingIntakeSubmissions_(seenGlobalIds, userEmail) {
 const RESPONSE_QUEUE_HEADERS_ = [
   'Timestamp', 'Submitter Email', 'Number', 'Demo Title', 'Type',
   'Recommended Action', 'Response', 'New Link', 'Notes',
-  'Metadata Changes', 'Approval', 'Processed'
+  'Metadata Changes', 'Approval', 'Processed', 'Admin Notes'
 ];
 
 function getDemoMetadata(requestNumber) {
@@ -1056,7 +1092,8 @@ function getResponseQueueData_() {
         notes: get('Notes'),
         metadataChanges: get('Metadata Changes'),
         approval: get('Approval'),
-        processed: get('Processed')
+        processed: get('Processed'),
+        adminNotes: get('Admin Notes')
       });
     }
     return results;
