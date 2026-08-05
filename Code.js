@@ -40,6 +40,7 @@ const STATUS_TRACKER_COLUMNS = {
   NUMBER: 'Number',
   DESCRIPTION: 'Demo Description',
   PRODUCTION_LINK: 'Production Link',
+  LATEST_PROD_LINK: 'Latest Prod Link',
   DURATION: 'Duration',
   QUARTER: 'Quarter',
   CREATOR_TEAM: 'Creator Team',
@@ -59,16 +60,85 @@ const STATUS_TRACKER_COLUMNS = {
   EMPLOYEE_ADVOCACY: 'Creator Employee Advocacy Link',
   PRODUCT: 'Product',
   DESCRIPTION_FOR_SEO: 'Description for SEO',
-  CREATOR_SUBMITTED_TS: 'Creator Submission Timestamp',
+  CREATOR_SUBMITTED_TS: 'Creator Submitted Timestamp',
   CREATION_BRIEF_DOC_URL: 'Creation Brief Doc URL',
   STATUS_OPEN_TS: 'Status Open Timestamp',
   STATUS_APPROVED_TS: 'Status Approved Timestamp',
   STATUS_REVIEWED_TS: 'Status Reviewed Timestamp',
   STATUS_RETIRED_TS: 'Status Retired Timestamp',
-  STATUS_CLOSED_TS: 'Status Closed Timestamp'
+  STATUS_CLOSED_TS: 'Status Closed Timestamp',
+  // Performance columns
+  RECOMMENDED_ACTION: 'Recommended action',
+  ACTION_REASON: 'Recommended action reason',
+  ACTION_PRIORITY: 'Action Priority',
+  ASSIGNED: 'Assigned',
+  ACTION_STATUS: 'Action Status',
+  ACTION_COMPLETED_DATE: 'Action Completed Date',
+  PERF_SCORE: 'Performance Score',
+  PERF_TIER: 'Performance Tier',
+  PERF_TREND: 'Performance Trend',
+  PERF_SIGNALS: 'Performance Signals',
+  PERF_FLAGS: 'Performance Flags',
+  // Metadata columns not previously tracked
+  PRIORITY: 'Priority',
+  DEADLINE: 'Deadline',
+  CONTACTED_BU: 'Contacted BU',
+  CHECKED_EXISTING: 'Checked Existing Demo',
+  PRIMARY_AUDIENCE: 'Primary Audience',
+  PERSONAS: 'Personas',
+  PAIN_POINTS: 'Pain Points',
+  RELEVANT_LINKS: 'Relevant Links / CTAs',
+  DESTINATION_CHANNELS: 'Destination Channels',
+  CONTEXT_DESCRIPTION: 'Context Description',
+  REQUEST_ADVOCACY: 'Request Employee Advocacy Link',
+  DEMO_DESC_CREATOR: 'Demo Description (Creator input)',
+  SEO_WORDS: 'SEOWords',
+  GUIDE_EXTRACTION_JSON: 'Guide Extraction JSON'
 };
 
-const STATUS_TRACKER_ADMINS = [];
+const RESPONSE_QUEUE_SHEET = 'Response_Queue';
+
+const EDITABLE_METADATA_FIELDS_ = [
+  { key: 'Final Demo Title', label: 'Final Demo Title', group: 'Content Info', wide: true },
+  { key: 'Primary Product', label: 'Primary Product', group: 'Content Info' },
+  { key: 'Product', label: 'Other Products', group: 'Content Info' },
+  { key: 'Content Type', label: 'Content Type', group: 'Content Info' },
+  { key: 'Duration', label: 'Duration', group: 'Content Info' },
+  { key: 'Language', label: 'Language', group: 'Content Info' },
+  { key: 'Quarter', label: 'Quarter', group: 'Content Info' },
+  { key: 'Demo Description', label: 'Demo Description', group: 'Content Info', wide: true, multiline: true },
+  { key: 'Demo Description (Creator input)', label: 'Creator Description', group: 'Content Info', wide: true, multiline: true },
+  { key: 'SEOWords', label: 'SEO Words', group: 'Content Info', wide: true },
+  { key: 'Description for SEO', label: 'Description for SEO', group: 'Content Info', wide: true, multiline: true },
+  { key: 'Verticals', label: 'Verticals', group: 'Audience & Distribution' },
+  { key: 'Event', label: 'Event', group: 'Audience & Distribution' },
+  { key: 'Primary Audience', label: 'Primary Audience', group: 'Audience & Distribution' },
+  { key: 'Personas', label: 'Personas', group: 'Audience & Distribution' },
+  { key: 'Pain Points', label: 'Pain Points', group: 'Audience & Distribution', wide: true, multiline: true },
+  { key: 'Relevant Links / CTAs', label: 'Relevant Links / CTAs', group: 'Audience & Distribution', wide: true, multiline: true },
+  { key: 'Destination Channels', label: 'Destination Channels', group: 'Audience & Distribution', wide: true },
+  { key: 'CTALink', label: 'CTA Link', group: 'Audience & Distribution', wide: true },
+  { key: 'Marketing Program', label: 'Marketing Program', group: 'Program' },
+  { key: 'TDP', label: 'TDP', group: 'Program' },
+  { key: 'Sales Tactic', label: 'Sales Tactic', group: 'Program' },
+  { key: 'Priority', label: 'Priority', group: 'Program' },
+  { key: 'Deadline', label: 'Deadline', group: 'Program' },
+  { key: 'Contacted BU', label: 'Contacted BU', group: 'Program' },
+  { key: 'Checked Existing Demo', label: 'Checked Existing Demo', group: 'Program' },
+  { key: 'Creator Name', label: 'Creator Name', group: 'Creator' },
+  { key: 'Creator Email', label: 'Creator Email', group: 'Creator' },
+  { key: 'Creator Team', label: 'Creator Team', group: 'Creator' },
+  { key: 'Creation Link', label: 'Creation Link', group: 'Creator', wide: true },
+  { key: 'Group', label: 'Group', group: 'Creator' },
+  { key: 'Request Employee Advocacy Link', label: 'Request Advocacy Link', group: 'Creator', wide: true },
+  { key: 'Creator Employee Advocacy Link', label: 'Creator Advocacy Link', group: 'Creator', wide: true },
+  { key: 'Synthetic Voice Used?', label: 'Synthetic Voice', group: 'Technical' },
+  { key: 'Translation Used?', label: 'Translation', group: 'Technical' },
+  { key: 'Mobile-friendly design considered?', label: 'Mobile-Friendly', group: 'Technical' },
+  { key: 'Guide Extraction JSON', label: 'Guide Extraction JSON', group: 'Technical', wide: true, multiline: true }
+];
+
+const STATUS_TRACKER_ADMINS = ['yunjyang@redhat.com'];
 
 function isAdmin_(email) {
   return STATUS_TRACKER_ADMINS.some(a => a.toLowerCase() === email.toLowerCase());
@@ -652,7 +722,7 @@ function buildSubmissionFromRow_(row, headerMap) {
     globalId: get(col.GLOBAL_ID),
     requestNumber: get(col.NUMBER),
     description: get(col.DESCRIPTION),
-    productionLink: get(col.PRODUCTION_LINK),
+    productionLink: get(col.LATEST_PROD_LINK) || get(col.PRODUCTION_LINK),
     duration: get(col.DURATION),
     quarter: get(col.QUARTER),
     creatorTeam: get(col.CREATOR_TEAM),
@@ -681,7 +751,32 @@ function buildSubmissionFromRow_(row, headerMap) {
       published: get(col.STATUS_PUBLISHED_TS),
       retired: get(col.STATUS_RETIRED_TS),
       closed: get(col.STATUS_CLOSED_TS)
-    }
+    },
+    perfAction: get(col.RECOMMENDED_ACTION),
+    perfActionReason: get(col.ACTION_REASON),
+    perfActionPriority: get(col.ACTION_PRIORITY),
+    perfAssigned: get(col.ASSIGNED),
+    perfActionStatus: get(col.ACTION_STATUS),
+    actionCompletedDate: get(col.ACTION_COMPLETED_DATE),
+    perfScore: get(col.PERF_SCORE),
+    perfTier: get(col.PERF_TIER),
+    perfTrend: get(col.PERF_TREND),
+    perfSignals: get(col.PERF_SIGNALS),
+    perfFlags: get(col.PERF_FLAGS),
+    priority: get(col.PRIORITY),
+    deadline: get(col.DEADLINE),
+    contactedBu: get(col.CONTACTED_BU),
+    checkedExisting: get(col.CHECKED_EXISTING),
+    primaryAudience: get(col.PRIMARY_AUDIENCE),
+    personas: get(col.PERSONAS),
+    painPoints: get(col.PAIN_POINTS),
+    relevantLinks: get(col.RELEVANT_LINKS),
+    destinationChannels: get(col.DESTINATION_CHANNELS),
+    contextDescription: get(col.CONTEXT_DESCRIPTION),
+    requestAdvocacy: get(col.REQUEST_ADVOCACY),
+    demoDescCreator: get(col.DEMO_DESC_CREATOR),
+    seoWords: get(col.SEO_WORDS),
+    guideExtractionJson: get(col.GUIDE_EXTRACTION_JSON)
   };
 }
 
@@ -777,13 +872,27 @@ function getAllSubmissions() {
       submissions.push(pending[i]);
     }
 
+    const queueEntries = getResponseQueueData_();
+    const pendingByNumber = {};
+    for (let q = 0; q < queueEntries.length; q++) {
+      const entry = queueEntries[q];
+      if (entry.processed) continue;
+      pendingByNumber[entry.number] = entry;
+    }
+    for (let s = 0; s < submissions.length; s++) {
+      const num = submissions[s].requestNumber;
+      if (num && pendingByNumber[num]) {
+        submissions[s].pendingResponse = pendingByNumber[num];
+      }
+    }
+
     submissions.sort((a, b) => {
       const da = a.dateSubmitted ? new Date(a.dateSubmitted).getTime() : 0;
       const db = b.dateSubmitted ? new Date(b.dateSubmitted).getTime() : 0;
       return db - da;
     });
 
-    return { success: true, submissions, userEmail: lowerEmail, isAdmin: isAdmin_(email) };
+    return { success: true, submissions, userEmail: lowerEmail, isAdmin: isAdmin_(email), editableFields: EDITABLE_METADATA_FIELDS_ };
   } catch (e) {
     return { success: false, error: e.message || String(e) };
   }
@@ -862,6 +971,345 @@ function getPendingIntakeSubmissions_(seenGlobalIds, userEmail) {
     return results;
   } catch (e) {
     return [];
+  }
+}
+
+/* =========================
+   RESPONSE QUEUE
+========================= */
+
+const RESPONSE_QUEUE_HEADERS_ = [
+  'Timestamp', 'Submitter Email', 'Number', 'Demo Title', 'Type',
+  'Recommended Action', 'Response', 'New Link', 'Notes',
+  'Metadata Changes', 'Approval', 'Processed'
+];
+
+function getDemoMetadata(requestNumber) {
+  try {
+    if (!requestNumber) return { success: false, error: 'No demo number.' };
+
+    const { rows, headerMap } = getRequestMasterData_();
+    const numIdx = headerMap[STATUS_TRACKER_COLUMNS.NUMBER];
+    if (numIdx == null) return { success: false, error: 'Number column not found.' };
+
+    const target = String(requestNumber).trim();
+    for (let i = 0; i < rows.length; i++) {
+      if (String(rows[i][numIdx] || '').trim() === target) {
+        const meta = {};
+        for (let j = 0; j < EDITABLE_METADATA_FIELDS_.length; j++) {
+          const f = EDITABLE_METADATA_FIELDS_[j];
+          const idx = headerMap[f.key];
+          meta[f.key] = idx != null ? String(rows[i][idx] || '') : '';
+        }
+        return { success: true, metadata: meta };
+      }
+    }
+    return { success: false, error: 'Demo not found.' };
+  } catch (e) {
+    return { success: false, error: e.message || String(e) };
+  }
+}
+
+function getResponseQueueSheet_() {
+  const ss = getTargetSpreadsheet_();
+  let sheet = ss.getSheetByName(RESPONSE_QUEUE_SHEET);
+  if (!sheet) {
+    sheet = ss.insertSheet(RESPONSE_QUEUE_SHEET);
+    sheet.getRange(1, 1, 1, RESPONSE_QUEUE_HEADERS_.length).setValues([RESPONSE_QUEUE_HEADERS_]);
+    sheet.getRange(1, 1, 1, RESPONSE_QUEUE_HEADERS_.length).setFontWeight('bold');
+  }
+  return sheet;
+}
+
+function getResponseQueueData_() {
+  try {
+    const ss = getTargetSpreadsheet_();
+    const sheet = ss.getSheetByName(RESPONSE_QUEUE_SHEET);
+    if (!sheet) return [];
+
+    const lastRow = sheet.getLastRow();
+    if (lastRow <= 1) return [];
+
+    const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0]
+      .map(h => String(h || '').trim());
+    const data = sheet.getRange(2, 1, lastRow - 1, headers.length).getValues();
+
+    const col = (name) => headers.indexOf(name);
+    const results = [];
+
+    for (let i = 0; i < data.length; i++) {
+      const row = data[i];
+      const get = (name) => {
+        const idx = col(name);
+        return idx >= 0 ? String(row[idx] || '') : '';
+      };
+      results.push({
+        queueRowIndex: i + 2,
+        timestamp: get('Timestamp'),
+        submitterEmail: get('Submitter Email'),
+        number: get('Number'),
+        demoTitle: get('Demo Title'),
+        type: get('Type'),
+        action: get('Recommended Action'),
+        response: get('Response'),
+        newLink: get('New Link'),
+        notes: get('Notes'),
+        metadataChanges: get('Metadata Changes'),
+        approval: get('Approval'),
+        processed: get('Processed')
+      });
+    }
+    return results;
+  } catch (e) {
+    console.error('getResponseQueueData_ error: ' + e.message);
+    return [];
+  }
+}
+
+function submitCreatorResponse(payload) {
+  try {
+    const email = Session.getActiveUser().getEmail();
+    if (!email) return { success: false, error: 'Not authenticated.' };
+
+    if (!payload || !payload.number) {
+      return { success: false, error: 'Missing required fields.' };
+    }
+
+    const hasResponse = payload.response && ['Done', 'Declined', 'Need help'].indexOf(payload.response) !== -1;
+    const hasMetadata = payload.metadataChanges && typeof payload.metadataChanges === 'object'
+      && Object.keys(payload.metadataChanges).length > 0;
+
+    if (!hasResponse && !hasMetadata) {
+      return { success: false, error: 'Please select a response or make metadata changes.' };
+    }
+
+    let type = 'response';
+    if (hasResponse && hasMetadata) type = 'response+metadata';
+    else if (hasMetadata && !hasResponse) type = 'metadata_edit';
+
+    const metadataJson = hasMetadata ? JSON.stringify(payload.metadataChanges) : '';
+
+    const lock = LockService.getScriptLock();
+    lock.waitLock(10000);
+
+    try {
+      const sheet = getResponseQueueSheet_();
+      const lastRow = sheet.getLastRow();
+
+      let existingRow = -1;
+      if (lastRow > 1) {
+        const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0]
+          .map(h => String(h || '').trim());
+        const numCol = headers.indexOf('Number');
+        const processedCol = headers.indexOf('Processed');
+        if (numCol >= 0 && processedCol >= 0) {
+          const data = sheet.getRange(2, 1, lastRow - 1, headers.length).getValues();
+          for (let i = data.length - 1; i >= 0; i--) {
+            if (String(data[i][numCol] || '').trim() === String(payload.number).trim()
+                && !String(data[i][processedCol] || '').trim()) {
+              existingRow = i + 2;
+              break;
+            }
+          }
+        }
+      }
+
+      const rowData = [
+        new Date().toISOString(),
+        email,
+        String(payload.number),
+        payload.title || '',
+        type,
+        payload.action || '',
+        payload.response || '',
+        payload.newLink || '',
+        payload.notes || '',
+        metadataJson,
+        '',
+        ''
+      ];
+
+      if (existingRow > 0) {
+        sheet.getRange(existingRow, 1, 1, rowData.length).setValues([rowData]);
+      } else {
+        sheet.appendRow(rowData);
+      }
+
+      try {
+        var masterData = getRequestMasterData_();
+        var numIdx = masterData.headerMap[STATUS_TRACKER_COLUMNS.NUMBER];
+        var actionStatusIdx = masterData.headerMap[STATUS_TRACKER_COLUMNS.ACTION_STATUS];
+        if (numIdx != null && actionStatusIdx != null) {
+          var masterSheet = getTargetSpreadsheet_().getSheetByName('Request_Master');
+          for (var mi = 0; mi < masterData.rows.length; mi++) {
+            if (String(masterData.rows[mi][numIdx] || '').trim() === String(payload.number)) {
+              masterSheet.getRange(mi + 2, actionStatusIdx + 1).setValue('Pending Review');
+              break;
+            }
+          }
+        }
+      } catch (e) {
+        Logger.log('Failed to update Action Status on Master: ' + e.message);
+      }
+
+      return { success: true };
+    } finally {
+      lock.releaseLock();
+    }
+  } catch (e) {
+    return { success: false, error: e.message || String(e) };
+  }
+}
+
+function approveResponse(queueRowIndex) {
+  try {
+    const email = Session.getActiveUser().getEmail();
+    if (!email || !isAdmin_(email)) {
+      return { success: false, error: 'Admin access required.' };
+    }
+
+    const lock = LockService.getScriptLock();
+    lock.waitLock(15000);
+
+    try {
+      const sheet = getResponseQueueSheet_();
+      const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0]
+        .map(h => String(h || '').trim());
+      const queueRow = sheet.getRange(queueRowIndex, 1, 1, headers.length).getValues()[0];
+
+      const col = (name) => headers.indexOf(name);
+      const get = (name) => {
+        const idx = col(name);
+        return idx >= 0 ? String(queueRow[idx] || '') : '';
+      };
+
+      if (get('Processed')) {
+        return { success: false, error: 'This response has already been processed.' };
+      }
+
+      const number = get('Number').trim();
+      if (!number) return { success: false, error: 'No demo number found.' };
+
+      const { rows, headerMap } = getRequestMasterData_();
+      const numIdx = headerMap[STATUS_TRACKER_COLUMNS.NUMBER];
+      let masterRowIdx = -1;
+      for (let i = 0; i < rows.length; i++) {
+        if (String(rows[i][numIdx] || '').trim() === number) {
+          masterRowIdx = i;
+          break;
+        }
+      }
+      if (masterRowIdx < 0) {
+        return { success: false, error: 'Demo #' + number + ' not found on Request_Master.' };
+      }
+
+      const masterSheet = getTargetSpreadsheet_().getSheetByName('Request_Master');
+      const masterRow = masterRowIdx + 2;
+
+      const actionStatusIdx = headerMap[STATUS_TRACKER_COLUMNS.ACTION_STATUS];
+      if (actionStatusIdx != null) {
+        masterSheet.getRange(masterRow, actionStatusIdx + 1).setValue('Completed');
+      }
+
+      var completedDateIdx = headerMap[STATUS_TRACKER_COLUMNS.ACTION_COMPLETED_DATE];
+      if (completedDateIdx != null) {
+        masterSheet.getRange(masterRow, completedDateIdx + 1).setValue(new Date().toISOString());
+      }
+
+      const response = get('Response');
+      const responseColIdx = headerMap['Response'];
+      if (response && responseColIdx != null) {
+        masterSheet.getRange(masterRow, responseColIdx + 1).setValue(response);
+      }
+
+      const notes = get('Notes');
+      if (notes && responseColIdx != null) {
+        const existing = String(masterSheet.getRange(masterRow, responseColIdx + 1).getValue() || '');
+        const combined = existing ? existing + ' | ' + notes : notes;
+        masterSheet.getRange(masterRow, responseColIdx + 1).setValue(combined);
+      }
+
+      const newLink = get('New Link').trim();
+      const creationLinkIdx = headerMap[STATUS_TRACKER_COLUMNS.CREATION_LINK];
+      if (newLink && creationLinkIdx != null) {
+        masterSheet.getRange(masterRow, creationLinkIdx + 1).setValue(newLink);
+      }
+
+      const metaJson = get('Metadata Changes');
+      if (metaJson) {
+        try {
+          const changes = JSON.parse(metaJson);
+          const keys = Object.keys(changes);
+          for (let m = 0; m < keys.length; m++) {
+            const cIdx = headerMap[keys[m]];
+            if (cIdx != null) {
+              masterSheet.getRange(masterRow, cIdx + 1).setValue(changes[keys[m]]);
+            }
+          }
+        } catch (parseErr) {
+          console.error('Failed to parse metadata changes: ' + parseErr.message);
+        }
+      }
+
+      const approvalIdx = col('Approval');
+      const processedIdx = col('Processed');
+      if (approvalIdx >= 0) sheet.getRange(queueRowIndex, approvalIdx + 1).setValue('Approved');
+      if (processedIdx >= 0) sheet.getRange(queueRowIndex, processedIdx + 1).setValue(new Date().toISOString());
+
+      return { success: true };
+    } finally {
+      lock.releaseLock();
+    }
+  } catch (e) {
+    return { success: false, error: e.message || String(e) };
+  }
+}
+
+function rejectResponse(queueRowIndex) {
+  try {
+    const email = Session.getActiveUser().getEmail();
+    if (!email || !isAdmin_(email)) {
+      return { success: false, error: 'Admin access required.' };
+    }
+
+    const lock = LockService.getScriptLock();
+    lock.waitLock(10000);
+
+    try {
+      const sheet = getResponseQueueSheet_();
+      const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0]
+        .map(h => String(h || '').trim());
+
+      const col = (name) => headers.indexOf(name);
+      const queueRow = sheet.getRange(queueRowIndex, 1, 1, headers.length).getValues()[0];
+      const number = String(queueRow[col('Number')] || '').trim();
+
+      const approvalIdx = col('Approval');
+      const processedIdx = col('Processed');
+      if (approvalIdx >= 0) sheet.getRange(queueRowIndex, approvalIdx + 1).setValue('Rejected');
+      if (processedIdx >= 0) sheet.getRange(queueRowIndex, processedIdx + 1).setValue(new Date().toISOString());
+
+      if (number) {
+        const { rows, headerMap } = getRequestMasterData_();
+        const numIdx = headerMap[STATUS_TRACKER_COLUMNS.NUMBER];
+        const actionStatusIdx = headerMap[STATUS_TRACKER_COLUMNS.ACTION_STATUS];
+        if (numIdx != null && actionStatusIdx != null) {
+          const masterSheet = getTargetSpreadsheet_().getSheetByName('Request_Master');
+          for (let i = 0; i < rows.length; i++) {
+            if (String(rows[i][numIdx] || '').trim() === number) {
+              masterSheet.getRange(i + 2, actionStatusIdx + 1).setValue('Resubmit');
+              break;
+            }
+          }
+        }
+      }
+
+      return { success: true };
+    } finally {
+      lock.releaseLock();
+    }
+  } catch (e) {
+    return { success: false, error: e.message || String(e) };
   }
 }
 
