@@ -1371,6 +1371,57 @@ function rejectResponse(queueRowIndex, adminNotes) {
   }
 }
 
+function getReviewQueue() {
+  try {
+    var email = Session.getActiveUser().getEmail();
+    if (!email || !isAdmin_(email)) {
+      return { success: false, error: 'Admin access required.' };
+    }
+
+    var queueEntries = getResponseQueueData_();
+    var pending = [];
+    for (var q = 0; q < queueEntries.length; q++) {
+      if (!queueEntries[q].processed) pending.push(queueEntries[q]);
+    }
+
+    if (pending.length === 0) return { success: true, items: [] };
+
+    var masterData = getRequestMasterData_();
+    var numIdx = masterData.headerMap[STATUS_TRACKER_COLUMNS.NUMBER];
+    var masterByNumber = {};
+    if (numIdx != null) {
+      for (var i = 0; i < masterData.rows.length; i++) {
+        var num = String(masterData.rows[i][numIdx] || '').trim();
+        if (num) masterByNumber[num] = buildSubmissionFromRow_(masterData.rows[i], masterData.headerMap);
+      }
+    }
+
+    var items = [];
+    for (var p = 0; p < pending.length; p++) {
+      var entry = pending[p];
+      var sub = masterByNumber[entry.number] || null;
+      items.push({
+        queueRowIndex: entry.queueRowIndex,
+        timestamp: entry.timestamp,
+        submitterEmail: entry.submitterEmail,
+        number: entry.number,
+        demoTitle: entry.demoTitle || (sub ? sub.title : ''),
+        type: entry.type,
+        action: entry.action,
+        response: entry.response,
+        newLink: entry.newLink,
+        notes: entry.notes,
+        metadataChanges: entry.metadataChanges,
+        submission: sub
+      });
+    }
+
+    return { success: true, items: items };
+  } catch (e) {
+    return { success: false, error: e.message || String(e) };
+  }
+}
+
 function extractGuideContent(payload) {
   const arcadeUrl = typeof payload === 'string'
     ? payload
