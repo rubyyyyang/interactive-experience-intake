@@ -1198,7 +1198,7 @@ function submitCreatorResponse(payload) {
   }
 }
 
-function approveResponse(queueRowIndex) {
+function approveResponse(queueRowIndex, adminNotes, metadataOverrides) {
   try {
     const email = Session.getActiveUser().getEmail();
     if (!email || !isAdmin_(email)) {
@@ -1272,19 +1272,30 @@ function approveResponse(queueRowIndex) {
         masterSheet.getRange(masterRow, creationLinkIdx + 1).setValue(newLink);
       }
 
-      const metaJson = get('Metadata Changes');
-      if (metaJson) {
-        try {
-          const changes = JSON.parse(metaJson);
-          const keys = Object.keys(changes);
-          for (let m = 0; m < keys.length; m++) {
-            const cIdx = headerMap[keys[m]];
-            if (cIdx != null) {
-              masterSheet.getRange(masterRow, cIdx + 1).setValue(changes[keys[m]]);
+      var skipped = [];
+      var changes = metadataOverrides || null;
+      if (!changes) {
+        var metaJson = get('Metadata Changes');
+        if (metaJson) {
+          try { changes = JSON.parse(metaJson); } catch (parseErr) {
+            console.error('Failed to parse metadata changes: ' + parseErr.message);
+          }
+        }
+      }
+      if (changes) {
+        var keys = Object.keys(changes);
+        for (var m = 0; m < keys.length; m++) {
+          var optionsKey = FIELD_TO_OPTIONS_[keys[m]];
+          if (optionsKey && FIELD_OPTIONS[optionsKey]) {
+            if (FIELD_OPTIONS[optionsKey].indexOf(changes[keys[m]]) === -1) {
+              skipped.push(keys[m] + ': "' + changes[keys[m]] + '" is not an allowed value');
+              continue;
             }
           }
-        } catch (parseErr) {
-          console.error('Failed to parse metadata changes: ' + parseErr.message);
+          var cIdx = headerMap[keys[m]];
+          if (cIdx != null) {
+            masterSheet.getRange(masterRow, cIdx + 1).setValue(changes[keys[m]]);
+          }
         }
       }
 
@@ -1293,7 +1304,12 @@ function approveResponse(queueRowIndex) {
       if (approvalIdx >= 0) sheet.getRange(queueRowIndex, approvalIdx + 1).setValue('Approved');
       if (processedIdx >= 0) sheet.getRange(queueRowIndex, processedIdx + 1).setValue(new Date().toISOString());
 
-      return { success: true };
+      var adminNotesIdx = col('Admin Notes');
+      if (adminNotesIdx >= 0 && adminNotes) {
+        sheet.getRange(queueRowIndex, adminNotesIdx + 1).setValue(adminNotes);
+      }
+
+      return { success: true, skipped: skipped.length > 0 ? skipped : undefined };
     } finally {
       lock.releaseLock();
     }
@@ -1302,7 +1318,7 @@ function approveResponse(queueRowIndex) {
   }
 }
 
-function rejectResponse(queueRowIndex) {
+function rejectResponse(queueRowIndex, adminNotes) {
   try {
     const email = Session.getActiveUser().getEmail();
     if (!email || !isAdmin_(email)) {
@@ -1325,6 +1341,11 @@ function rejectResponse(queueRowIndex) {
       const processedIdx = col('Processed');
       if (approvalIdx >= 0) sheet.getRange(queueRowIndex, approvalIdx + 1).setValue('Rejected');
       if (processedIdx >= 0) sheet.getRange(queueRowIndex, processedIdx + 1).setValue(new Date().toISOString());
+
+      var adminNotesIdx = col('Admin Notes');
+      if (adminNotesIdx >= 0 && adminNotes) {
+        sheet.getRange(queueRowIndex, adminNotesIdx + 1).setValue(adminNotes);
+      }
 
       if (number) {
         const { rows, headerMap } = getRequestMasterData_();
