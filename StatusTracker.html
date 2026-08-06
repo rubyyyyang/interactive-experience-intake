@@ -879,6 +879,20 @@
     .admin-meta-row select { background: #fff; }
     .toast-warning { background: #e37400; }
 
+    .review-queue { padding: 16px 0; }
+    .review-queue-empty { text-align: center; padding: 40px 20px; color: #888; font-size: 0.9rem; }
+    .rq-item { border: 1px solid #dadce0; border-radius: 8px; margin-bottom: 10px; background: #fff; }
+    .rq-summary { display: flex; align-items: center; gap: 16px; padding: 12px 16px; cursor: pointer; }
+    .rq-summary:hover { background: #f8f9fa; }
+    .rq-title { font-weight: 600; font-size: 0.9rem; color: #1f1f1f; flex: 1; }
+    .rq-num { font-size: 0.78rem; color: #888; }
+    .rq-creator { font-size: 0.82rem; color: #555; min-width: 120px; }
+    .rq-action { font-size: 0.78rem; color: #e37400; font-weight: 500; min-width: 140px; }
+    .rq-date { font-size: 0.78rem; color: #888; min-width: 80px; }
+    .rq-expand { font-size: 0.7rem; color: #888; }
+    .rq-detail { display: none; padding: 0 16px 16px; border-top: 1px solid #e8eaed; }
+    .rq-detail.open { display: block; }
+
     /* Multi-select dropdown */
     .multi-select { position: relative; display: inline-block; vertical-align: middle; }
     .multi-select-btn { display: inline-flex; align-items: center; gap: 6px; padding: 8px 12px; border: 1px solid #ddd; border-radius: 6px; background: #fff; font-size: 0.85rem; cursor: pointer; min-width: 140px; color: #1f1f1f; }
@@ -935,6 +949,7 @@
       <button class="tab active" data-tab="my" onclick="switchTab('my')">My Demos</button>
       <button class="tab" data-tab="all" onclick="switchTab('all')">All Demos</button>
       <button class="tab" data-tab="reports" onclick="switchTab('reports')">Reports</button>
+      <button class="tab" data-tab="review" onclick="switchTab('review')" id="reviewTab" style="display:none;">Review Queue</button>
     </div>
     <div class="controls-right">
       <select id="statusFilter" onchange="onStatusFilterChange()">
@@ -1013,6 +1028,7 @@
     </table>
   </div>
   <div id="reportsView" class="reports-container" style="display:none;"></div>
+  <div id="reviewQueueView" class="review-queue" style="display:none;"></div>
 </div>
 
 <div id="tokenView" style="display:none;"></div>
@@ -1042,6 +1058,7 @@
   var currentSearch = '';
   var EDITABLE_FIELDS = [];
   var FIELD_OPTIONS_MAP = {};
+  var reviewQueueData = [];
   var FIELD_TO_OPTIONS_FRONTEND_ = {
     'Content Type': 'contentTypes',
     'Creator Team': 'creatorTeams',
@@ -1893,6 +1910,9 @@
           isAdmin = result.isAdmin || false;
           EDITABLE_FIELDS = result.editableFields || [];
           FIELD_OPTIONS_MAP = result.fieldOptions || {};
+          var reviewTabEl = document.getElementById('reviewTab');
+          if (reviewTabEl) reviewTabEl.style.display = isAdmin ? '' : 'none';
+          if (isAdmin) loadReviewQueueCount();
           document.querySelectorAll('.detail-row').forEach(function(r) { r.remove(); });
           document.querySelectorAll('.data-row.expanded').forEach(function(r) { r.classList.remove('expanded'); });
           renderTable();
@@ -1908,6 +1928,75 @@
     toast.textContent = msg;
     document.body.appendChild(toast);
     setTimeout(function() { toast.remove(); }, 3000);
+  }
+
+  function loadReviewQueueCount() {
+    google.script.run
+      .withSuccessHandler(function(result) {
+        if (result && result.success) {
+          reviewQueueData = result.items || [];
+          var tab = document.getElementById('reviewTab');
+          if (tab) tab.textContent = 'Review Queue (' + reviewQueueData.length + ')';
+          if (activeTab === 'review') renderReviewQueue();
+        }
+      })
+      .withFailureHandler(function() {})
+      .getReviewQueue();
+  }
+
+  function renderReviewQueue() {
+    var container = document.getElementById('reviewQueueView');
+    if (!container) return;
+
+    if (reviewQueueData.length === 0) {
+      container.innerHTML = '<div class="review-queue-empty">No pending reviews</div>';
+      return;
+    }
+
+    var html = '';
+    for (var i = 0; i < reviewQueueData.length; i++) {
+      var item = reviewQueueData[i];
+      var dateStr = item.timestamp ? item.timestamp.split('T')[0] : '';
+      var creatorName = item.submission ? (item.submission.creatorName || '') : '';
+
+      html += '<div class="rq-item">' +
+        '<div class="rq-summary" onclick="toggleReviewItem(' + i + ')">' +
+          '<span class="rq-num">#' + escapeHtml(item.number) + '</span>' +
+          '<span class="rq-title">' + escapeHtml(item.demoTitle) + '</span>' +
+          '<span class="rq-creator">' + escapeHtml(creatorName || item.submitterEmail) + '</span>' +
+          '<span class="rq-action">' + escapeHtml(item.action) + '</span>' +
+          '<span class="rq-date">' + escapeHtml(dateStr) + '</span>' +
+          '<span class="rq-expand" id="rq-arrow-' + i + '">&#9662;</span>' +
+        '</div>' +
+        '<div class="rq-detail" id="rq-detail-' + i + '">';
+
+      if (item.submission) {
+        var pending = {
+          queueRowIndex: item.queueRowIndex,
+          response: item.response,
+          newLink: item.newLink,
+          notes: item.notes,
+          metadataChanges: item.metadataChanges,
+          approval: '',
+          processed: ''
+        };
+        html += buildAdminReview(item.submission, pending);
+      } else {
+        html += '<div style="color:#888;font-size:0.85rem;">Demo #' + escapeHtml(item.number) + ' not found on Request_Master</div>';
+      }
+
+      html += '</div></div>';
+    }
+    container.innerHTML = html;
+  }
+
+  function toggleReviewItem(idx) {
+    var detail = document.getElementById('rq-detail-' + idx);
+    var arrow = document.getElementById('rq-arrow-' + idx);
+    if (detail) {
+      var open = detail.classList.toggle('open');
+      if (arrow) arrow.innerHTML = open ? '&#9652;' : '&#9662;';
+    }
   }
 
   // --- Inline Edit Metadata ---
@@ -2090,14 +2179,18 @@
     });
 
     var isReports = tab === 'reports';
-    document.getElementById('tableWrapper').style.display = isReports ? 'none' : '';
-    document.getElementById('resultsCount').style.display = isReports ? 'none' : '';
+    var isReview = tab === 'review';
+    document.getElementById('tableWrapper').style.display = (isReports || isReview) ? 'none' : '';
+    document.getElementById('resultsCount').style.display = (isReports || isReview) ? 'none' : '';
     document.getElementById('reportsView').style.display = isReports ? 'block' : 'none';
+    document.getElementById('reviewQueueView').style.display = isReview ? 'block' : 'none';
     document.getElementById('emptyState').style.display = 'none';
-    document.querySelector('.controls-right').style.display = isReports ? 'none' : '';
+    document.querySelector('.controls-right').style.display = (isReports || isReview) ? 'none' : '';
 
     if (isReports) {
       renderReports();
+    } else if (isReview) {
+      loadReviewQueueCount();
     } else {
       renderTable();
     }
@@ -2763,6 +2856,9 @@
           isAdmin = result.isAdmin || false;
           EDITABLE_FIELDS = result.editableFields || [];
           FIELD_OPTIONS_MAP = result.fieldOptions || {};
+          var reviewTabEl = document.getElementById('reviewTab');
+          if (reviewTabEl) reviewTabEl.style.display = isAdmin ? '' : 'none';
+          if (isAdmin) loadReviewQueueCount();
 
           trackEvent('status_page_view', { submissionCount: allSubmissions.length });
           var myCount = isAdmin ? allSubmissions.length : allSubmissions.filter(function(s) { return s.isMine; }).length;
