@@ -867,6 +867,17 @@
     .diff-old { color: #c5221f; text-decoration: line-through; }
     .diff-new { color: #137333; font-weight: 600; }
     .review-actions { display: flex; gap: 8px; margin-top: 12px; }
+    .admin-notes-row { margin-top: 10px; }
+    .admin-notes-row label { display: block; font-size: 0.78rem; font-weight: 600; color: #555; margin-bottom: 3px; }
+    .admin-notes-row textarea { width: 100%; padding: 7px 10px; border: 1px solid #ddd; border-radius: 5px; font-size: 0.85rem; font-family: inherit; resize: vertical; min-height: 40px; }
+    .admin-meta-form { margin-top: 10px; }
+    .admin-meta-row { display: flex; align-items: baseline; gap: 8px; margin-bottom: 6px; font-size: 0.82rem; }
+    .admin-meta-row .meta-label { font-weight: 600; color: #333; min-width: 140px; flex-shrink: 0; }
+    .admin-meta-row .meta-old { color: #c5221f; text-decoration: line-through; font-size: 0.8rem; }
+    .admin-meta-row .meta-arrow { color: #888; }
+    .admin-meta-row input, .admin-meta-row select { flex: 1; padding: 4px 8px; border: 1px solid #dadce0; border-radius: 4px; font-size: 0.85rem; font-family: inherit; }
+    .admin-meta-row select { background: #fff; }
+    .toast-warning { background: #e37400; }
 
     /* Multi-select dropdown */
     .multi-select { position: relative; display: inline-block; vertical-align: middle; }
@@ -1030,6 +1041,24 @@
   var currentActionFilters = [];
   var currentSearch = '';
   var EDITABLE_FIELDS = [];
+  var FIELD_OPTIONS_MAP = {};
+  var FIELD_TO_OPTIONS_FRONTEND_ = {
+    'Content Type': 'contentTypes',
+    'Creator Team': 'creatorTeams',
+    'Quarter': 'quarters',
+    'Language': 'languages',
+    'Verticals': 'verticals',
+    'Event': 'events',
+    'Primary Product': 'products',
+    'Product': 'products',
+    'TDP': 'tdps',
+    'Sales Tactic': 'salesTactics',
+    'Marketing Program': 'marketingPrograms',
+    'Synthetic Voice Used?': 'yesNo',
+    'Translation Used?': 'yesNo',
+    'Mobile-friendly design considered?': 'yesNo',
+    'Checked Existing Demo': 'yesNo'
+  };
 
   function trackEvent(eventType, metadata) {
     try {
@@ -1593,6 +1622,19 @@
       if (pending.newLink) html += '<div class="banner-detail">New Link: ' + escapeHtml(pending.newLink) + '</div>';
       if (pending.notes) html += '<div class="banner-detail">Notes: ' + escapeHtml(pending.notes) + '</div>';
       html += '<div class="banner-detail" style="font-size:0.78rem;color:#888;">Submitted ' + escapeHtml(pending.timestamp ? pending.timestamp.split('T')[0] : '') + '</div>';
+      if (pending.metadataChanges) {
+        try {
+          var pmc = JSON.parse(pending.metadataChanges);
+          var pmKeys = Object.keys(pmc);
+          if (pmKeys.length > 0) {
+            html += '<div class="banner-detail" style="margin-top:6px;"><strong>Proposed changes:</strong></div>';
+            for (var pi = 0; pi < pmKeys.length; pi++) {
+              html += '<div class="banner-detail" style="font-size:0.8rem;color:#555;">' +
+                escapeHtml(pmKeys[pi]) + ': ' + escapeHtml(pmc[pmKeys[pi]]) + '</div>';
+            }
+          }
+        } catch (e) {}
+      }
       html += '<div style="margin-top:10px;"><button class="btn-secondary" onclick="event.stopPropagation(); showResponseForm(\'' + num + '\');">Update Response</button></div>';
       html += '<div class="response-form" id="response-form-' + num + '" style="display:none;">' + buildResponseFormFields(sub) + '</div>';
 
@@ -1610,7 +1652,9 @@
         '<div class="banner-title" style="color:#c5221f;">Resubmit Required</div>' +
         '<div class="banner-detail"><strong>' + escapeHtml(sub.perfAction) + '</strong></div>';
       if (pending && pending.approval === 'Rejected') {
-        if (pending.notes) html += '<div class="banner-reason">Rejection notes: ' + escapeHtml(pending.notes) + '</div>';
+        if (pending.response) html += '<div class="banner-detail" style="margin-top:6px;">Your response: <strong>' + escapeHtml(pending.response) + '</strong></div>';
+        if (pending.notes) html += '<div class="banner-detail">Your notes: ' + escapeHtml(pending.notes) + '</div>';
+        if (pending.adminNotes) html += '<div class="banner-reason" style="margin-top:6px;color:#c5221f;">Admin feedback: ' + escapeHtml(pending.adminNotes) + '</div>';
       }
       html += (sub.perfActionReason ? '<div class="banner-reason">' + escapeHtml(sub.perfActionReason) + '</div>' : '') +
         '<div class="response-form" id="response-form-' + num + '">' + buildResponseFormFields(sub) + '</div>' +
@@ -1719,6 +1763,7 @@
   }
 
   function buildAdminReview(sub, pending) {
+    var qri = pending.queueRowIndex;
     var html = '<div class="admin-review">' +
       '<h4>Admin Review</h4>';
 
@@ -1729,7 +1774,7 @@
       html += '<div class="diff-row"><span class="diff-field">New Link:</span> <span class="diff-new">' + escapeHtml(pending.newLink) + '</span></div>';
     }
     if (pending.notes) {
-      html += '<div class="diff-row"><span class="diff-field">Notes:</span> <span>' + escapeHtml(pending.notes) + '</span></div>';
+      html += '<div class="diff-row"><span class="diff-field">Creator Notes:</span> <span>' + escapeHtml(pending.notes) + '</span></div>';
     }
 
     if (pending.metadataChanges) {
@@ -1738,21 +1783,43 @@
         var keys = Object.keys(changes);
         if (keys.length > 0) {
           html += '<h4 style="margin-top:10px;">Metadata Changes</h4>';
+          html += '<div class="admin-meta-form" id="admin-meta-' + qri + '">';
           for (var i = 0; i < keys.length; i++) {
-            var oldVal = sub.metadata ? (sub.metadata[keys[i]] || '') : '';
-            html += '<div class="diff-row">' +
-              '<span class="diff-field">' + escapeHtml(keys[i]) + ':</span> ' +
-              (oldVal ? '<span class="diff-old">' + escapeHtml(oldVal) + '</span> ' : '') +
-              '<span class="diff-new">' + escapeHtml(changes[keys[i]]) + '</span>' +
-              '</div>';
+            var fieldKey = keys[i];
+            var newVal = changes[fieldKey];
+            var oldVal = sub.metadata ? (sub.metadata[fieldKey] || '') : '';
+            var optKey = FIELD_TO_OPTIONS_FRONTEND_[fieldKey];
+            var opts = optKey && FIELD_OPTIONS_MAP[optKey] ? FIELD_OPTIONS_MAP[optKey] : null;
+
+            html += '<div class="admin-meta-row">' +
+              '<span class="meta-label">' + escapeHtml(fieldKey) + ':</span>';
+            if (oldVal && oldVal !== newVal) {
+              html += '<span class="meta-old">' + escapeHtml(oldVal) + '</span> <span class="meta-arrow">&rarr;</span> ';
+            }
+            if (opts) {
+              html += '<select data-field="' + escapeHtml(fieldKey) + '">';
+              for (var o = 0; o < opts.length; o++) {
+                html += '<option value="' + escapeHtml(opts[o]) + '"' + (opts[o] === newVal ? ' selected' : '') + '>' + escapeHtml(opts[o]) + '</option>';
+              }
+              html += '</select>';
+            } else {
+              html += '<input type="text" data-field="' + escapeHtml(fieldKey) + '" value="' + escapeHtml(newVal) + '">';
+            }
+            html += '</div>';
           }
+          html += '</div>';
         }
       } catch (e) {}
     }
 
+    html += '<div class="admin-notes-row">' +
+      '<label>Admin Notes (optional)</label>' +
+      '<textarea id="admin-notes-' + qri + '" placeholder="Notes for the creator..." onclick="event.stopPropagation();"></textarea>' +
+      '</div>';
+
     html += '<div class="review-actions">' +
-      '<button class="btn-primary" onclick="event.stopPropagation(); handleApproveResponse(' + pending.queueRowIndex + ', \'' + sub.requestNumber + '\');">Approve &amp; Apply</button>' +
-      '<button class="btn-danger" onclick="event.stopPropagation(); handleRejectResponse(' + pending.queueRowIndex + ', \'' + sub.requestNumber + '\');">Reject</button>' +
+      '<button class="btn-primary" onclick="event.stopPropagation(); handleApproveResponse(' + qri + ', \'' + (sub.requestNumber || '') + '\');">Approve &amp; Apply</button>' +
+      '<button class="btn-danger" onclick="event.stopPropagation(); handleRejectResponse(' + qri + ', \'' + (sub.requestNumber || '') + '\');">Reject</button>' +
       '</div>';
     html += '</div>';
     return html;
@@ -1760,21 +1827,50 @@
 
   function handleApproveResponse(queueRowIndex, num) {
     if (!confirm('Approve and apply changes for demo #' + num + '?')) return;
+    var adminNotes = '';
+    var notesEl = document.getElementById('admin-notes-' + queueRowIndex);
+    if (notesEl) adminNotes = notesEl.value.trim();
+
+    var metadataOverrides = null;
+    var metaForm = document.getElementById('admin-meta-' + queueRowIndex);
+    if (metaForm) {
+      metadataOverrides = {};
+      var inputs = metaForm.querySelectorAll('input[data-field], select[data-field]');
+      for (var i = 0; i < inputs.length; i++) {
+        metadataOverrides[inputs[i].dataset.field] = inputs[i].value;
+      }
+    }
+
     google.script.run
       .withSuccessHandler(function(result) {
         if (result.success) {
-          showToast('Approved and applied for #' + num);
+          var msg = 'Approved and applied for #' + num;
+          if (result.skipped && result.skipped.length > 0) {
+            showToast(msg + ' (some fields skipped — see details)', true);
+            alert('Skipped fields:\\n' + result.skipped.join('\\n'));
+          } else {
+            showToast(msg);
+          }
           reloadSubmissions();
         } else {
           alert('Error: ' + result.error);
         }
       })
       .withFailureHandler(function(err) { alert('Failed: ' + (err.message || err)); })
-      .approveResponse(queueRowIndex);
+      .approveResponse(queueRowIndex, adminNotes, metadataOverrides);
   }
 
   function handleRejectResponse(queueRowIndex, num) {
-    if (!confirm('Reject the response for demo #' + num + '?')) return;
+    var adminNotes = '';
+    var notesEl = document.getElementById('admin-notes-' + queueRowIndex);
+    if (notesEl) adminNotes = notesEl.value.trim();
+
+    if (!adminNotes) {
+      if (!confirm('Reject without notes for demo #' + num + '? The creator won\'t know why.')) return;
+    } else {
+      if (!confirm('Reject response for demo #' + num + '?')) return;
+    }
+
     google.script.run
       .withSuccessHandler(function(result) {
         if (result.success) {
@@ -1785,7 +1881,7 @@
         }
       })
       .withFailureHandler(function(err) { alert('Failed: ' + (err.message || err)); })
-      .rejectResponse(queueRowIndex);
+      .rejectResponse(queueRowIndex, adminNotes);
   }
 
   function reloadSubmissions() {
@@ -1796,6 +1892,7 @@
           userEmail = result.userEmail || '';
           isAdmin = result.isAdmin || false;
           EDITABLE_FIELDS = result.editableFields || [];
+          FIELD_OPTIONS_MAP = result.fieldOptions || {};
           document.querySelectorAll('.detail-row').forEach(function(r) { r.remove(); });
           document.querySelectorAll('.data-row.expanded').forEach(function(r) { r.classList.remove('expanded'); });
           renderTable();
@@ -1805,9 +1902,9 @@
       .getAllSubmissions();
   }
 
-  function showToast(msg) {
+  function showToast(msg, isWarning) {
     var toast = document.createElement('div');
-    toast.className = 'toast';
+    toast.className = 'toast' + (isWarning ? ' toast-warning' : '');
     toast.textContent = msg;
     document.body.appendChild(toast);
     setTimeout(function() { toast.remove(); }, 3000);
@@ -2665,6 +2762,7 @@
           userEmail = result.userEmail || '';
           isAdmin = result.isAdmin || false;
           EDITABLE_FIELDS = result.editableFields || [];
+          FIELD_OPTIONS_MAP = result.fieldOptions || {};
 
           trackEvent('status_page_view', { submissionCount: allSubmissions.length });
           var myCount = isAdmin ? allSubmissions.length : allSubmissions.filter(function(s) { return s.isMine; }).length;
