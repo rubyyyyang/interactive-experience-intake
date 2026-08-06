@@ -1779,7 +1779,8 @@
     return changes;
   }
 
-  function buildAdminReview(sub, pending) {
+  function buildAdminReview(sub, pending, idPrefix) {
+    var pfx = idPrefix || '';
     var qri = pending.queueRowIndex;
     var html = '<div class="admin-review">' +
       '<h4>Admin Review</h4>';
@@ -1800,7 +1801,7 @@
         var keys = Object.keys(changes);
         if (keys.length > 0) {
           html += '<h4 style="margin-top:10px;">Metadata Changes</h4>';
-          html += '<div class="admin-meta-form" id="admin-meta-' + qri + '">';
+          html += '<div class="admin-meta-form" id="admin-meta-' + pfx + qri + '">';
           for (var i = 0; i < keys.length; i++) {
             var fieldKey = keys[i];
             var newVal = changes[fieldKey];
@@ -1831,25 +1832,26 @@
 
     html += '<div class="admin-notes-row">' +
       '<label>Admin Notes (optional)</label>' +
-      '<textarea id="admin-notes-' + qri + '" placeholder="Notes for the creator..." onclick="event.stopPropagation();"></textarea>' +
+      '<textarea id="admin-notes-' + pfx + qri + '" placeholder="Notes for the creator..." onclick="event.stopPropagation();"></textarea>' +
       '</div>';
 
     html += '<div class="review-actions">' +
-      '<button class="btn-primary" onclick="event.stopPropagation(); handleApproveResponse(' + qri + ', \'' + (sub.requestNumber || '') + '\');">Approve &amp; Apply</button>' +
-      '<button class="btn-danger" onclick="event.stopPropagation(); handleRejectResponse(' + qri + ', \'' + (sub.requestNumber || '') + '\');">Reject</button>' +
+      '<button class="btn-primary" onclick="event.stopPropagation(); handleApproveResponse(' + qri + ', \'' + (sub.requestNumber || '') + '\', \'' + pfx + '\');">Approve &amp; Apply</button>' +
+      '<button class="btn-danger" onclick="event.stopPropagation(); handleRejectResponse(' + qri + ', \'' + (sub.requestNumber || '') + '\', \'' + pfx + '\');">Reject</button>' +
       '</div>';
     html += '</div>';
     return html;
   }
 
-  function handleApproveResponse(queueRowIndex, num) {
+  function handleApproveResponse(queueRowIndex, num, idPrefix) {
     if (!confirm('Approve and apply changes for demo #' + num + '?')) return;
+    var pfx = idPrefix || '';
     var adminNotes = '';
-    var notesEl = document.getElementById('admin-notes-' + queueRowIndex);
+    var notesEl = document.getElementById('admin-notes-' + pfx + queueRowIndex);
     if (notesEl) adminNotes = notesEl.value.trim();
 
     var metadataOverrides = null;
-    var metaForm = document.getElementById('admin-meta-' + queueRowIndex);
+    var metaForm = document.getElementById('admin-meta-' + pfx + queueRowIndex);
     if (metaForm) {
       metadataOverrides = {};
       var inputs = metaForm.querySelectorAll('input[data-field], select[data-field]');
@@ -1864,7 +1866,7 @@
           var msg = 'Approved and applied for #' + num;
           if (result.skipped && result.skipped.length > 0) {
             showToast(msg + ' (some fields skipped — see details)', true);
-            alert('Skipped fields:\\n' + result.skipped.join('\\n'));
+            alert('Skipped fields:\n' + result.skipped.join('\n'));
           } else {
             showToast(msg);
           }
@@ -1877,9 +1879,10 @@
       .approveResponse(queueRowIndex, adminNotes, metadataOverrides);
   }
 
-  function handleRejectResponse(queueRowIndex, num) {
+  function handleRejectResponse(queueRowIndex, num, idPrefix) {
+    var pfx = idPrefix || '';
     var adminNotes = '';
-    var notesEl = document.getElementById('admin-notes-' + queueRowIndex);
+    var notesEl = document.getElementById('admin-notes-' + pfx + queueRowIndex);
     if (notesEl) adminNotes = notesEl.value.trim();
 
     if (!adminNotes) {
@@ -1980,7 +1983,7 @@
           approval: '',
           processed: ''
         };
-        html += buildAdminReview(item.submission, pending);
+        html += buildAdminReview(item.submission, pending, 'rq-');
       } else {
         html += '<div style="color:#888;font-size:0.85rem;">Demo #' + escapeHtml(item.number) + ' not found on Request_Master</div>';
       }
