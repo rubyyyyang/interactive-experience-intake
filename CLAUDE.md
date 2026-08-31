@@ -2,6 +2,8 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+@AGENTS.md
+
 ## Project Overview
 
 Arcade Intake Assistant is an internal Red Hat tool that runs as a Google Apps Script web app. Creators paste an Arcade demo share URL, the app extracts guide content (steps, screenshots, links, duration), sends it to Gemini 2.5 Flash for AI-assisted metadata generation, and the creator reviews and submits the result to the `Creator_Form_Raw` sheet.
@@ -22,28 +24,25 @@ clasp status       # see tracked/untracked files
 
 Clasp uses `.js` extensions (not `.gs`). The `.clasp.json` links this folder to the Apps Script project. There is no CI/CD pipeline — deploy with `clasp push`.
 
-There is also a local dev server for faster iteration:
-
-```bash
-cd local-dev && npm install && node server.js
-# Runs on localhost:3000. Requires .env with MODEL_API, MODEL_ID, USER_KEY, PORT
-```
-
 ## Architecture
 
 ### Deployed to Apps Script
 
 | File | Purpose |
 |------|---------|
-| `Code.js` | All server-side logic (2258 lines): URL parsing, guide extraction, Gemini AI draft generation, form submission, sheet I/O, webhook trigger, analytics, backfill |
-| `Index.html` | All frontend (1530 lines): HTML + CSS + JS. Form UI, confidence display, edit tracking, session analytics |
+| `Code.js` | Web app entry points, intake form processing, analytics, workflow queue, backfill utilities |
+| `IA_Config.js` | Constants, FIELD_OPTIONS, STATUS_TRACKER_COLUMNS, CTA catalog, config helpers |
+| `IA_Gemini.js` | Gemini API integration, guide extraction, prompt building, JSON parsing |
+| `IA_StatusTracker.js` | Status tracker data endpoints, review queue, submission building |
+| `Index.html` | Intake form frontend |
+| `StatusTracker.html` | Status tracker frontend |
 
-### Local Development Only (excluded via .claspignore)
+### Local Verification (excluded via .claspignore)
 
 | File | Purpose |
 |------|---------|
-| `local-dev/server.js` | Express server mirroring Code.js functionality using Node/Cheerio. NOTE: has diverged from Code.js — Code.js is the canonical source |
-| `local-dev/public/index.html` | Local frontend copy |
+| `tests/` | Deterministic schema tests, Playwright smoke tests, test fixtures |
+| `package.json` | npm test scripts for local verification |
 
 ## Google Apps Script Constraints
 
@@ -53,7 +52,7 @@ Preserve compatibility with these services:
 * `google.script.run` on the frontend (do not replace with `fetch()` or API routes)
 * `UrlFetchApp` for Gemini API calls, guide page fetching, and webhook triggers
 
-All server-side functions share a single global namespace. Name collisions across files will silently shadow each other.
+All server-side Apps Script files (Code.js, IA_Config.js, IA_Gemini.js, IA_StatusTracker.js) share a single project/global namespace. Constants and functions defined in one file are accessible in others without imports. Avoid duplicate top-level declarations — name collisions will silently shadow each other.
 
 ## Server and Client Communication
 
@@ -126,11 +125,11 @@ All three share the same Master Spreadsheet. Communication:
 
 ## Configuration
 
-`FIELD_OPTIONS` — hardcoded product lists, TDPs, sales tactics, marketing programs, content types, quarters, languages, verticals, events. This is the canonical source; `local-dev/server.js` has a stale copy.
+`FIELD_OPTIONS` (in `IA_Config.js`) — hardcoded product lists, TDPs, sales tactics, marketing programs, content types, quarters, languages, verticals, events. This is the canonical source within the Intake app.
 
-`CTA_LINK_CATALOG` — allowed call-to-action links with URL templates and descriptions.
+`CTA_LINK_CATALOG` (in `IA_Config.js`) — allowed call-to-action links with URL templates and descriptions.
 
-`FOLLOW_UP_QUESTIONS` — clarification questions the AI can ask the creator.
+`FOLLOW_UP_QUESTIONS` (in `IA_Config.js`) — clarification questions the AI can ask the creator.
 
 ## Analytics
 

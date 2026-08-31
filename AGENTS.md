@@ -5,6 +5,97 @@ This file defines what Claude Code can verify autonomously and what requires hum
 **Read CLAUDE.md first** — it contains the detailed project architecture, constraints, and high-risk changes. This file is a thin workflow guide only.
 
 ---
+## DEFAULT WORKING FLOW
+
+Use this workflow for implementation tasks. Scale the depth to the risk and
+scope of the change. Do not create unnecessary planning artifacts for trivial
+changes.
+
+### 1. CONTEXT
+
+Before editing:
+
+- Read `CLAUDE.md`
+- Read relevant source-of-truth docs
+- Inspect the affected code and existing behavior
+- Check current git status / branch
+
+### 2. IMPACT
+
+Before changing anything beyond a trivial edit, identify:
+
+- What must change
+- What must remain unchanged
+- Which files/components are affected
+- Whether there are downstream or cross-app dependencies
+- Which assumptions are uncertain
+
+Do not silently guess business semantics. Ask for human input only when the
+answer cannot be derived from code/docs and requires a business or ownership
+decision.
+
+### 3. PLAN
+
+For non-trivial changes, state briefly:
+
+- Files expected to change
+- Intended behavior
+- Verification to run
+- Anything requiring human verification
+
+Keep the plan proportional to the task. Small changes do not need a separate
+plan document.
+
+### 4. BUILD
+
+Implement only the agreed scope.
+
+Do not perform unrelated cleanup, refactoring, or architecture changes unless
+they are required to complete the task safely.
+
+### 5. VERIFY
+
+Run all applicable deterministic checks first.
+
+Follow the detailed verification rules below.
+
+Never claim verification for behavior that was not actually exercised.
+
+### 6. REVIEW
+
+Always inspect the final git diff for unintended changes.
+
+Use an independent reviewer only when the change is high-risk, cross-system,
+semantic, or difficult to validate deterministically.
+
+Examples:
+- shared field / schema changes
+- AI prompt behavior changes
+- cross-app contracts
+- major workflow changes
+- security-sensitive changes
+
+### 7. EVIDENCE
+
+Before declaring completion, report:
+
+- Files changed
+- Checks/tests actually run
+- Pass/fail results
+- What was NOT verified
+- Remaining human verification, if any
+
+Prefer evidence over statements such as "looks correct" or "should work."
+
+### 8. STOP
+
+Stop when the requested change is complete and adequately verified.
+
+If unrelated issues are discovered:
+
+- Report them as follow-up items
+- Do not expand the current task unless they block correctness or safety
+
 
 ## VERIFICATION WORKFLOW
 
