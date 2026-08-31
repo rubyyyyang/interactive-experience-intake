@@ -195,8 +195,8 @@ test('testCtaLinkCatalogStructure', () => {
   });
 });
 
-// Test 6: Gemini JSON parsing (fixture)
-test('testGeminiJsonParsing_fixture', () => {
+// Test 6: parseModelJson happy path
+test('testParseModelJson_happyPath', () => {
   const { parseModelJson } = gemini;
 
   assert(typeof parseModelJson === 'function', 'parseModelJson must be a function');
@@ -211,20 +211,80 @@ test('testGeminiJsonParsing_fixture', () => {
   assert(parsed, 'parseModelJson must return a value');
   assert(typeof parsed === 'object', 'parseModelJson must return an object');
   assert(parsed.demo_title, 'Parsed response must have demo_title');
+  assert(parsed.field_confidence, 'Parsed response must have field_confidence');
 
   // Test with markdown fences (Gemini sometimes adds these)
   const wrappedJson = '```json\n' + fixtureData + '\n```';
   const parsedWrapped = parseModelJson(wrappedJson);
-  assert(parsedWrapped.demo_title, 'parseModelJson must handle markdown fences');
+  assertEquals(parsedWrapped.demo_title, parsed.demo_title, 'parseModelJson must handle markdown fences');
 
   // Test with leading/trailing whitespace
   const paddedJson = '\n\n  ' + fixtureData + '  \n\n';
   const parsedPadded = parseModelJson(paddedJson);
-  assert(parsedPadded.demo_title, 'parseModelJson must handle whitespace');
+  assertEquals(parsedPadded.demo_title, parsed.demo_title, 'parseModelJson must handle whitespace');
 });
 
-// Test 7: normalizeDraft (fixture)
-test('testNormalizeDraft_fixture', () => {
+// Test 7: parseModelJson edge cases (existing contract)
+test('testParseModelJson_edgeCases', () => {
+  const { parseModelJson } = gemini;
+
+  // Empty/null/undefined input should throw
+  try {
+    parseModelJson('');
+    assert(false, 'Should throw on empty input');
+  } catch (e) {
+    assert(e.message.includes('Empty'), 'Should throw "Empty model content" error');
+  }
+
+  try {
+    parseModelJson(null);
+    assert(false, 'Should throw on null input');
+  } catch (e) {
+    assert(e.message.includes('Empty'), 'Should throw error on null');
+  }
+
+  try {
+    parseModelJson(undefined);
+    assert(false, 'Should throw on undefined input');
+  } catch (e) {
+    assert(e.message.includes('Empty'), 'Should throw error on undefined');
+  }
+
+  // JSON with BOM (already handled by implementation)
+  const withBom = '﻿{"demo_title": "Test with BOM"}';
+  const parsed1 = parseModelJson(withBom);
+  assertEquals(parsed1.demo_title, 'Test with BOM', 'Should handle BOM');
+
+  // JSON with trailing comma (already repaired by implementation)
+  const trailingComma = '{"demo_title": "Test", "items": [1, 2,]}';
+  const parsed2 = parseModelJson(trailingComma);
+  assertEquals(parsed2.demo_title, 'Test', 'Should repair trailing commas');
+  assertArrayEquals(parsed2.items, [1, 2], 'Should parse array with trailing comma');
+
+  // JSON embedded in text (implementation finds first {)
+  const embedded = 'Some text before\n{"demo_title": "Embedded"}\nSome text after';
+  const parsed3 = parseModelJson(embedded);
+  assertEquals(parsed3.demo_title, 'Embedded', 'Should extract JSON from embedded text');
+
+  // Malformed JSON (no opening brace) should throw
+  try {
+    parseModelJson('not json at all');
+    assert(false, 'Should throw on malformed JSON');
+  } catch (e) {
+    assert(e.message.includes('opening JSON brace'), 'Should throw "No opening JSON brace" error');
+  }
+
+  // Incomplete JSON (unclosed brace) should throw
+  try {
+    parseModelJson('{"demo_title": "Test"');
+    assert(false, 'Should throw on incomplete JSON');
+  } catch (e) {
+    assert(e.message.includes('complete JSON object'), 'Should throw "No complete JSON object found" error');
+  }
+});
+
+// Test 8: normalizeDraft structure validation
+test('testNormalizeDraft_structure', () => {
   const { normalizeDraft } = gemini;
 
   assert(typeof normalizeDraft === 'function', 'normalizeDraft must be a function');
@@ -235,7 +295,7 @@ test('testNormalizeDraft_fixture', () => {
 
   const normalized = normalizeDraft(fixtureData);
 
-  // Verify all expected fields are present
+  // Verify all expected fields are present with correct types
   assert(typeof normalized.demo_title === 'string', 'normalized.demo_title must be a string');
   assert(typeof normalized.content_type_suggestion === 'string', 'normalized.content_type_suggestion must be a string');
   assert(typeof normalized.description_without_gid === 'string', 'normalized.description_without_gid must be a string');
@@ -263,7 +323,62 @@ test('testNormalizeDraft_fixture', () => {
   });
 });
 
-// Test 8: Guide extraction format validation (fixture - validates stored output shape only)
+// Test 9: normalizeDraft contract validation (defaults, fallbacks, filtering)
+test('testNormalizeDraft_contracts', () => {
+  const { normalizeDraft } = gemini;
+
+  // Empty draft should return all defaults
+  const empty = normalizeDraft({});
+  assertEquals(empty.demo_title, '', 'Empty draft should default demo_title to empty string');
+  assertEquals(empty.content_type_suggestion, '', 'content_type_suggestion should always be empty (business rule)');
+  assertEquals(empty.group_suggestion, '', 'group_suggestion should always be empty (business rule)');
+  assertArrayEquals(empty.language_suggestions, [], 'Empty draft should default arrays to []');
+  assertArrayEquals(empty.seo_keywords, [], 'Should default seo_keywords to []');
+  assertArrayEquals(empty.other_products_suggestion, [], 'Should default other_products_suggestion to []');
+  assertEquals(typeof empty.field_confidence, 'object', 'Should default field_confidence to {}');
+  assertArrayEquals(Object.keys(empty.field_confidence), [], 'Empty field_confidence should be {}');
+
+  // Fallback field handling: description_with_gid → description_without_gid
+  const withOldField = { description_with_gid: 'Old field value' };
+  const normalized1 = normalizeDraft(withOldField);
+  assertEquals(normalized1.description_without_gid, 'Old field value', 'Should use description_with_gid as fallback');
+
+  // New field should take precedence over old
+  const withBoth = { description_without_gid: 'New', description_with_gid: 'Old' };
+  const normalized2 = normalizeDraft(withBoth);
+  assertEquals(normalized2.description_without_gid, 'New', 'description_without_gid should take precedence');
+
+  // Single string → array (language_suggestion → language_suggestions)
+  const singleString = { language_suggestion: 'English' };
+  const normalized3 = normalizeDraft(singleString);
+  assert(Array.isArray(normalized3.language_suggestions), 'Should convert single string to array');
+  assertEquals(normalized3.language_suggestions.length, 1, 'Should have one element');
+  assertEquals(normalized3.language_suggestions[0], 'English', 'Should wrap string in array');
+
+  // Array field should passthrough
+  const withArray = { language_suggestions: ['English', 'Spanish'] };
+  const normalized4 = normalizeDraft(withArray);
+  assertArrayEquals(normalized4.language_suggestions, ['English', 'Spanish'], 'Should preserve array');
+
+  // Group should always be filtered from fields_needing_creator_confirmation (business rule)
+  const withGroup = { fields_needing_creator_confirmation: ['TDP', 'Group', 'Sales Tactic', 'group'] };
+  const normalized5 = normalizeDraft(withGroup);
+  assert(!normalized5.fields_needing_creator_confirmation.includes('Group'), 'Should filter out "Group"');
+  assert(!normalized5.fields_needing_creator_confirmation.includes('group'), 'Should filter out "group" (case-insensitive)');
+  assertEquals(normalized5.fields_needing_creator_confirmation.length, 2, 'Should have 2 items after filtering');
+
+  // field_confidence wrong type should default to {}
+  const badConfidence1 = { field_confidence: 'not an object' };
+  const normalized6 = normalizeDraft(badConfidence1);
+  assertEquals(typeof normalized6.field_confidence, 'object', 'Should default bad field_confidence to {}');
+  assertArrayEquals(Object.keys(normalized6.field_confidence), [], 'Bad field_confidence should become empty object');
+
+  const badConfidence2 = { field_confidence: null };
+  const normalized7 = normalizeDraft(badConfidence2);
+  assertEquals(typeof normalized7.field_confidence, 'object', 'Should default null field_confidence to {}');
+});
+
+// Test 10: Guide extraction format validation (fixture - validates stored output shape only)
 test('testGuideExtractionStoredFormat_fixture', () => {
   // NOTE: This test validates the stored guide extraction JSON format.
   // It does NOT run the extraction parser - it only checks the output shape.
