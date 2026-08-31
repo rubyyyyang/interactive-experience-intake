@@ -151,14 +151,22 @@ Explain impact before editing any of these:
 * Analytics event names or schema
 * Workflow trigger logic (`processPendingWorkflowRows`)
 
-## Testing
+## Verification
 
-No automated tests. After changes:
+**See AGENTS.md for the complete verification protocol.**
+
+**Automated tests:**
+- Local deterministic tests: `npm test` (schema validation, Gemini parsing, config integrity)
+- Read-only smoke tests: `npm run test:smoke` (post-deploy health checks)
+
+**Manual verification (required):**
 1. `clasp push` to deploy
 2. Open the web app and test: paste URL → extract → generate → review → submit
 3. Check `Creator_Form_Raw` for the new row
 4. Check `Analytics_Log` for session events
 5. For webhook changes: verify the workflow trigger fires and Finder processes it
+
+**Staging:** Not implemented yet. See `docs/superpowers/specs/staging-requirements.md` for Phase 2 setup.
 
 ## Style Conventions
 
