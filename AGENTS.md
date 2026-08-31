@@ -131,42 +131,69 @@ If unrelated issues are discovered:
 
 ### 2. Human Runs on Request
 
-**Post-deploy smoke tests (read-only):**
+**Authenticated /dev smoke tests (read-only):**
 ```bash
-# Set deployed web app URL (get from Apps Script deployment)
-export INTAKE_WEB_APP_URL="https://script.google.com/macros/s/YOUR_DEPLOYMENT_ID/exec"
+# One-time setup: authenticate with Red Hat SSO and save persistent profile
+export INTAKE_WEB_APP_URL="https://script.google.com/a/macros/redhat.com/s/YOUR_DEPLOYMENT_ID/dev"
+npm run test:auth-setup
+# Browser opens → manually complete SSO/MFA → script auto-detects when app loads
 
-# Run Playwright smoke tests
+# Run Playwright smoke tests (reuses saved authentication)
 npm run test:smoke
 ```
 
-**IMPORTANT:** Smoke tests verify the DEPLOYED app is healthy. They do NOT validate new code before deploy. These are post-deploy health checks.
+**IMPORTANT:** Smoke tests verify the /dev Apps Script deployment (pre-production) is healthy. They do NOT validate new code before deploy. Run `npm test` for local deterministic regression checks.
 
 **Manual verification checklist (context-specific):**
 
 | Change Type | Verification Steps |
 |-------------|--------------------|
-| **UI changes (Index.html, StatusTracker.html)** | • Open deployed app in browser<br>• Test specific UI change<br>• Verify form renders, no visual regressions<br>• Test in Chrome/Firefox/Safari if major change |
-| **Backend logic (Code.js, IA_Gemini.js, IA_StatusTracker.js)** | • `clasp push` to deploy<br>• Open deployed app<br>• Test full flow: paste URL → extract → generate → review<br>• Verify AI output quality (metadata suggestions accurate)<br>• Check spreadsheet tabs for correct writes |
-| **AI prompt changes (buildMetadataPrompt)** | • Test with 3-5 diverse Arcade URLs<br>• Compare AI output quality before/after<br>• Verify field confidence scores reasonable<br>• Check for hallucinations or format regressions |
-| **Field/column changes (FIELD_OPTIONS, STATUS_TRACKER_COLUMNS)** | • Verify CLAUDE.md "High-Risk Changes" section updated<br>• Test form dropdown renders new options<br>• Submit test form, verify spreadsheet write<br>• **Cross-repo coordination:** Notify Finder/Lifecycle teams if shared columns changed |
-| **Config changes (IA_Config.js)** | • Verify schema tests pass (`npm test`)<br>• Test affected UI/backend flows<br>• Verify no syntax errors in Apps Script |
-| **Analytics changes** | • Submit test form<br>• Check Analytics_Log tab for events<br>• Verify event schema matches expectations |
+| **UI changes (Index.html, StatusTracker.html)** | • `clasp push` to deploy to /dev<br>• `npm run test:smoke` to verify renders without errors<br>• Open /dev app in browser manually<br>• Test specific UI change interactively<br>• Verify form renders, no visual regressions<br>• Test in Chrome/Firefox/Safari if major change |
+| **Backend logic (Code.js, IA_Gemini.js, IA_StatusTracker.js)** | • `clasp push` to deploy to /dev<br>• `npm run test:smoke` to verify pages load<br>• Open /dev app in browser<br>• Test full flow: paste URL → extract → generate → review<br>• Verify AI output quality (metadata suggestions accurate)<br>• Check spreadsheet tabs for correct writes |
+| **AI prompt changes (buildMetadataPrompt)** | • `clasp push` to deploy to /dev<br>• Test with 3-5 diverse Arcade URLs<br>• Compare AI output quality before/after<br>• Verify field confidence scores reasonable<br>• Check for hallucinations or format regressions |
+| **Field/column changes (FIELD_OPTIONS, STATUS_TRACKER_COLUMNS)** | • Verify CLAUDE.md "High-Risk Changes" section updated<br>• `clasp push` and `npm run test:smoke`<br>• Test form dropdown renders new options in browser<br>• Submit test form, verify spreadsheet write<br>• **Cross-repo coordination:** Notify Finder/Lifecycle teams if shared columns changed |
+| **Config changes (IA_Config.js)** | • Verify schema tests pass (`npm test`)<br>• `clasp push` and `npm run test:smoke`<br>• Test affected UI/backend flows in browser<br>• Verify no syntax errors in Apps Script |
+| **Analytics changes** | • `clasp push` to deploy to /dev<br>• Submit test form in browser<br>• Check Analytics_Log tab for events<br>• Verify event schema matches expectations |
 
 ---
 
 ## WHAT CLAUDE CAN VERIFY
 
-✅ **IA_Config.js integrity** — All constants well-formed, no duplicates, references valid  
-✅ **Gemini JSON parsing** — Fixture-based regression tests  
-✅ **Guide extraction format** — Stored output shape validation (NOT extraction logic)  
-✅ **Syntax errors** — Read all files, check for errors  
-✅ **Git state** — Uncommitted files, branch, diff  
-✅ **CLAUDE.md compliance** — High-risk changes documented  
+### Automated Tests
+
+**`npm test`** — Local deterministic regression tests:
+- ✅ FIELD_OPTIONS structure validation
+- ✅ Column mapping references
+- ✅ Gemini JSON parsing (fixture-based)
+- ✅ Guide extraction format validation (stored output shape)
+- ✅ CTA link catalog format
+
+**`npm run test:smoke`** — Authenticated Chromium smoke tests against Apps Script /dev:
+- ✅ Intake page title rendered
+- ✅ Intake heading "Interactive Experience Intake" visible
+- ✅ "Extract Content" button visible
+- ✅ Status Tracker page title rendered
+- ✅ Status Tracker heading visible
+- ✅ Valid final table/status state (not stuck in loading)
+- ✅ No console errors
+- ✅ No uncaught page errors
+
+**Smoke test limitations:**
+- Chromium only (not Firefox/WebKit)
+- Read-only verification (no button clicks, form submission)
+- Does NOT verify: Gemini API calls, spreadsheet writes, webhook triggers, data accuracy, visual appearance, or cross-browser behavior
+- Requires initial setup: `npm run test:auth-setup` (only needed once or when auth expires)
+- Uses local persistent profile: `playwright/.profile/` (gitignored)
+
+**Manual inspection:**
+- ✅ Syntax errors — Read all files
+- ✅ Git state — Uncommitted files, branch, diff
+- ✅ CLAUDE.md compliance — High-risk changes documented
 
 **Test Scope Limitations:**
 - **Gemini parsing tests** use hand-crafted fixture, not real Gemini responses
 - **Guide extraction tests** validate stored output shape, not extraction parser logic
+- **Smoke tests** verify UI renders but not interactive workflows
 - Real API quality testing requires staging + live calls (Phase 2+)  
 
 ---
@@ -230,12 +257,13 @@ npm run test:smoke
 
 ## DEPLOYMENT WORKFLOW
 
-1. **Claude makes changes** → runs schema tests → prepares commit
+1. **Claude makes changes** → runs `npm test` → prepares commit
 2. **Human reviews commit** → merges to main (if approved)
-3. **Human deploys:** `clasp push` (production has no staging yet)
-4. **Human runs smoke tests:** `npm run test:smoke` (post-deploy health check)
+3. **Human deploys to /dev:** `clasp push`
+4. **Human runs smoke tests:** `npm run test:smoke` (verify /dev deployment)
 5. **Human runs manual verification:** Context-specific checklist above
-6. **Monitor:** Check Analytics_Log for errors (first 24h)
+6. **Human deploys to production:** `clasp deploy` (versioned /exec deployment)
+7. **Monitor:** Check Analytics_Log for errors (first 24h after production deploy)
 
 ---
 

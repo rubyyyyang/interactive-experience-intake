@@ -8,7 +8,8 @@
   },
   "scripts": {
     "test": "node tests/schema.test.js",
-    "test:smoke": "playwright test tests/smoke.spec.ts"
+    "test:smoke": "playwright test tests/smoke.spec.ts",
+    "test:auth-setup": "node playwright/auth.setup.mjs"
   },
   "keywords": [],
   "author": "",

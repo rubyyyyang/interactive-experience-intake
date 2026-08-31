@@ -155,15 +155,20 @@ Explain impact before editing any of these:
 **See AGENTS.md for the complete verification protocol.**
 
 **Automated tests:**
-- Local deterministic tests: `npm test` (schema validation, Gemini parsing, config integrity)
-- Read-only smoke tests: `npm run test:smoke` (post-deploy health checks)
+- `npm test` — Local deterministic tests (schema validation, Gemini parsing, config integrity)
+- `npm run test:smoke` — Authenticated read-only smoke tests against /dev deployment
+  - Initial setup: `npm run test:auth-setup` (authenticate with Red Hat SSO once)
+  - Verifies: page titles, headings, Extract Content button, Status Tracker table/status, no JS errors
+  - Chromium only, does NOT verify: form submission, Gemini calls, spreadsheet writes, webhooks
 
 **Manual verification (required):**
-1. `clasp push` to deploy
-2. Open the web app and test: paste URL → extract → generate → review → submit
-3. Check `Creator_Form_Raw` for the new row
-4. Check `Analytics_Log` for session events
-5. For webhook changes: verify the workflow trigger fires and Finder processes it
+1. `clasp push` to deploy to /dev
+2. `npm run test:smoke` to verify /dev deployment healthy
+3. Open the /dev web app in browser and test interactively: paste URL → extract → generate → review → submit
+4. Check `Creator_Form_Raw` for the new row
+5. Check `Analytics_Log` for session events
+6. For webhook changes: verify the workflow trigger fires and Finder processes it
+7. Deploy to production: `clasp deploy` (versioned /exec deployment requires human approval)
 
 **Staging:** Not implemented yet. See `docs/superpowers/specs/staging-requirements.md` for Phase 2 setup.
 
