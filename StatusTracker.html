@@ -3,36 +3,42 @@
 <head>
   <base target="_top">
   <meta charset="UTF-8">
-  <title>Interactive Demo Tracker</title>
+  <title>Interactive Experience Status Tracker</title>
   <style>
     * { box-sizing: border-box; }
 
     body {
-      font-family: Arial, sans-serif;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
       max-width: 1400px;
       margin: 32px auto;
-      padding: 0 20px;
+      padding: 0 24px;
       color: #1f1f1f;
-      background: #fafafa;
+      background: #fff;
     }
 
     .header {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      margin-bottom: 20px;
+      margin-bottom: 24px;
       flex-wrap: wrap;
       gap: 12px;
     }
 
-    .header h1 { font-size: 1.5rem; margin: 0; }
+    .header h1 { font-size: 1.4rem; font-weight: 500; margin: 0; color: #1f1f1f; }
 
     .header a {
-      color: #0066cc;
+      color: #1a73e8;
       text-decoration: none;
-      font-size: 0.9rem;
+      font-size: 0.85rem;
+      padding: 6px 14px;
+      border: 1px solid #dadce0;
+      border-radius: 6px;
+      transition: background 0.15s;
     }
-    .header a:hover { text-decoration: underline; }
+    .header a:hover { background: #f1f3f4; text-decoration: none; }
+    .header a.help-link { border: none; padding: 0; color: #5f6368; font-size: 0.82rem; }
+    .header a.help-link:hover { background: none; color: #1a73e8; }
 
     /* Controls bar */
     .controls-bar {
@@ -41,30 +47,33 @@
       align-items: center;
       flex-wrap: wrap;
       gap: 12px;
-      margin-bottom: 12px;
+      margin-bottom: 20px;
     }
 
-    .tabs { display: flex; gap: 0; }
+    .tabs { display: flex; gap: 4px; border-bottom: 1px solid #e8eaed; }
 
     .tab {
-      padding: 8px 18px;
-      border: 1px solid #ddd;
-      background: #fff;
+      padding: 10px 18px;
+      border: none;
+      background: none;
       cursor: pointer;
-      font-size: 0.9rem;
-      color: #666;
+      font-size: 0.88rem;
+      color: #5f6368;
       transition: all 0.15s;
+      border-bottom: 2px solid transparent;
+      margin-bottom: -1px;
+      border-radius: 0;
     }
-    .tab:first-child { border-radius: 6px 0 0 6px; }
-    .tab:last-child { border-radius: 0 6px 6px 0; }
+    .tab:first-child { border-radius: 0; }
+    .tab:last-child { border-radius: 0; }
     .tab + .tab { border-left: none; }
     .tab.active {
-      background: #e8f0fe;
+      background: none;
       color: #1a73e8;
       font-weight: 600;
-      border-color: #1a73e8;
+      border-bottom-color: #1a73e8;
     }
-    .tab:hover:not(.active) { background: #f5f5f5; }
+    .tab:hover:not(.active) { color: #3c4043; background: none; }
 
     .controls-right {
       display: flex;
@@ -75,16 +84,16 @@
 
     .controls-right select {
       padding: 8px 12px;
-      border: 1px solid #ddd;
+      border: 1px solid #e8eaed;
       border-radius: 6px;
       font-size: 0.85rem;
       background: #fff;
-      color: #1f1f1f;
+      color: #3c4043;
     }
 
     .controls-right input {
       padding: 8px 12px;
-      border: 1px solid #ddd;
+      border: 1px solid #e8eaed;
       border-radius: 6px;
       font-size: 0.85rem;
       width: 220px;
@@ -95,7 +104,7 @@
       border-radius: 6px;
       background: #fff;
       font-size: 0.78rem;
-      color: #1a73e8;
+      color: #5f6368;
       cursor: pointer;
       white-space: nowrap;
     }
@@ -114,22 +123,20 @@
       width: 100%;
       border-collapse: collapse;
       background: #fff;
-      border: 1px solid #ddd;
+      border: none;
       table-layout: fixed;
-      border-radius: 8px;
-      overflow: hidden;
     }
 
     thead th {
       text-align: left;
-      padding: 10px 14px;
-      font-size: 0.75rem;
+      padding: 12px 14px;
+      font-size: 0.72rem;
       font-weight: 600;
-      color: #666;
+      color: #888;
       text-transform: uppercase;
-      letter-spacing: 0.03em;
-      background: #f8f9fa;
-      border-bottom: 1px solid #ddd;
+      letter-spacing: 0.04em;
+      background: none;
+      border-bottom: 2px solid #e8eaed;
       white-space: nowrap;
       user-select: none;
     }
@@ -140,15 +147,15 @@
     th.sort-desc::after { content: ' \25BC'; font-size: 0.6rem; }
 
     tbody td {
-      padding: 10px 14px;
-      font-size: 0.9rem;
-      border-bottom: 1px solid #eee;
+      padding: 14px;
+      font-size: 0.88rem;
+      border-bottom: 1px solid #f1f3f4;
       vertical-align: middle;
     }
 
-    tr.data-row { cursor: pointer; transition: background 0.1s; }
-    tr.data-row:hover { background: #f8f9fb; }
-    tr.data-row.expanded { background: #f0f4f8; }
+    tr.data-row { cursor: pointer; transition: background 0.15s; }
+    tr.data-row:hover { background: #f8f9fa; }
+    tr.data-row.expanded { background: #f8f9fa; }
 
     .title-cell { font-weight: 500; }
     .creator-cell { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -161,38 +168,53 @@
     }
     tr.data-row.expanded .row-chevron { transform: rotate(90deg); color: #1a73e8; }
     .action-tags { display: flex; flex-direction: column; gap: 3px; }
-    .drupal-cell a { color: #0066cc; text-decoration: none; white-space: nowrap; }
+    .drupal-cell a { color: #1a73e8; text-decoration: none; white-space: nowrap; }
     .drupal-cell a:hover { text-decoration: underline; }
     .drupal-cell .no-link { color: #ccc; }
-    .date-cell { white-space: nowrap; color: #666; }
+    .date-cell { white-space: nowrap; color: #5f6368; }
 
     /* Status badges */
     .status-badge {
-      display: inline-block;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
       padding: 3px 10px;
       border-radius: 12px;
-      font-size: 0.78rem;
-      font-weight: 600;
+      font-size: 0.75rem;
+      font-weight: 500;
       white-space: nowrap;
+      background: #f1f3f4;
+      color: #3c4043;
     }
-    .status-request-open { background: #e8f0fe; color: #1a73e8; }
-    .status-request-approved { background: #e6f4ea; color: #137333; }
-    .status-ie-received { background: #fef7e0; color: #b06000; }
-    .status-ie-reviewed { background: #e8f0fe; color: #1a73e8; }
-    .status-ie-published { background: #e6f4ea; color: #137333; }
-    .status-ie-retired { background: #f4e8e8; color: #a33; }
-    .status-closed { background: #eee; color: #666; }
-    .status-processing { background: #fff3e0; color: #e65100; }
+    .status-badge::before {
+      content: '';
+      display: inline-block;
+      width: 9px;
+      height: 9px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+    .status-request-open::before { background: #1a73e8; }
+    .status-request-approved::before { background: #137333; }
+    .status-demo-received::before { background: #b06000; }
+    .status-demo-reviewed::before { background: #1a73e8; }
+    .status-demo-published::before, .status-published::before { background: #137333; }
+    .status-demo-retired::before, .status-retired::before { background: #888; }
+    .status-closed::before { background: #888; }
+    .status-processing::before { background: #b06000; }
+    .status-demo-retired, .status-retired { color: #888; }
+    .status-closed { color: #888; }
 
     /* Expanded detail row */
     tr.detail-row td {
       padding: 0;
-      border-bottom: 1px solid #ddd;
+      border-bottom: 1px solid #dadce0;
     }
 
     .detail-panel {
-      background: #fafbfc;
-      padding: 24px 28px;
+      background: #f8f9fa;
+      padding: 28px 28px;
+      border-bottom: 2px solid #e8eaed;
     }
 
     /* Lifecycle progress */
@@ -224,40 +246,33 @@
       height: 2px;
     }
 
-    .lc-line.completed { background: #999; }
-    .lc-line.current { background: #999; }
-    .lc-line.future { background: #ddd; border-top: 2px dashed #ddd; height: 0; }
+    .lc-line.completed { background: #dadce0; }
+    .lc-line.current { background: #dadce0; }
+    .lc-line.future { background: transparent; border-top: 2px dashed #e8eaed; height: 0; }
 
     .lc-node {
-      width: 28px;
-      height: 28px;
+      width: 24px;
+      height: 24px;
       border-radius: 50%;
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 0.7rem;
-      font-weight: 700;
+      font-size: 0.65rem;
+      font-weight: 600;
       position: relative;
     }
 
-    .lc-node.completed { background: #eee; color: #666; border: 2px solid #999; }
-    .lc-node.current { box-shadow: 0 0 0 4px rgba(0,0,0,0.08); }
-    .lc-node.future { background: #fff; color: #bbb; border: 2px solid #ddd; }
+    .lc-node.completed { background: #e8eaed; color: #5f6368; border: none; }
+    .lc-node.current { background: #3c4043; color: #fff; border: 2px solid transparent; box-shadow: 0 0 0 3px #e8eaed; }
+    .lc-node.future { background: #fff; color: #dadce0; border: 2px solid #e8eaed; }
 
-    .lc-node.stage-open.completed,
-    .lc-node.stage-open.current { background: #e8f0fe; color: #1a73e8; border: 2px solid #1a73e8; }
-    .lc-node.stage-approved.completed,
-    .lc-node.stage-approved.current { background: #e6f4ea; color: #137333; border: 2px solid #137333; }
-    .lc-node.stage-received.completed,
-    .lc-node.stage-received.current { background: #fef7e0; color: #b06000; border: 2px solid #b06000; }
-    .lc-node.stage-reviewed.completed,
-    .lc-node.stage-reviewed.current { background: #e8f0fe; color: #1a73e8; border: 2px solid #1a73e8; }
-    .lc-node.stage-published.completed,
-    .lc-node.stage-published.current { background: #e6f4ea; color: #137333; border: 2px solid #137333; }
-    .lc-node.stage-retired.completed,
-    .lc-node.stage-retired.current { background: #f4e8e8; color: #a33; border: 2px solid #a33; }
-    .lc-node.stage-closed.completed,
-    .lc-node.stage-closed.current { background: #eee; color: #666; border: 2px solid #999; }
+    .lc-node.stage-open.current { background: #1a73e8; box-shadow: 0 0 0 3px rgba(26,115,232,0.2); }
+    .lc-node.stage-approved.current { background: #137333; box-shadow: 0 0 0 3px rgba(19,115,51,0.2); }
+    .lc-node.stage-received.current { background: #b06000; box-shadow: 0 0 0 3px rgba(176,96,0,0.2); }
+    .lc-node.stage-reviewed.current { background: #1a73e8; box-shadow: 0 0 0 3px rgba(26,115,232,0.2); }
+    .lc-node.stage-published.current { background: #137333; box-shadow: 0 0 0 3px rgba(19,115,51,0.2); }
+    .lc-node.stage-retired.current { background: #888; box-shadow: 0 0 0 3px rgba(136,136,136,0.2); }
+    .lc-node.stage-closed.current { background: #888; box-shadow: 0 0 0 3px rgba(136,136,136,0.2); }
 
     .lc-label {
       font-size: 0.65rem;
@@ -270,7 +285,7 @@
 
     .lc-date {
       font-size: 0.6rem;
-      color: #999;
+      color: #888;
       margin-top: 2px;
       text-align: center;
     }
@@ -281,7 +296,7 @@
       grid-template-columns: 1fr 1fr;
       gap: 20px 40px;
       margin-top: 16px;
-      border-top: 1px solid #e5e7eb;
+      border-top: 1px solid #dadce0;
       padding-top: 18px;
     }
 
@@ -294,7 +309,7 @@
     }
 
     .detail-section a {
-      color: #0066cc;
+      color: #1a73e8;
       text-decoration: none;
     }
     .detail-section a:hover { text-decoration: underline; }
@@ -306,7 +321,7 @@
       font-size: 0.8rem;
       color: #888;
       line-height: 1.5;
-      border-top: 1px solid #e5e7eb;
+      border-top: 1px solid #dadce0;
       padding-top: 14px;
       margin-top: 8px;
     }
@@ -323,7 +338,7 @@
 
     .detail-desc {
       font-size: 0.88rem;
-      color: #333;
+      color: #3c4043;
       line-height: 1.6;
       margin: 0;
     }
@@ -332,7 +347,7 @@
     .cta-item a { word-break: break-all; }
 
     .desc-toggle {
-      color: #0066cc;
+      color: #1a73e8;
       cursor: pointer;
       font-size: 0.82rem;
       border: none;
@@ -352,9 +367,9 @@
       flex: 1;
       min-width: 200px;
       padding: 10px 14px;
-      border: 1px solid #e0e0e0;
+      border: none;
       border-radius: 8px;
-      background: #fff;
+      background: #f1f3f4;
       font-size: 0.82rem;
     }
     .link-row strong { display: block; font-size: 0.78rem; color: #3c4043; margin-bottom: 2px; }
@@ -373,14 +388,14 @@
     .processing-message {
       text-align: center;
       padding: 40px 20px;
-      color: #666;
+      color: #5f6368;
     }
     .processing-message p { margin: 8px 0; }
 
     /* Token single-view */
     .single-view {
       background: #fff;
-      border: 1px solid #ddd;
+      border: 1px solid #dadce0;
       border-radius: 8px;
       padding: 24px;
     }
@@ -392,14 +407,14 @@
 
     .single-view .sv-meta {
       font-size: 0.85rem;
-      color: #666;
+      color: #5f6368;
       margin-bottom: 16px;
     }
 
     .back-link {
       display: inline-block;
       margin-top: 16px;
-      color: #0066cc;
+      color: #1a73e8;
       text-decoration: none;
       font-size: 0.9rem;
     }
@@ -418,7 +433,7 @@
 
     .dash-controls select {
       padding: 8px 12px;
-      border: 1px solid #ddd;
+      border: 1px solid #dadce0;
       border-radius: 6px;
       font-size: 0.85rem;
       background: #fff;
@@ -433,7 +448,7 @@
 
     .kpi-card {
       background: #fff;
-      border: 1px solid #e5e7eb;
+      border: 1px solid #dadce0;
       border-radius: 10px;
       padding: 18px 20px;
       cursor: pointer;
@@ -445,7 +460,7 @@
 
     .kpi-demo-list {
       background: #fff;
-      border: 1px solid #e5e7eb;
+      border: 1px solid #dadce0;
       border-radius: 8px;
       margin-bottom: 28px;
       overflow: hidden;
@@ -457,7 +472,7 @@
       align-items: center;
       padding: 12px 16px;
       background: #f8f9fa;
-      border-bottom: 1px solid #e5e7eb;
+      border-bottom: 1px solid #dadce0;
       font-size: 0.82rem;
       font-weight: 600;
       color: #555;
@@ -472,7 +487,7 @@
       padding: 0 4px;
     }
 
-    .kpi-demo-list-close:hover { color: #333; }
+    .kpi-demo-list-close:hover { color: #3c4043; }
 
     .kpi-demo-list table {
       width: 100%;
@@ -484,17 +499,17 @@
       padding: 8px 14px;
       font-size: 0.72rem;
       font-weight: 600;
-      color: #666;
+      color: #5f6368;
       text-transform: uppercase;
       letter-spacing: 0.03em;
       background: #f8f9fa;
-      border-bottom: 1px solid #ddd;
+      border-bottom: 1px solid #dadce0;
     }
 
     .kpi-demo-list td {
       padding: 8px 14px;
       font-size: 0.84rem;
-      border-bottom: 1px solid #eee;
+      border-bottom: 1px solid #f1f3f4;
     }
 
     .kpi-demo-list tr:last-child td { border-bottom: none; }
@@ -671,7 +686,7 @@
     .heatmap {
       border-collapse: collapse;
       background: #fff;
-      border: 1px solid #e5e7eb;
+      border: 1px solid #dadce0;
       border-radius: 8px;
       overflow: hidden;
       font-size: 0.82rem;
@@ -682,11 +697,11 @@
       padding: 8px 10px;
       font-size: 0.68rem;
       font-weight: 600;
-      color: #666;
+      color: #5f6368;
       text-transform: uppercase;
       letter-spacing: 0.03em;
       background: #f8f9fa;
-      border-bottom: 1px solid #ddd;
+      border-bottom: 1px solid #dadce0;
       text-align: center;
       max-width: 100px;
       white-space: normal;
@@ -698,14 +713,14 @@
     .heatmap td {
       padding: 8px 10px;
       text-align: center;
-      border-bottom: 1px solid #eee;
+      border-bottom: 1px solid #f1f3f4;
       font-variant-numeric: tabular-nums;
     }
 
     .heatmap td:first-child {
       text-align: left;
       font-weight: 500;
-      color: #333;
+      color: #3c4043;
       min-width: 240px;
     }
 
@@ -735,7 +750,7 @@
       gap: 14px;
       margin-top: 10px;
       font-size: 0.75rem;
-      color: #666;
+      color: #5f6368;
       align-items: center;
     }
 
@@ -839,16 +854,16 @@
     .action-banner.action-needed .banner-title { color: #e37400; }
     .action-banner.response-pending .banner-title { color: #1a73e8; }
     .action-banner.action-complete .banner-title { color: #137333; }
-    .action-banner .banner-detail { font-size: 0.85rem; color: #333; margin: 6px 0; }
+    .action-banner .banner-detail { font-size: 0.85rem; color: #3c4043; margin: 6px 0; }
     .action-banner .banner-reason { font-size: 0.82rem; color: #555; margin: 4px 0; line-height: 1.5; }
-    .action-banner .banner-perf { display: flex; gap: 14px; flex-wrap: wrap; font-size: 0.78rem; color: #777; margin-top: 8px; }
+    .action-banner .banner-perf { display: flex; gap: 14px; flex-wrap: wrap; font-size: 0.78rem; color: #5f6368; margin-top: 8px; }
 
     .response-form { margin-top: 12px; }
     .response-form .form-row { margin-bottom: 10px; }
     .response-form .form-row label { display: block; font-size: 0.78rem; font-weight: 600; color: #555; margin-bottom: 3px; }
     .response-form .form-row select,
     .response-form .form-row input,
-    .response-form .form-row textarea { width: 100%; padding: 7px 10px; border: 1px solid #ddd; border-radius: 5px; font-size: 0.85rem; font-family: inherit; }
+    .response-form .form-row textarea { width: 100%; padding: 7px 10px; border: 1px solid #dadce0; border-radius: 5px; font-size: 0.85rem; font-family: inherit; }
     .response-form .form-row textarea { resize: vertical; min-height: 50px; }
     .response-form .form-actions { display: flex; gap: 8px; margin-top: 10px; }
 
@@ -863,39 +878,25 @@
     .admin-review { margin-top: 14px; padding-top: 14px; border-top: 1px solid rgba(0,0,0,0.1); }
     .admin-review h4 { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.04em; color: #555; margin: 0 0 8px; }
     .diff-row { display: flex; gap: 12px; font-size: 0.82rem; margin-bottom: 4px; }
-    .diff-field { font-weight: 600; color: #333; min-width: 140px; }
+    .diff-field { font-weight: 600; color: #3c4043; min-width: 140px; }
     .diff-old { color: #c5221f; text-decoration: line-through; }
     .diff-new { color: #137333; font-weight: 600; }
     .review-actions { display: flex; gap: 8px; margin-top: 12px; }
     .admin-notes-row { margin-top: 10px; }
     .admin-notes-row label { display: block; font-size: 0.78rem; font-weight: 600; color: #555; margin-bottom: 3px; }
-    .admin-notes-row textarea { width: 100%; padding: 7px 10px; border: 1px solid #ddd; border-radius: 5px; font-size: 0.85rem; font-family: inherit; resize: vertical; min-height: 40px; }
+    .admin-notes-row textarea { width: 100%; padding: 7px 10px; border: 1px solid #dadce0; border-radius: 5px; font-size: 0.85rem; font-family: inherit; resize: vertical; min-height: 40px; }
     .admin-meta-form { margin-top: 10px; }
     .admin-meta-row { display: flex; align-items: baseline; gap: 8px; margin-bottom: 6px; font-size: 0.82rem; }
-    .admin-meta-row .meta-label { font-weight: 600; color: #333; min-width: 140px; flex-shrink: 0; }
+    .admin-meta-row .meta-label { font-weight: 600; color: #3c4043; min-width: 140px; flex-shrink: 0; }
     .admin-meta-row .meta-old { color: #c5221f; text-decoration: line-through; font-size: 0.8rem; }
     .admin-meta-row .meta-arrow { color: #888; }
     .admin-meta-row input, .admin-meta-row select { flex: 1; padding: 4px 8px; border: 1px solid #dadce0; border-radius: 4px; font-size: 0.85rem; font-family: inherit; }
     .admin-meta-row select { background: #fff; }
     .toast-warning { background: #e37400; }
 
-    .review-queue { padding: 16px 0; }
-    .review-queue-empty { text-align: center; padding: 40px 20px; color: #888; font-size: 0.9rem; }
-    .rq-item { border: 1px solid #dadce0; border-radius: 8px; margin-bottom: 10px; background: #fff; }
-    .rq-summary { display: flex; align-items: center; gap: 16px; padding: 12px 16px; cursor: pointer; }
-    .rq-summary:hover { background: #f8f9fa; }
-    .rq-title { font-weight: 600; font-size: 0.9rem; color: #1f1f1f; flex: 1; }
-    .rq-num { font-size: 0.78rem; color: #888; }
-    .rq-creator { font-size: 0.82rem; color: #555; min-width: 120px; }
-    .rq-action { font-size: 0.78rem; color: #e37400; font-weight: 500; min-width: 140px; }
-    .rq-date { font-size: 0.78rem; color: #888; min-width: 80px; }
-    .rq-expand { font-size: 0.7rem; color: #888; }
-    .rq-detail { display: none; padding: 0 16px 16px; border-top: 1px solid #e8eaed; }
-    .rq-detail.open { display: block; }
-
     /* Multi-select dropdown */
     .multi-select { position: relative; display: inline-block; vertical-align: middle; }
-    .multi-select-btn { display: inline-flex; align-items: center; gap: 6px; padding: 8px 12px; border: 1px solid #ddd; border-radius: 6px; background: #fff; font-size: 0.85rem; cursor: pointer; min-width: 140px; color: #1f1f1f; }
+    .multi-select-btn { display: inline-flex; align-items: center; gap: 6px; padding: 8px 12px; border: 1px solid #dadce0; border-radius: 6px; background: #fff; font-size: 0.85rem; cursor: pointer; min-width: 140px; color: #1f1f1f; }
     .multi-select-btn .arrow { margin-left: auto; font-size: 0.6rem; color: #888; }
     .multi-select-panel { display: none; position: absolute; top: calc(100% + 4px); left: 0; z-index: 100; background: #fff; border: 1px solid #dadce0; border-radius: 8px; box-shadow: 0 4px 16px rgba(0,0,0,0.12); width: 240px; max-height: 340px; overflow-y: auto; padding: 6px 0; }
     .multi-select-panel.open { display: block; }
@@ -938,18 +939,23 @@
 </head>
 <body>
 
+<img src="https://coolstuff.redhat.com/assets/stores/REDHAT/branding/site-logo.png" alt="Red Hat" style="display:block; height:28px; width:auto; margin-bottom:12px;">
 <div class="header">
-  <h1 id="pageTitle">Interactive Demo Tracker</h1>
-  <a href="#" onclick="navigateToIntake(); return false;">Submit a new interactive demo</a>
+  <h1 id="pageTitle">Interactive Experience Status Tracker</h1>
+  <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+    <a href="https://docs.google.com/document/d/15NOQvsdNdalxsxmmFEKPeCaH9khH1Um7uMjzsjqZf3Y/edit?tab=t.0" target="_blank" class="help-link">User Guide</a>
+    <a href="#" onclick="return promptFeedback();" class="help-link">Give feedback</a>
+    <a href="https://redhat.enterprise.slack.com/archives/C07HQMHFWQG" target="_blank" class="help-link">Need help? #forum-arcade-creators</a>
+    <a href="#" onclick="navigateToIntake(); return false;">Submit new</a>
+  </div>
 </div>
 
 <div id="mainView">
   <div class="controls-bar">
     <div class="tabs">
-      <button class="tab active" data-tab="my" onclick="switchTab('my')">My Demos</button>
-      <button class="tab" data-tab="all" onclick="switchTab('all')">All Demos</button>
+      <button class="tab active" data-tab="my" onclick="switchTab('my')">My Submissions</button>
+      <button class="tab" data-tab="all" onclick="switchTab('all')">All Submissions</button>
       <button class="tab" data-tab="reports" onclick="switchTab('reports')">Reports</button>
-      <button class="tab" data-tab="review" onclick="switchTab('review')" id="reviewTab" style="display:none;">Review Queue</button>
     </div>
     <div class="controls-right">
       <select id="statusFilter" onchange="onStatusFilterChange()">
@@ -957,53 +963,12 @@
         <option value="Processing" data-status="Processing">Processing</option>
         <option value="Request Open" data-status="Request Open">Request Open</option>
         <option value="Request Approved" data-status="Request Approved">Request Approved</option>
-        <option value="IE Received" data-status="IE Received">IE Received</option>
-        <option value="IE Reviewed" data-status="IE Reviewed">IE Reviewed</option>
-        <option value="IE Published" data-status="IE Published">IE Published</option>
-        <option value="IE Retired" data-status="IE Retired">IE Retired</option>
+        <option value="Demo Received" data-status="Demo Received">Demo Received</option>
+        <option value="Demo Reviewed" data-status="Demo Reviewed">Demo Reviewed</option>
+        <option value="Published" data-status="Published">Published</option>
+        <option value="Retired" data-status="Retired">Retired</option>
         <option value="Closed" data-status="Closed">Closed</option>
       </select>
-      <div class="multi-select" id="perfFilterWrap">
-        <button class="multi-select-btn" onclick="event.stopPropagation(); togglePerfPanel();" id="perfFilterBtn"><span>All Performance</span><span class="arrow">&#9662;</span></button>
-        <div class="multi-select-panel" id="perfFilterPanel">
-          <div id="perfResetBtn" class="ms-reset" style="display:none;" onclick="event.stopPropagation(); resetPerfFilter();">Reset</div>
-          <div class="ms-group">Tier</div>
-          <label class="ms-option"><input type="checkbox" value="tier:Top" onchange="onPerfFilterChange()"><span class="ms-label">Top</span><span class="ms-count" data-key="tier:Top"></span></label>
-          <label class="ms-option"><input type="checkbox" value="tier:Mid" onchange="onPerfFilterChange()"><span class="ms-label">Mid</span><span class="ms-count" data-key="tier:Mid"></span></label>
-          <label class="ms-option"><input type="checkbox" value="tier:Low" onchange="onPerfFilterChange()"><span class="ms-label">Low</span><span class="ms-count" data-key="tier:Low"></span></label>
-          <label class="ms-option"><input type="checkbox" value="tier:Inactive" onchange="onPerfFilterChange()"><span class="ms-label">Inactive</span><span class="ms-count" data-key="tier:Inactive"></span></label>
-          <div class="ms-divider"></div>
-          <div class="ms-group">Flags</div>
-          <label class="ms-option"><input type="checkbox" value="flag:High usage" onchange="onPerfFilterChange()"><span class="ms-label">High usage</span><span class="ms-count" data-key="flag:High usage"></span></label>
-          <label class="ms-option"><input type="checkbox" value="flag:High engagement" onchange="onPerfFilterChange()"><span class="ms-label">High engagement</span><span class="ms-count" data-key="flag:High engagement"></span></label>
-          <label class="ms-option"><input type="checkbox" value="flag:Low completion" onchange="onPerfFilterChange()"><span class="ms-label">Low completion</span><span class="ms-count" data-key="flag:Low completion"></span></label>
-          <label class="ms-option"><input type="checkbox" value="flag:High business impact" onchange="onPerfFilterChange()"><span class="ms-label">High business impact</span><span class="ms-count" data-key="flag:High business impact"></span></label>
-          <label class="ms-option"><input type="checkbox" value="flag:High-value niche" onchange="onPerfFilterChange()"><span class="ms-label">High-value niche</span><span class="ms-count" data-key="flag:High-value niche"></span></label>
-          <label class="ms-option"><input type="checkbox" value="flag:Low opportunity value" onchange="onPerfFilterChange()"><span class="ms-label">Low opportunity value</span><span class="ms-count" data-key="flag:Low opportunity value"></span></label>
-          <label class="ms-option"><input type="checkbox" value="flag:Sporadic activity" onchange="onPerfFilterChange()"><span class="ms-label">Sporadic activity</span><span class="ms-count" data-key="flag:Sporadic activity"></span></label>
-        </div>
-      </div>
-      <div class="multi-select" id="actionFilterWrap">
-        <button class="multi-select-btn" onclick="event.stopPropagation(); toggleActionPanel();" id="actionFilterBtn"><span>All Actions</span><span class="arrow">&#9662;</span></button>
-        <div class="multi-select-panel" id="actionFilterPanel">
-          <div id="actionResetBtn" class="ms-reset" style="display:none;" onclick="event.stopPropagation(); resetActionFilter();">Reset</div>
-          <div class="ms-group">Action Type</div>
-          <label class="ms-option"><input type="checkbox" value="action:Improve completion" onchange="onActionFilterChange()"><span class="ms-label">Improve completion</span><span class="ms-count" data-action-key="action:Improve completion"></span></label>
-          <label class="ms-option"><input type="checkbox" value="action:Boost sales impact" onchange="onActionFilterChange()"><span class="ms-label">Boost sales impact</span><span class="ms-count" data-action-key="action:Boost sales impact"></span></label>
-          <label class="ms-option"><input type="checkbox" value="action:Consider retirement" onchange="onActionFilterChange()"><span class="ms-label">Consider retirement</span><span class="ms-count" data-action-key="action:Consider retirement"></span></label>
-          <div class="ms-divider"></div>
-          <div class="ms-group">Priority</div>
-          <label class="ms-option"><input type="checkbox" value="priority:High" onchange="onActionFilterChange()"><span class="ms-label">High</span><span class="ms-count" data-action-key="priority:High"></span></label>
-          <label class="ms-option"><input type="checkbox" value="priority:Medium" onchange="onActionFilterChange()"><span class="ms-label">Medium</span><span class="ms-count" data-action-key="priority:Medium"></span></label>
-          <label class="ms-option"><input type="checkbox" value="priority:Low" onchange="onActionFilterChange()"><span class="ms-label">Low</span><span class="ms-count" data-action-key="priority:Low"></span></label>
-          <div class="ms-divider"></div>
-          <div class="ms-group">Response Status</div>
-          <label class="ms-option"><input type="checkbox" value="response:Action needed" onchange="onActionFilterChange()"><span class="ms-label">Action needed</span><span class="ms-count" data-action-key="response:Action needed"></span></label>
-          <label class="ms-option"><input type="checkbox" value="response:Pending review" onchange="onActionFilterChange()"><span class="ms-label">Pending review</span><span class="ms-count" data-action-key="response:Pending review"></span></label>
-          <label class="ms-option"><input type="checkbox" value="response:Complete" onchange="onActionFilterChange()"><span class="ms-label">Complete</span><span class="ms-count" data-action-key="response:Complete"></span></label>
-          <label class="ms-option"><input type="checkbox" value="response:Resubmit required" onchange="onActionFilterChange()"><span class="ms-label">Resubmit required</span><span class="ms-count" data-action-key="response:Resubmit required"></span></label>
-        </div>
-      </div>
       <input type="text" id="searchInput" placeholder="Search title or creator..." oninput="onSearchInput()">
       <button id="resetAllFiltersBtn" class="reset-all-btn" style="display:none;" onclick="resetAllFilters()">Reset all</button>
     </div>
@@ -1015,20 +980,17 @@
     <table>
       <thead>
         <tr>
-          <th class="sortable" data-sort="title" onclick="onSortClick('title')" style="width:28%;">Title</th>
-          <th class="hide-mobile" style="width:7%;">Live Page</th>
-          <th class="sortable" data-sort="creatorName" onclick="onSortClick('creatorName')" style="width:15%;">Creator</th>
-          <th class="sortable" data-sort="status" onclick="onSortClick('status')" style="width:10%;">Status</th>
-          <th class="sortable sort-desc" data-sort="dateSubmitted" onclick="onSortClick('dateSubmitted')" style="width:12%;">Submitted</th>
-          <th class="sortable" data-sort="perfTier" onclick="onSortClick('perfTier')" style="width:16%;">Performance</th>
-          <th class="sortable" data-sort="perfAction" onclick="onSortClick('perfAction')" style="width:12%;">Recommendation</th>
+          <th class="sortable" data-sort="title" onclick="onSortClick('title')" style="width:38%;">Title</th>
+          <th class="hide-mobile" style="width:8%;">Live Page</th>
+          <th class="sortable" data-sort="creatorName" onclick="onSortClick('creatorName')" style="width:22%;">Creator</th>
+          <th class="sortable" data-sort="status" onclick="onSortClick('status')" style="width:16%;">Status</th>
+          <th class="sortable sort-desc" data-sort="dateSubmitted" onclick="onSortClick('dateSubmitted')" style="width:16%;">Submitted</th>
         </tr>
       </thead>
       <tbody id="tableBody"></tbody>
     </table>
   </div>
   <div id="reportsView" class="reports-container" style="display:none;"></div>
-  <div id="reviewQueueView" class="review-queue" style="display:none;"></div>
 </div>
 
 <div id="tokenView" style="display:none;"></div>
@@ -1036,7 +998,7 @@
 <div id="errorState" class="error-message" style="display:none;"></div>
 <div id="emptyState" class="empty-state" style="display:none;">
   <p>No submissions found.</p>
-  <p>Once you submit an interactive demo, you can track its status here.</p>
+  <p>Once you submit a demo or video, you can track its status here.</p>
 </div>
 <div id="processingState" class="processing-message" style="display:none;">
   <p>Your submission is being processed.</p>
@@ -1053,12 +1015,9 @@
   var activeTab = 'my';
   var currentSort = { key: 'dateSubmitted', dir: 'desc' };
   var currentStatusFilter = '';
-  var currentPerfFilters = [];
-  var currentActionFilters = [];
   var currentSearch = '';
   var EDITABLE_FIELDS = [];
   var FIELD_OPTIONS_MAP = {};
-  var reviewQueueData = [];
   var FIELD_TO_OPTIONS_FRONTEND_ = {
     'Content Type': 'contentTypes',
     'Creator Team': 'creatorTeams',
@@ -1088,10 +1047,10 @@
   var LIFECYCLE_STAGES = [
     { key: 'open',      label: 'Request Open' },
     { key: 'approved',  label: 'Request Approved' },
-    { key: 'received',  label: 'IE Received' },
-    { key: 'reviewed',  label: 'IE Reviewed' },
-    { key: 'published', label: 'IE Published' },
-    { key: 'retired',   label: 'IE Retired' },
+    { key: 'received',  label: 'Demo Received' },
+    { key: 'reviewed',  label: 'Demo Reviewed' },
+    { key: 'published', label: 'Published' },
+    { key: 'retired',   label: 'Retired' },
     { key: 'closed',    label: 'Closed' }
   ];
 
@@ -1199,44 +1158,11 @@
     return 'Action needed';
   }
 
-  function matchesActionFilters_(s) {
-    var actions = [];
-    var priorities = [];
-    var responses = [];
-    for (var i = 0; i < currentActionFilters.length; i++) {
-      var parts = currentActionFilters[i].split(':');
-      var val = parts.slice(1).join(':');
-      if (parts[0] === 'action') actions.push(val);
-      else if (parts[0] === 'priority') priorities.push(val);
-      else if (parts[0] === 'response') responses.push(val);
-    }
-    if (actions.length && actions.indexOf(s.perfAction) === -1) return false;
-    if (priorities.length && (!isCreatorAction(s.perfAction) || priorities.indexOf(s.perfActionPriority) === -1)) return false;
-    if (responses.length) {
-      var rs = getResponseStatus_(s);
-      if (!rs || responses.indexOf(rs) === -1) return false;
-    }
-    return true;
-  }
-
   // --- Filtering, sorting, rendering ---
 
   function applyFilters_(pool, exclude) {
     if (exclude !== 'status' && currentStatusFilter) {
       pool = pool.filter(function(s) { return s.status === currentStatusFilter; });
-    }
-    if (exclude !== 'perf' && currentPerfFilters.length) {
-      pool = pool.filter(function(s) {
-        var flags = s.perfFlags ? s.perfFlags.split(',').map(function(f) { return f.trim(); }) : [];
-        return currentPerfFilters.every(function(pf) {
-          var parts = pf.split(':');
-          if (parts[0] === 'tier') return s.perfTier === parts[1];
-          return flags.indexOf(parts[1]) !== -1;
-        });
-      });
-    }
-    if (exclude !== 'action' && currentActionFilters.length) {
-      pool = pool.filter(function(s) { return matchesActionFilters_(s); });
     }
     if (currentSearch) {
       var term = currentSearch.toLowerCase();
@@ -1251,27 +1177,12 @@
   function getFilteredSubmissions() {
     var pool = allSubmissions;
 
-    if (activeTab === 'my' && !isAdmin) {
+    if (activeTab === 'my') {
       pool = pool.filter(function(s) { return s.isMine; });
     }
 
     if (currentStatusFilter) {
       pool = pool.filter(function(s) { return s.status === currentStatusFilter; });
-    }
-
-    if (currentPerfFilters.length) {
-      pool = pool.filter(function(s) {
-        var flags = s.perfFlags ? s.perfFlags.split(',').map(function(f) { return f.trim(); }) : [];
-        return currentPerfFilters.every(function(pf) {
-          var parts = pf.split(':');
-          if (parts[0] === 'tier') return s.perfTier === parts[1];
-          return flags.indexOf(parts[1]) !== -1;
-        });
-      });
-    }
-
-    if (currentActionFilters.length) {
-      pool = pool.filter(function(s) { return matchesActionFilters_(s); });
     }
 
     if (currentSearch) {
@@ -1313,28 +1224,36 @@
     tbody.innerHTML = '';
 
     var filtered = getFilteredSubmissions();
-    var myCount = isAdmin ? allSubmissions.length : allSubmissions.filter(function(s) { return s.isMine; }).length;
+    var myCount = allSubmissions.filter(function(s) { return s.isMine; }).length;
 
-    document.querySelector('[data-tab="my"]').textContent = 'My Demos (' + myCount + ')';
-    document.querySelector('[data-tab="all"]').textContent = 'All Demos (' + allSubmissions.length + ')';
+    document.querySelector('[data-tab="my"]').textContent = 'My Submissions';
+    document.querySelector('[data-tab="all"]').textContent = 'All Submissions';
 
-    var tabTotal = activeTab === 'my' && !isAdmin ? myCount : allSubmissions.length;
+    var tabTotal = activeTab === 'my' ? myCount : allSubmissions.length;
     document.getElementById('resultsCount').textContent = 'Showing ' + filtered.length + ' of ' + tabTotal;
 
-    var basePool = activeTab === 'my' && !isAdmin
+    var basePool = activeTab === 'my'
       ? allSubmissions.filter(function(s) { return s.isMine; })
       : allSubmissions;
     updateStatusFilterCounts(applyFilters_(basePool, 'status'), filtered.length);
-    updatePerfFilterCounts(applyFilters_(basePool, 'perf'), filtered.length);
-    updateActionFilterCounts(applyFilters_(basePool, 'action'), filtered.length);
-
-    var anyFilter = currentStatusFilter || currentPerfFilters.length || currentActionFilters.length || currentSearch;
+    var anyFilter = currentStatusFilter || currentSearch;
     var resetAllBtn = document.getElementById('resetAllFiltersBtn');
     if (resetAllBtn) resetAllBtn.style.display = anyFilter ? '' : 'none';
 
     if (filtered.length === 0) {
       document.getElementById('tableWrapper').style.display = 'none';
-      document.getElementById('emptyState').style.display = 'block';
+      var emptyEl = document.getElementById('emptyState');
+      if (activeTab === 'my' && !currentStatusFilter && !currentSearch) {
+        emptyEl.innerHTML = '<p>No submissions found.</p>' +
+          '<p style="font-size:0.85rem;color:#5f6368;">This tab matches by the creator email used during submission. Try the <a href="#" onclick="switchTab(\'all\'); return false;" style="color:#1a73e8;">All Submissions</a> tab to browse everything.</p>';
+      } else if (currentStatusFilter || currentSearch) {
+        emptyEl.innerHTML = '<p>No submissions match your filters.</p>' +
+          '<p style="font-size:0.85rem;color:#5f6368;">Try adjusting your search or filters.</p>';
+      } else {
+        emptyEl.innerHTML = '<p>No submissions found.</p>' +
+          '<p style="font-size:0.85rem;color:#5f6368;">Once you submit a demo or video, you can track its status here.</p>';
+      }
+      emptyEl.style.display = 'block';
       return;
     }
 
@@ -1385,13 +1304,11 @@
       }
 
       tr.innerHTML =
-        '<td class="title-cell">' + (isProcessing ? '' : '<span class="row-chevron">&#9654;</span>') + escapeHtml(sub.title || 'Untitled') + '</td>' +
+        '<td class="title-cell">' + (isProcessing ? '' : '<span class="row-chevron">&#9654;</span>') + escapeHtml(sub.title || 'Untitled') + (/(?:youtu\.be|youtube\.com)/.test(sub.creationLink || sub.productionLink || '') ? ' <span style="font-size:0.65rem;padding:1px 5px;border-radius:3px;background:#f0f0f0;color:#666;vertical-align:middle;">YouTube</span>' : ' <span style="font-size:0.65rem;padding:1px 5px;border-radius:3px;background:#f0f0f0;color:#666;vertical-align:middle;">Demo</span>') + '</td>' +
         '<td class="drupal-cell hide-mobile">' + drupalHtml + '</td>' +
         '<td class="creator-cell" title="' + escapeHtml(sub.creatorName || '') + '">' + escapeHtml(sub.creatorName || '—') + '</td>' +
         '<td><span class="status-badge ' + getStatusClass(sub.status) + '">' + escapeHtml(sub.status || '—') + '</span></td>' +
-        '<td class="date-cell">' + formatDate(getDisplayDate(sub)) + '</td>' +
-        '<td><span class="perf-cell">' + perfHtml + '</span></td>' +
-        '<td><div class="action-tags">' + actionTags + '</div></td>';
+        '<td class="date-cell">' + formatDate(getDisplayDate(sub)) + '</td>';
 
       if (!isProcessing) {
         tr.addEventListener('click', (function(submission, row) {
@@ -1422,7 +1339,7 @@
     var detailTr = document.createElement('tr');
     detailTr.className = 'detail-row';
     var td = document.createElement('td');
-    td.setAttribute('colspan', '7');
+    td.setAttribute('colspan', '5');
     td.innerHTML = '<div class="detail-panel">' + buildLifecycle(sub) + buildDetailSections(sub) + '</div>';
     detailTr.appendChild(td);
 
@@ -1437,13 +1354,18 @@
     var isCreatorOnly = (sub.originType || '').toLowerCase().indexOf('creator') !== -1
                      && (sub.originType || '').toLowerCase().indexOf('no request') !== -1;
 
-    var stages = isCreatorOnly
+    var _isYt = /(?:youtu\.be|youtube\.com)/.test(sub.creationLink || sub.productionLink || '');
+
+    var stages = _isYt
+      ? LIFECYCLE_STAGES.filter(function(s) { return s.key === 'published' || s.key === 'retired'; })
+      : isCreatorOnly
       ? LIFECYCLE_STAGES.filter(function(s) { return s.key !== 'open' && s.key !== 'approved'; })
       : LIFECYCLE_STAGES;
 
     var currentIdx = -1;
+    var normStatus = currentStatus.replace(/^IE /, 'Demo ');
     for (var i = 0; i < stages.length; i++) {
-      if (stages[i].label === currentStatus) {
+      if (stages[i].label === currentStatus || stages[i].label === normStatus) {
         currentIdx = i;
         break;
       }
@@ -1461,7 +1383,7 @@
         html += '<div class="lc-connector"><div class="lc-line ' + lineClass + '"></div></div>';
       }
 
-      var nodeContent = state === 'completed' ? '✓' : String(i + 1);
+      var nodeContent = state === 'completed' ? '✓' : '';
       html += '<div class="lc-step">' +
         '<div class="lc-node ' + state + ' stage-' + stage.key + '">' + nodeContent + '</div>' +
         '<div class="lc-label">' + escapeHtml(stage.label) + '</div>' +
@@ -1475,16 +1397,14 @@
 
   function buildDetailSections(sub) {
     var canEdit = sub.isMine || isAdmin;
+    var _isYtLink = /(?:youtu\.be|youtube\.com)/.test(sub.creationLink || sub.productionLink || '');
     var linksHtml = '';
     if (sub.creationLink && /^https?:\/\//i.test(sub.creationLink)) {
-      linksHtml += '<div class="link-row"><strong>Creation Link' +
-        (canEdit && !hasAction(sub) ? ' <a href="#" style="font-weight:400;font-size:0.72rem;" onclick="event.preventDefault();event.stopPropagation();toggleNewLink(\'' + sub.requestNumber + '\');">Update</a>' : '') +
-        '</strong><div class="link-desc">The link submitted by creator previously</div>' + renderLink(sub.creationLink, sub.creationLink) + '</div>';
-    } else if (canEdit && !hasAction(sub)) {
-      linksHtml += '<div class="link-row"><strong>Creation Link <a href="#" style="font-weight:400;font-size:0.72rem;" onclick="event.preventDefault();event.stopPropagation();toggleNewLink(\'' + sub.requestNumber + '\');">Add</a></strong><div class="link-desc">No creation link submitted yet</div></div>';
+      linksHtml += '<div class="link-row"><strong>' + (_isYtLink ? 'YouTube Video Link' : 'Creation Demo Link') +
+        '</strong><div class="link-desc">' + (_isYtLink ? 'The YouTube URL submitted by creator' : 'The link submitted by creator previously') + '</div>' + renderLink(sub.creationLink, sub.creationLink) + '</div>';
     }
     if (sub.productionLink && /^https?:\/\//i.test(sub.productionLink)) {
-      linksHtml += '<div class="link-row"><strong>Production Link</strong><div class="link-desc">Version-controlled copy, published for live use</div>' + renderLink(sub.productionLink, sub.productionLink) + '</div>';
+      linksHtml += '<div class="link-row"><strong>' + (_isYtLink ? 'Production Video Link' : 'Production Demo Link') + '</strong><div class="link-desc">Version-controlled copy, published for live use</div>' + renderLink(sub.productionLink, sub.productionLink) + '</div>';
     }
     if (sub.drupalPageUrl && /^https?:\/\//i.test(sub.drupalPageUrl)) {
       linksHtml += '<div class="link-row"><strong>Demo Page</strong><div class="link-desc">The live page with production version</div>' + renderLink(sub.drupalPageUrl, sub.drupalPageUrl) + '</div>';
@@ -1497,11 +1417,15 @@
     if (linksHtml) {
       detailHtml += '<div class="detail-section" style="grid-column: 1 / -1;"><div class="links-bar">' + linksHtml + '</div>';
       if (canEdit && !hasAction(sub)) {
+        var _isYt = /(?:youtu\.be\/|youtube\.com)/.test(sub.creationLink || sub.productionLink || '');
+        var _linkLabel = _isYt ? 'YouTube Video Link' : 'Creation Demo Link';
+        var _linkDesc = _isYt ? 'Submit an updated YouTube URL to replace the current link' : 'Submit an updated Arcade link to replace the current creation link';
+        var _linkPlaceholder = _isYt ? 'https://youtube.com/watch?v=...' : 'https://app.arcade.software/share/...';
         detailHtml += '<div class="edit-meta-panel" id="new-link-panel-' + sub.requestNumber + '">' +
           '<div style="padding:12px 0; max-width:600px;">' +
-            '<label style="font-size:0.82rem; font-weight:600; color:#3c4043;">New Creation Link</label>' +
-            '<div style="font-size:0.72rem; color:#888; margin-bottom:6px;">Submit an updated Arcade link to replace the current creation link</div>' +
-            '<input type="text" id="standalone-link-' + sub.requestNumber + '" placeholder="https://app.arcade.software/share/..." style="width:100%; padding:8px 10px; border:1px solid #ddd; border-radius:6px; font-size:0.85rem; margin-bottom:8px;" onclick="event.stopPropagation();">' +
+            '<label style="font-size:0.82rem; font-weight:600; color:#3c4043;">' + _linkLabel + '</label>' +
+            '<div style="font-size:0.72rem; color:#888; margin-bottom:6px;">' + _linkDesc + '</div>' +
+            '<input type="text" id="standalone-link-' + sub.requestNumber + '" placeholder="' + _linkPlaceholder + '" style="width:100%; padding:8px 10px; border:1px solid #ddd; border-radius:6px; font-size:0.85rem; margin-bottom:8px;" onclick="event.stopPropagation();">' +
             '<textarea id="standalone-link-notes-' + sub.requestNumber + '" placeholder="Notes (optional)" rows="2" style="width:100%; padding:8px 10px; border:1px solid #ddd; border-radius:6px; font-size:0.85rem; margin-bottom:8px; resize:vertical;" onclick="event.stopPropagation();"></textarea>' +
             '<div style="display:flex; gap:8px;">' +
               '<button class="btn-primary" onclick="event.stopPropagation(); submitNewLink(\'' + sub.requestNumber + '\');">Submit</button>' +
@@ -1516,7 +1440,7 @@
     // Metadata header with edit action
     detailHtml += '<div class="detail-header-row" id="detail-header-' + sub.requestNumber + '" style="grid-column: 1 / -1; display:flex; justify-content:space-between; align-items:center; margin-bottom:-12px;">' +
       '<h4 style="font-size:0.7rem;text-transform:uppercase;letter-spacing:0.04em;color:#888;margin:0;">Details</h4>' +
-      (canEdit ? '<span class="detail-edit-actions"><a href="#" style="font-size:0.78rem; color:#1a73e8;" onclick="event.preventDefault();event.stopPropagation();toggleEditMetadata(\'' + sub.requestNumber + '\');">Edit</a></span>' : '') +
+      '' +
       '</div>';
 
     // Left column: content info + audience + program
@@ -1530,6 +1454,7 @@
     detailHtml += kvRow('Quarter', sub.quarter, 'Quarter');
     detailHtml += kvRow('Vertical', sub.vertical, 'Verticals');
     detailHtml += kvRow('Event', sub.event, 'Event');
+    detailHtml += kvRow('Destination Channels', sub.destinationChannels, 'Destination Channels');
     detailHtml += kvRow('TDP', sub.tdp, 'TDP');
     detailHtml += kvRow('Sales Tactic', sub.salesTactic, 'Sales Tactic');
     detailHtml += kvRow('Marketing Program', sub.marketingProgram, 'Marketing Program');
@@ -1618,80 +1543,7 @@
   // --- Action banner & response form ---
 
   function buildActionBanner(sub) {
-    if (!hasAction(sub)) return '';
-
-    var pending = sub.pendingResponse;
-    var num = sub.requestNumber;
-
-    if (pending && pending.approval === 'Approved') {
-      return '<div class="action-banner action-complete">' +
-        '<div class="banner-title">Action Complete</div>' +
-        '<div class="banner-detail">Approved' + (pending.processed ? ' on ' + escapeHtml(pending.processed.split('T')[0]) : '') + '</div>' +
-        '<div style="margin-top:10px;"><button class="btn-secondary" onclick="event.stopPropagation(); showResponseForm(\'' + num + '\');">Submit New Response</button></div>' +
-        '<div class="response-form" id="response-form-' + num + '" style="display:none;">' + buildResponseFormFields(sub) + '</div>' +
-        '</div>';
-    }
-
-    if (pending && !pending.processed) {
-      var html = '<div class="action-banner response-pending">' +
-        '<div class="banner-title">Response Submitted — Pending Review</div>' +
-        '<div class="banner-detail">Response: <strong>' + escapeHtml(pending.response) + '</strong></div>';
-      if (pending.newLink) html += '<div class="banner-detail">New Link: ' + escapeHtml(pending.newLink) + '</div>';
-      if (pending.notes) html += '<div class="banner-detail">Notes: ' + escapeHtml(pending.notes) + '</div>';
-      html += '<div class="banner-detail" style="font-size:0.78rem;color:#888;">Submitted ' + escapeHtml(pending.timestamp ? pending.timestamp.split('T')[0] : '') + '</div>';
-      if (pending.metadataChanges) {
-        try {
-          var pmc = JSON.parse(pending.metadataChanges);
-          var pmKeys = Object.keys(pmc);
-          if (pmKeys.length > 0) {
-            html += '<div class="banner-detail" style="margin-top:6px;"><strong>Proposed changes:</strong></div>';
-            for (var pi = 0; pi < pmKeys.length; pi++) {
-              html += '<div class="banner-detail" style="font-size:0.8rem;color:#555;">' +
-                escapeHtml(pmKeys[pi]) + ': ' + escapeHtml(pmc[pmKeys[pi]]) + '</div>';
-            }
-          }
-        } catch (e) {}
-      }
-      html += '<div style="margin-top:10px;"><button class="btn-secondary" onclick="event.stopPropagation(); showResponseForm(\'' + num + '\');">Update Response</button></div>';
-      html += '<div class="response-form" id="response-form-' + num + '" style="display:none;">' + buildResponseFormFields(sub) + '</div>';
-
-      if (isAdmin) {
-        html += buildAdminReview(sub, pending);
-      }
-
-      html += '</div>';
-      return html;
-    }
-
-    var actionStatus = (sub.perfActionStatus || '').trim();
-    if (actionStatus === 'Resubmit required' || actionStatus === 'Resubmit') {
-      var html = '<div class="action-banner action-needed" style="background:#fce8e6;border-color:#f5c6cb;">' +
-        '<div class="banner-title" style="color:#c5221f;">Resubmit Required</div>' +
-        '<div class="banner-detail"><strong>' + escapeHtml(sub.perfAction) + '</strong></div>';
-      if (pending && pending.approval === 'Rejected') {
-        if (pending.response) html += '<div class="banner-detail" style="margin-top:6px;">Your response: <strong>' + escapeHtml(pending.response) + '</strong></div>';
-        if (pending.notes) html += '<div class="banner-detail">Your notes: ' + escapeHtml(pending.notes) + '</div>';
-        if (pending.adminNotes) html += '<div class="banner-reason" style="margin-top:6px;color:#c5221f;">Admin feedback: ' + escapeHtml(pending.adminNotes) + '</div>';
-      }
-      html += (sub.perfActionReason ? '<div class="banner-reason">' + escapeHtml(sub.perfActionReason) + '</div>' : '') +
-        '<div class="response-form" id="response-form-' + num + '">' + buildResponseFormFields(sub) + '</div>' +
-        '</div>';
-      return html;
-    }
-
-    return '<div class="action-banner action-needed">' +
-      '<div class="banner-title">Action Needed</div>' +
-      '<div class="banner-detail"><strong>' + escapeHtml(sub.perfAction) + '</strong></div>' +
-      (sub.perfActionReason ? '<div class="banner-reason">' + escapeHtml(sub.perfActionReason) + '</div>' : '') +
-      '<div class="banner-perf">' +
-        (sub.perfScore ? '<span>Score: ' + escapeHtml(sub.perfScore) + '</span>' : '') +
-        (sub.perfTier ? '<span>Tier: ' + escapeHtml(sub.perfTier) + '</span>' : '') +
-        (sub.perfTrend ? '<span>Trend: ' + escapeHtml(sub.perfTrend) + '</span>' : '') +
-        (sub.perfSignals ? '<span>Signals: ' + escapeHtml(sub.perfSignals) + '</span>' : '') +
-        (sub.perfFlags ? '<span>Flags: ' + escapeHtml(sub.perfFlags) + '</span>' : '') +
-      '</div>' +
-      '<div class="response-form" id="response-form-' + sub.requestNumber + '">' + buildResponseFormFields(sub) + '</div>' +
-      '</div>';
+    return '';
   }
 
   function buildResponseFormFields(sub) {
@@ -1913,9 +1765,6 @@
           isAdmin = result.isAdmin || false;
           EDITABLE_FIELDS = result.editableFields || [];
           FIELD_OPTIONS_MAP = result.fieldOptions || {};
-          var reviewTabEl = document.getElementById('reviewTab');
-          if (reviewTabEl) reviewTabEl.style.display = isAdmin ? '' : 'none';
-          if (isAdmin) loadReviewQueueCount();
           document.querySelectorAll('.detail-row').forEach(function(r) { r.remove(); });
           document.querySelectorAll('.data-row.expanded').forEach(function(r) { r.classList.remove('expanded'); });
           renderTable();
@@ -1925,81 +1774,31 @@
       .getAllSubmissions();
   }
 
+  function promptFeedback() {
+    const feedbackPrompt =
+      "Please provide feedback about the Arcade Intake Assistant:\n\n" +
+      "What feature or field needs improvement?\n\n" +
+      "What issue did you encounter?\n\n" +
+      "Additional comments:";
+
+    const feedback = prompt(feedbackPrompt);
+    if (feedback && feedback.trim()) {
+      try {
+        trackEvent('feedback_submitted', { feedback: feedback.trim() });
+        alert("Thank you for your feedback! It has been recorded.");
+      } catch (e) {
+        alert("Feedback recorded. Please also share in #forum-arcade-creators if possible.");
+      }
+    }
+    return false;
+  }
+
   function showToast(msg, isWarning) {
     var toast = document.createElement('div');
     toast.className = 'toast' + (isWarning ? ' toast-warning' : '');
     toast.textContent = msg;
     document.body.appendChild(toast);
     setTimeout(function() { toast.remove(); }, 3000);
-  }
-
-  function loadReviewQueueCount() {
-    google.script.run
-      .withSuccessHandler(function(result) {
-        if (result && result.success) {
-          reviewQueueData = result.items || [];
-          var tab = document.getElementById('reviewTab');
-          if (tab) tab.textContent = 'Review Queue (' + reviewQueueData.length + ')';
-          if (activeTab === 'review') renderReviewQueue();
-        }
-      })
-      .withFailureHandler(function() {})
-      .getReviewQueue();
-  }
-
-  function renderReviewQueue() {
-    var container = document.getElementById('reviewQueueView');
-    if (!container) return;
-
-    if (reviewQueueData.length === 0) {
-      container.innerHTML = '<div class="review-queue-empty">No pending reviews</div>';
-      return;
-    }
-
-    var html = '';
-    for (var i = 0; i < reviewQueueData.length; i++) {
-      var item = reviewQueueData[i];
-      var dateStr = item.timestamp ? item.timestamp.split('T')[0] : '';
-      var creatorName = item.submission ? (item.submission.creatorName || '') : '';
-
-      html += '<div class="rq-item">' +
-        '<div class="rq-summary" onclick="toggleReviewItem(' + i + ')">' +
-          '<span class="rq-num">#' + escapeHtml(item.number) + '</span>' +
-          '<span class="rq-title">' + escapeHtml(item.demoTitle) + '</span>' +
-          '<span class="rq-creator">' + escapeHtml(creatorName || item.submitterEmail) + '</span>' +
-          '<span class="rq-action">' + escapeHtml(item.action) + '</span>' +
-          '<span class="rq-date">' + escapeHtml(dateStr) + '</span>' +
-          '<span class="rq-expand" id="rq-arrow-' + i + '">&#9662;</span>' +
-        '</div>' +
-        '<div class="rq-detail" id="rq-detail-' + i + '">';
-
-      if (item.submission) {
-        var pending = {
-          queueRowIndex: item.queueRowIndex,
-          response: item.response,
-          newLink: item.newLink,
-          notes: item.notes,
-          metadataChanges: item.metadataChanges,
-          approval: '',
-          processed: ''
-        };
-        html += buildAdminReview(item.submission, pending, 'rq-');
-      } else {
-        html += '<div style="color:#888;font-size:0.85rem;">Demo #' + escapeHtml(item.number) + ' not found on Request_Master</div>';
-      }
-
-      html += '</div></div>';
-    }
-    container.innerHTML = html;
-  }
-
-  function toggleReviewItem(idx) {
-    var detail = document.getElementById('rq-detail-' + idx);
-    var arrow = document.getElementById('rq-arrow-' + idx);
-    if (detail) {
-      var open = detail.classList.toggle('open');
-      if (arrow) arrow.innerHTML = open ? '&#9652;' : '&#9662;';
-    }
   }
 
   // --- Inline Edit Metadata ---
@@ -2182,18 +1981,14 @@
     });
 
     var isReports = tab === 'reports';
-    var isReview = tab === 'review';
-    document.getElementById('tableWrapper').style.display = (isReports || isReview) ? 'none' : '';
-    document.getElementById('resultsCount').style.display = (isReports || isReview) ? 'none' : '';
+    document.getElementById('tableWrapper').style.display = isReports ? 'none' : '';
+    document.getElementById('resultsCount').style.display = isReports ? 'none' : '';
     document.getElementById('reportsView').style.display = isReports ? 'block' : 'none';
-    document.getElementById('reviewQueueView').style.display = isReview ? 'block' : 'none';
     document.getElementById('emptyState').style.display = 'none';
-    document.querySelector('.controls-right').style.display = (isReports || isReview) ? 'none' : '';
+    document.querySelector('.controls-right').style.display = isReports ? 'none' : '';
 
     if (isReports) {
       renderReports();
-    } else if (isReview) {
-      loadReviewQueueCount();
     } else {
       renderTable();
     }
@@ -2227,141 +2022,14 @@
     }
   }
 
-  function updatePerfFilterCounts(pool, filteredTotal) {
-    var counts = {};
-    for (var i = 0; i < pool.length; i++) {
-      var t = pool[i].perfTier;
-      if (t) counts['tier:' + t] = (counts['tier:' + t] || 0) + 1;
-      if (pool[i].perfFlags) {
-        var flags = pool[i].perfFlags.split(',');
-        for (var fi = 0; fi < flags.length; fi++) {
-          var f = flags[fi].trim();
-          if (f) counts['flag:' + f] = (counts['flag:' + f] || 0) + 1;
-        }
-      }
-    }
-    var spans = document.querySelectorAll('.ms-count[data-key]');
-    for (var j = 0; j < spans.length; j++) {
-      var key = spans[j].dataset.key;
-      spans[j].textContent = counts[key] ? '(' + counts[key] + ')' : '(0)';
-    }
-    updatePerfBtnLabel(filteredTotal);
-  }
-
-  function updatePerfBtnLabel(total) {
-    var btn = document.getElementById('perfFilterBtn');
-    var btnLabel = btn.querySelector('span:first-child');
-    if (currentPerfFilters.length === 0) {
-      btnLabel.textContent = 'All Performance (' + total + ')';
-    } else if (currentPerfFilters.length === 1) {
-      btnLabel.textContent = currentPerfFilters[0].split(':')[1] + ' (' + total + ')';
-    } else {
-      btnLabel.textContent = currentPerfFilters.length + ' selected (' + total + ')';
-    }
-  }
-
-  function updateActionFilterCounts(pool, filteredTotal) {
-    var counts = {};
-    for (var i = 0; i < pool.length; i++) {
-      var s = pool[i];
-      if (s.perfAction && s.perfAction !== 'No action needed') {
-        var aKey = 'action:' + s.perfAction;
-        counts[aKey] = (counts[aKey] || 0) + 1;
-      }
-      if (s.perfActionPriority && isCreatorAction(s.perfAction)) {
-        var pKey = 'priority:' + s.perfActionPriority;
-        counts[pKey] = (counts[pKey] || 0) + 1;
-      }
-      var rs = getResponseStatus_(s);
-      if (rs) {
-        var rKey = 'response:' + rs;
-        counts[rKey] = (counts[rKey] || 0) + 1;
-      }
-    }
-    var spans = document.querySelectorAll('.ms-count[data-action-key]');
-    for (var j = 0; j < spans.length; j++) {
-      var key = spans[j].getAttribute('data-action-key');
-      var c = counts[key] || 0;
-      spans[j].textContent = c ? c : '';
-    }
-    var total = currentActionFilters.length ? filteredTotal : pool.length;
-    var btnLabel = document.querySelector('#actionFilterBtn span:first-child');
-    if (currentActionFilters.length === 0) {
-      btnLabel.textContent = 'All Actions (' + total + ')';
-    } else {
-      btnLabel.textContent = currentActionFilters.length + ' selected (' + filteredTotal + ')';
-    }
-  }
-
   function onStatusFilterChange() {
     currentStatusFilter = document.getElementById('statusFilter').value;
     renderTable();
   }
 
-  function togglePerfPanel() {
-    var panel = document.getElementById('perfFilterPanel');
-    panel.classList.toggle('open');
-  }
-
-  document.addEventListener('click', function(e) {
-    var perfWrap = document.getElementById('perfFilterWrap');
-    if (perfWrap && !perfWrap.contains(e.target)) {
-      document.getElementById('perfFilterPanel').classList.remove('open');
-    }
-    var actionWrap = document.getElementById('actionFilterWrap');
-    if (actionWrap && !actionWrap.contains(e.target)) {
-      document.getElementById('actionFilterPanel').classList.remove('open');
-    }
-  });
-
-  function resetPerfFilter() {
-    var checks = document.querySelectorAll('#perfFilterPanel input[type=checkbox]:checked');
-    for (var i = 0; i < checks.length; i++) checks[i].checked = false;
-    onPerfFilterChange();
-  }
-
-  function onPerfFilterChange() {
-    var checks = document.querySelectorAll('#perfFilterPanel input[type=checkbox]:checked');
-    currentPerfFilters = [];
-    for (var i = 0; i < checks.length; i++) currentPerfFilters.push(checks[i].value);
-    var resetBtn = document.getElementById('perfResetBtn');
-    if (resetBtn) resetBtn.style.display = currentPerfFilters.length ? 'block' : 'none';
-    renderTable();
-  }
-
-  function onActionFilterChange() {
-    var checks = document.querySelectorAll('#actionFilterPanel input[type=checkbox]:checked');
-    currentActionFilters = [];
-    for (var i = 0; i < checks.length; i++) currentActionFilters.push(checks[i].value);
-    var resetBtn = document.getElementById('actionResetBtn');
-    if (resetBtn) resetBtn.style.display = currentActionFilters.length ? 'block' : 'none';
-    renderTable();
-  }
-
-  function toggleActionPanel() {
-    var panel = document.getElementById('actionFilterPanel');
-    panel.classList.toggle('open');
-  }
-
-  function resetActionFilter() {
-    var checks = document.querySelectorAll('#actionFilterPanel input[type=checkbox]:checked');
-    for (var i = 0; i < checks.length; i++) checks[i].checked = false;
-    onActionFilterChange();
-  }
-
   function resetAllFilters() {
     document.getElementById('statusFilter').value = '';
     currentStatusFilter = '';
-    var perfChecks = document.querySelectorAll('#perfFilterPanel input[type=checkbox]:checked');
-    for (var i = 0; i < perfChecks.length; i++) perfChecks[i].checked = false;
-    currentPerfFilters = [];
-    var perfReset = document.getElementById('perfResetBtn');
-    if (perfReset) perfReset.style.display = 'none';
-    var actionChecks = document.querySelectorAll('#actionFilterPanel input[type=checkbox]:checked');
-    for (var j = 0; j < actionChecks.length; j++) actionChecks[j].checked = false;
-    currentActionFilters = [];
-    var actionReset = document.getElementById('actionResetBtn');
-    if (actionReset) actionReset.style.display = 'none';
     document.getElementById('searchInput').value = '';
     currentSearch = '';
     renderTable();
@@ -2385,17 +2053,17 @@
 
   var PIPELINE_COLORS = {
     'Processing': '#fff3e0', 'Request Open': '#e8f0fe', 'Request Approved': '#e6f4ea',
-    'IE Received': '#fef7e0', 'IE Reviewed': '#e8f0fe', 'IE Published': '#e6f4ea',
-    'IE Retired': '#f4e8e8', 'Closed': '#eee'
+    'Demo Received': '#fef7e0', 'Demo Reviewed': '#e8f0fe', 'Published': '#e6f4ea', 'Demo Published': '#e6f4ea',
+    'Retired': '#f4e8e8', 'Demo Retired': '#f4e8e8', 'Closed': '#eee'
   };
   var PIPELINE_TEXT = {
     'Processing': '#e65100', 'Request Open': '#1a73e8', 'Request Approved': '#137333',
-    'IE Received': '#b06000', 'IE Reviewed': '#1a73e8', 'IE Published': '#137333',
-    'IE Retired': '#a33', 'Closed': '#666'
+    'Demo Received': '#b06000', 'Demo Reviewed': '#1a73e8', 'Published': '#137333', 'Demo Published': '#137333',
+    'Retired': '#a33', 'Demo Retired': '#a33', 'Closed': '#666'
   };
   var PIPELINE_ORDER = [
     'Processing', 'Request Open', 'Request Approved',
-    'IE Received', 'IE Reviewed', 'IE Published', 'IE Retired', 'Closed'
+    'Demo Received', 'Demo Reviewed', 'Published', 'Retired', 'Closed'
   ];
 
   var dashboardMonthsBack = 12;
@@ -2407,7 +2075,7 @@
       cutoff = new Date(now.getFullYear(), now.getMonth() - monthsBack, 1);
     }
 
-    var DASHBOARD_STATUSES = ['IE Reviewed', 'IE Published'];
+    var DASHBOARD_STATUSES = ['Demo Reviewed', 'Published', 'Demo Published'];
     var filtered = [];
     for (var i = 0; i < submissions.length; i++) {
       if (DASHBOARD_STATUSES.indexOf(submissions[i].status) === -1) continue;
@@ -2459,8 +2127,8 @@
     var prevDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
     var prevMk = prevDate.getFullYear() + '-' + String(prevDate.getMonth() + 1).padStart(2, '0');
 
-    var published = statusMap['IE Published'] || 0;
-    var inPipeline = filtered.length - published - (statusMap['IE Retired'] || 0) - (statusMap['Closed'] || 0);
+    var published = (statusMap['Published'] || 0) + (statusMap['Demo Published'] || 0);
+    var inPipeline = filtered.length - published - (statusMap['Retired'] || 0) - (statusMap['Demo Retired'] || 0) - (statusMap['Closed'] || 0);
 
     var tdps = Object.keys(tdpMap).sort(function(a, b) { return tdpMap[b] - tdpMap[a]; });
 
@@ -2493,7 +2161,7 @@
       '</div>';
 
     // KPI cards — pipeline counts from unfiltered data
-    var pipelineStatuses = ['Processing', 'Request Open', 'Request Approved', 'IE Received'];
+    var pipelineStatuses = ['Processing', 'Request Open', 'Request Approved', 'Demo Received'];
     var pipelineCount = 0;
     for (var i = 0; i < allSubmissions.length; i++) {
       if (pipelineStatuses.indexOf(allSubmissions[i].status) !== -1) pipelineCount++;
@@ -2555,8 +2223,8 @@
     var curMk = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0');
     var demos = [];
 
-    var reviewedStatuses = ['IE Reviewed', 'IE Published'];
-    var pipelineStatuses = ['Processing', 'Request Open', 'Request Approved', 'IE Received'];
+    var reviewedStatuses = ['Demo Reviewed', 'Published', 'Demo Published'];
+    var pipelineStatuses = ['Processing', 'Request Open', 'Request Approved', 'Demo Received'];
 
     for (var i = 0; i < allSubmissions.length; i++) {
       var sub = allSubmissions[i];
@@ -2859,17 +2527,10 @@
           isAdmin = result.isAdmin || false;
           EDITABLE_FIELDS = result.editableFields || [];
           FIELD_OPTIONS_MAP = result.fieldOptions || {};
-          var reviewTabEl = document.getElementById('reviewTab');
-          if (reviewTabEl) reviewTabEl.style.display = isAdmin ? '' : 'none';
-          if (isAdmin) loadReviewQueueCount();
 
           trackEvent('status_page_view', { submissionCount: allSubmissions.length });
-          var myCount = isAdmin ? allSubmissions.length : allSubmissions.filter(function(s) { return s.isMine; }).length;
-          if (myCount === 0 && !isAdmin) {
-            switchTab('all');
-          } else {
-            renderTable();
-          }
+          var myCount = allSubmissions.filter(function(s) { return s.isMine; }).length;
+          renderTable();
         } else {
           showError((result && result.error) || 'Could not load submissions.');
         }

@@ -94,6 +94,16 @@ test('Intake form loads without errors', async ({ page }) => {
   await expect(contentFrame.getByRole('button', { name: 'Extract Content' }))
     .toBeVisible();
 
+  // AIA REMEDIATION: Verify User Guide link is visible and points to Google Doc
+  const userGuideLink = contentFrame.getByRole('link', { name: 'User Guide' });
+  await expect(userGuideLink).toBeVisible();
+  await expect(userGuideLink).toHaveAttribute('href', 'https://docs.google.com/document/d/15NOQvsdNdalxsxmmFEKPeCaH9khH1Um7uMjzsjqZf3Y/edit?tab=t.0');
+  await expect(userGuideLink).toHaveAttribute('target', '_blank');
+
+  // AIA REMEDIATION: Verify Give feedback link is visible
+  await expect(contentFrame.getByRole('link', { name: 'Give feedback' }))
+    .toBeVisible();
+
   // Verify no console errors
   expect(consoleErrors).toHaveLength(0);
 
@@ -143,6 +153,16 @@ test('Status Tracker loads without errors', async ({ page }) => {
   // Either: table with data, OR status/empty message
   const finalContent = contentFrame.locator('table, .status-message');
   await expect(finalContent.first()).toBeVisible({ timeout: 10000 });
+
+  // AIA REMEDIATION: Verify User Guide link is visible and points to Google Doc
+  const userGuideLinkST = contentFrame.getByRole('link', { name: 'User Guide' });
+  await expect(userGuideLinkST).toBeVisible();
+  await expect(userGuideLinkST).toHaveAttribute('href', 'https://docs.google.com/document/d/15NOQvsdNdalxsxmmFEKPeCaH9khH1Um7uMjzsjqZf3Y/edit?tab=t.0');
+  await expect(userGuideLinkST).toHaveAttribute('target', '_blank');
+
+  // AIA REMEDIATION: Verify Give feedback link is visible
+  await expect(contentFrame.getByRole('link', { name: 'Give feedback' }))
+    .toBeVisible();
 
   // Verify no console errors
   expect(consoleErrors).toHaveLength(0);
