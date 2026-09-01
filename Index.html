@@ -282,6 +282,109 @@
         grid-template-columns: 1fr;
       }
     }
+
+    /* Feedback Modal */
+    .feedback-modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.5);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 10000;
+    }
+
+    .feedback-modal {
+      background: white;
+      border-radius: 8px;
+      padding: 24px;
+      max-width: 500px;
+      width: 90%;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
+    }
+
+    .feedback-modal h3 {
+      margin: 0 0 16px 0;
+      font-size: 1.1rem;
+      font-weight: 600;
+      color: #1f1f1f;
+    }
+
+    .feedback-modal label {
+      display: block;
+      font-size: 0.875rem;
+      font-weight: 500;
+      color: #3c4043;
+      margin-bottom: 6px;
+    }
+
+    .feedback-modal select,
+    .feedback-modal textarea {
+      width: 100%;
+      padding: 8px 12px;
+      border: 1px solid #dadce0;
+      border-radius: 4px;
+      font-size: 0.875rem;
+      font-family: inherit;
+      margin-bottom: 16px;
+      box-sizing: border-box;
+    }
+
+    .feedback-modal textarea {
+      min-height: 80px;
+      resize: vertical;
+    }
+
+    .feedback-modal-buttons {
+      display: flex;
+      gap: 12px;
+      justify-content: flex-end;
+      margin-top: 20px;
+    }
+
+    .feedback-modal-buttons button {
+      padding: 8px 16px;
+      border-radius: 4px;
+      border: none;
+      font-size: 0.875rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+
+    .feedback-modal-buttons .cancel-btn {
+      background: #f1f3f4;
+      color: #3c4043;
+    }
+
+    .feedback-modal-buttons .cancel-btn:hover {
+      background: #e8eaed;
+    }
+
+    .feedback-modal-buttons .submit-btn {
+      background: #1a73e8;
+      color: white;
+    }
+
+    .feedback-modal-buttons .submit-btn:hover {
+      background: #1765cc;
+    }
+
+    .feedback-modal-buttons .submit-btn:disabled {
+      background: #dadce0;
+      color: #80868b;
+      cursor: not-allowed;
+    }
+
+    .feedback-modal-error {
+      color: #d93025;
+      font-size: 0.8125rem;
+      margin-top: -12px;
+      margin-bottom: 12px;
+    }
   </style>
 </head>
 
@@ -1684,33 +1787,136 @@ async function submitForReview() {
     }).catch(function() {});
 
     function promptFeedback() {
+      // Capture current context
       const arcadeUrl = document.getElementById('arcadeUrl').value.trim();
       const demoTitle = document.getElementById('demoTitle').value.trim();
 
-      const feedbackPrompt =
-        "Please provide feedback about the Arcade Intake Assistant:\n\n" +
-        (arcadeUrl ? "Demo URL: " + arcadeUrl + "\n\n" : "") +
-        (demoTitle ? "Demo Title: " + demoTitle + "\n\n" : "") +
-        "What field was inaccurate? (e.g., Primary Product, Description, TDP)\n\n" +
-        "What was wrong?\n\n" +
-        "Additional comments:";
+      // Create modal overlay
+      const overlay = document.createElement('div');
+      overlay.className = 'feedback-modal-overlay';
 
-      const feedback = prompt(feedbackPrompt);
-      if (feedback && feedback.trim()) {
+      // Create modal content
+      const modal = document.createElement('div');
+      modal.className = 'feedback-modal';
+
+      modal.innerHTML = `
+        <h3>Give Feedback</h3>
+
+        <label for="feedbackField">What needs improvement? <span style="color:#d93025">*</span></label>
+        <select id="feedbackField">
+          <option value="">Select a field or category...</option>
+          <option value="Overall draft">Overall draft quality</option>
+          <option value="Description">Description</option>
+          <option value="Primary Product">Primary Product</option>
+          <option value="Technology Decision Point">Technology Decision Point (TDP)</option>
+          <option value="SEO Description">SEO Description</option>
+          <option value="SEO Keywords">SEO Keywords</option>
+          <option value="Call-to-Action Links">Call-to-Action Links</option>
+          <option value="Sales Tactic">Sales Tactic</option>
+          <option value="Marketing Program">Marketing Program</option>
+          <option value="Multiple fields">Multiple fields</option>
+          <option value="Other">Other</option>
+        </select>
+        <div id="feedbackFieldError" class="feedback-modal-error" style="display:none;">Please select a field</div>
+
+        <label for="feedbackIssue">What was wrong? <span style="color:#d93025">*</span></label>
+        <textarea id="feedbackIssue" placeholder="Describe the issue or inaccuracy you encountered"></textarea>
+        <div id="feedbackIssueError" class="feedback-modal-error" style="display:none;">Please describe the issue</div>
+
+        <label for="feedbackComments">Additional comments (optional)</label>
+        <textarea id="feedbackComments" placeholder="Any other feedback or suggestions"></textarea>
+
+        <div class="feedback-modal-buttons">
+          <button type="button" class="cancel-btn">Cancel</button>
+          <button type="button" class="submit-btn">Submit Feedback</button>
+        </div>
+      `;
+
+      overlay.appendChild(modal);
+      document.body.appendChild(overlay);
+
+      // Focus first field
+      setTimeout(() => document.getElementById('feedbackField').focus(), 100);
+
+      // Handle cancel
+      const cancelBtn = modal.querySelector('.cancel-btn');
+      cancelBtn.onclick = function() {
+        overlay.remove();
+      };
+
+      // Click outside to close
+      overlay.onclick = function(e) {
+        if (e.target === overlay) {
+          overlay.remove();
+        }
+      };
+
+      // Handle submit
+      const submitBtn = modal.querySelector('.submit-btn');
+      submitBtn.onclick = function() {
+        const field = document.getElementById('feedbackField').value.trim();
+        const issue = document.getElementById('feedbackIssue').value.trim();
+        const comments = document.getElementById('feedbackComments').value.trim();
+
+        // Clear previous errors
+        document.getElementById('feedbackFieldError').style.display = 'none';
+        document.getElementById('feedbackIssueError').style.display = 'none';
+
+        // Validate
+        let hasError = false;
+        if (!field) {
+          document.getElementById('feedbackFieldError').style.display = 'block';
+          hasError = true;
+        }
+        if (!issue) {
+          document.getElementById('feedbackIssueError').style.display = 'block';
+          hasError = true;
+        }
+
+        if (hasError) {
+          return;
+        }
+
+        // Disable submit button
+        submitBtn.disabled = true;
+        submitBtn.textContent = 'Submitting...';
+
+        // Submit feedback
         try {
-          google.script.run.logAnalyticsEventFromClient('feedback_submitted', {
-            sessionId: analyticsSessionId,
-            metadata: {
-              arcadeUrl: arcadeUrl,
-              demoTitle: demoTitle,
-              feedback: feedback.trim()
-            }
-          });
-          alert("Thank you for your feedback! It has been recorded.");
+          google.script.run
+            .withSuccessHandler(function() {
+              overlay.remove();
+              alert("Thank you for your feedback! It has been recorded.");
+            })
+            .withFailureHandler(function(error) {
+              overlay.remove();
+              alert("Feedback recorded locally. Please also share in #forum-arcade-creators if possible.");
+            })
+            .logAnalyticsEventFromClient('feedback_submitted', {
+              sessionId: analyticsSessionId,
+              metadata: {
+                arcadeUrl: arcadeUrl,
+                demoTitle: demoTitle,
+                field: field,
+                issue: issue,
+                comments: comments
+              }
+            });
         } catch (e) {
+          overlay.remove();
           alert("Feedback recorded locally. Please also share in #forum-arcade-creators if possible.");
         }
-      }
+      };
+
+      // ESC key to close
+      const handleEsc = function(e) {
+        if (e.key === 'Escape') {
+          overlay.remove();
+          document.removeEventListener('keydown', handleEsc);
+        }
+      };
+      document.addEventListener('keydown', handleEsc);
+
       return false;
     }
 
