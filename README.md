@@ -81,8 +81,18 @@ System-level documentation is maintained in the Interactive Experience Hub repos
 - [Architecture](https://github.com/rubyyyyang/interactive-experience-hub/blob/main/docs/architecture.md)
 - [Runbook](https://github.com/rubyyyyang/interactive-experience-hub/blob/main/docs/runbook.md)
 
+## Internal Resources
+
+- [Google Apps Script project](https://script.google.com/home/projects/13DEk6NBZ-BPZ9MFPoKH_V-4is6EWKKSgJnoQf3JoIZZR0Epulo4UihCE/edit)
+- [Production Intake app](https://script.google.com/a/macros/redhat.com/s/AKfycby41BSoZbpLqdkdRG5B5hvdr7-c1KT-TaCw9_WV3_Q0ag13oe_CjHt-JUIDeHzdSTAg/exec)
+- [Interactive Experience Status Tracker](https://script.google.com/a/redhat.com/macros/s/AKfycby41BSoZbpLqdkdRG5B5hvdr7-c1KT-TaCw9_WV3_Q0ag13oe_CjHt-JUIDeHzdSTAg/exec?page=status)
+- [Tracking Analytics spreadsheet](https://docs.google.com/spreadsheets/d/1Krzrseza6KaejdsD3bFD7lVcNuLUSm3FCe-oOJLUhI4/edit?gid=1424090944#gid=1424090944)
+
+
 ## Related repository
 
 Downstream lifecycle orchestration, notifications, Discovery, and supporting data workflows are maintained in:
 
 [Interactive Experience Hub](https://github.com/rubyyyyyang/interactive-experience-hub)
+
+
