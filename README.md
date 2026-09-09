@@ -76,6 +76,11 @@ Guide Extraction JSON technical reference:
 
 [`docs/guide-extraction-json-usage.md`](docs/guide-extraction-json-usage.md)
 
+System-level documentation is maintained in the Interactive Experience Hub repository:
+
+- [Architecture](https://github.com/rubyyyyang/interactive-experience-hub/blob/main/docs/architecture.md)
+- [Runbook](https://github.com/rubyyyyang/interactive-experience-hub/blob/main/docs/runbook.md)
+
 ## Related repository
 
 Downstream lifecycle orchestration, notifications, Discovery, and supporting data workflows are maintained in:
