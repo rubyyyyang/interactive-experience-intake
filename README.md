@@ -1,0 +1,83 @@
+# Interactive Experience Intake
+
+The Interactive Experience Intake is the creator-facing Google Apps Script application for submitting and tracking Interactive Experience content.
+
+It works together with the [Interactive Experience Hub](https://github.com/rubyyyyyang/interactive-experience-hub), which handles downstream lifecycle processing and notifications.
+
+## What the Intake app owns
+
+The Intake app currently supports:
+
+- creator submissions
+- Interactive Demo and YouTube intake routing
+- AI-assisted metadata drafting and classification
+- creator and admin review experiences
+- Action Status processing
+- creator-facing Status Tracker
+- initial repository writes and downstream handoff to the Hub
+
+Interactive Experience is the overall content program. Interactive Demo and YouTube are individual content types supported by the workflow.
+
+## Development
+
+Install dependencies:
+
+```bash
+npm install
+```
+
+Run local deterministic tests:
+
+```bash
+npm test
+```
+
+Authenticated browser smoke tests use each developer's own Red Hat account.
+
+One-time authentication setup:
+
+```bash
+npm run test:auth-setup
+```
+
+Run smoke tests:
+
+```bash
+npm run test:smoke
+```
+
+Local authentication state is excluded from Git.
+
+## Apps Script
+
+Git is the shared source of truth for the codebase. Google Apps Script is the runtime and deployment environment.
+
+For normal development:
+
+```text
+local changes
+→ tests
+→ clasp push
+→ validate in the Apps Script development deployment
+→ manually update the production deployment
+```
+
+Production deployment is currently performed manually in Google Apps Script after development validation.
+
+`.clasp.json` is kept local and maps the repository to the corresponding Apps Script project.
+
+## Documentation
+
+The canonical application user guide is:
+
+[`docs/user-guide.md`](docs/user-guide.md)
+
+Guide Extraction JSON technical reference:
+
+[`docs/guide-extraction-json-usage.md`](docs/guide-extraction-json-usage.md)
+
+## Related repository
+
+Downstream lifecycle orchestration, notifications, Discovery, and supporting data workflows are maintained in:
+
+[Interactive Experience Hub](https://github.com/rubyyyyyang/interactive-experience-hub)
