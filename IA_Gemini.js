@@ -369,7 +369,7 @@ function fetchFirstWorkingGuidePage_(parsed) {
         followRedirects: true,
         muteHttpExceptions: true,
         headers: {
-          'User-Agent': 'Interactive Demo Intake Assistant'
+          'User-Agent': 'Interactive Experience Intake Assistant'
         }
       });
 
@@ -674,7 +674,7 @@ function fetchImagesAsBase64_(imageUrls) {
       url: url,
       method: 'get',
       muteHttpExceptions: true,
-      headers: { 'User-Agent': 'Interactive Demo Intake Assistant' }
+      headers: { 'User-Agent': 'Interactive Experience Intake Assistant' }
     };
   });
 
@@ -759,16 +759,20 @@ function decodeHtml_(value) {
 }
 
 function buildMetadataPrompt(extractedGuide) {
+  const isYouTube = extractedGuide.isYouTube === true;
+  const contentTypePhrase = isYouTube ? 'YouTube video' : 'interactive demo';
+
+  Logger.log('buildMetadataPrompt - isYouTube: ' + isYouTube);
+  Logger.log('buildMetadataPrompt - extractedGuide.isYouTube: ' + extractedGuide.isYouTube);
+
   return `
-You are helping prepare an intake submission for a Red Hat interactive demo.
+You are helping prepare an intake submission for a Red Hat ${contentTypePhrase}.
 
 Use only the guide content provided below. Do not invent product features, metrics, customer names, claims, or unsupported benefits.
 
-The guide's step-by-step screenshots are attached in sequence. Treat them as if you are watching the full demo video from start to finish. Each image is labeled with its step number and text description. Go through every step in order and build a complete mental picture of:
-- What product or solution is being demonstrated
-- What the user does at each stage (install, configure, connect, create, deploy, etc.)
-- What UI screens, dialogs, and navigation elements appear
-- What the end result or outcome of the demo is
+${isYouTube
+  ? 'This is a YouTube video. Base your analysis on the video title and description provided below.'
+  : 'The guide\'s step-by-step screenshots are attached in sequence. Treat them as if you are watching the full demo video from start to finish. Each image is labeled with its step number and text description. Go through every step in order and build a complete mental picture of:\n- What product or solution is being demonstrated\n- What the user does at each stage (install, configure, connect, create, deploy, etc.)\n- What UI screens, dialogs, and navigation elements appear\n- What the end result or outcome of the demo is'}
 Use this full understanding of the demo flow to inform every field in your response — especially the description, product suggestions, and SEO keywords.
 
 Return ONLY valid JSON that can be parsed by JSON.parse().
@@ -813,13 +817,14 @@ Description + tour highlights (these two fields are displayed together as one co
 
 description_without_gid — the opening paragraph (high-level "what and why"):
 - EXACTLY 2 sentences, 30-50 words. No third sentence allowed.
-- Sentence 1: Focus on WHY this matters — what the user gains or what problem it solves. E.g., "This interactive demo helps [audience] [benefit/value] with [product]." or "See how [product] [solves problem / enables outcome] for [audience]."
+- Sentence 1: Focus on WHY this matters — what the user gains or what problem it solves. ${isYouTube ? 'E.g., "This YouTube video shows how [product] [solves problem / enables outcome] for [audience]."' : 'E.g., "This interactive demo helps [audience] [benefit/value] with [product]." or "See how [product] [solves problem / enables outcome] for [audience]."'}
 - Sentence 2: Briefly state the scope at a high level WITHOUT naming steps. E.g., "It walks through the full [setup / onboarding / workflow] experience from start to finish."
 - BANNED patterns — if ANY appear, rewrite before returning:
   * Action verbs from the demo (installing, configuring, connecting, enabling, activating, generating, deploying, creating, setting up, signing in, reviewing, accepting, providing, migrating, building)
   * "It covers" followed by anything
   * "from [action] to [action]" (e.g., "from installing to generating")
   * Listing actions with "and" (e.g., "installing X and connecting Y")
+  ${isYouTube ? '* Using "This interactive demo" when the content is a YouTube video (must use "This YouTube video" instead)' : ''}
 
 tour_highlights — the bullet list (specific "how"):
 - 3 to 6 bullets listing every key step, tool, and action the demo shows.
@@ -832,8 +837,9 @@ tour_highlights — the bullet list (specific "how"):
 The rule that connects them: description says the "what and why" with ZERO specifics. tour_highlights say ALL the specifics. There must be ZERO overlap. If the description names an action, the tour highlight for that action becomes redundant — so the description must never name actions.
 
 CORRECT example (write them as a pair like this):
-  description_without_gid: "See how Ansible Lightspeed brings AI-assisted automation to your Ansible workflows in Visual Studio Code. This interactive demo walks through the full setup and first-use experience from start to finish."
-  tour_highlights: ["Installing the Red Hat Ansible extension from the VS Code Extensions Marketplace", "Enabling Ansible Lightspeed and inline suggestions in the extension settings", "Connecting to Ansible Lightspeed using a Red Hat customer portal account", "Activating the 90-day trial by accepting terms and conditions", "Generating an Ansible playbook using natural language prompts"]
+  ${isYouTube
+    ? 'description_without_gid: "This YouTube video shows how Red Hat AI helps organizations safely transition autonomous AI agents from developer laptops to secure, production-ready environments. It walks through the complete enterprise architecture and governance workflow from start to finish."\n  tour_highlights: ["Deploying autonomous multi-agent systems using Kagenti to bring your own agent", "Applying zero-trust flow with SPIFFE and SPIRE for secure workload identity", "Establishing a secure gateway using the Model Context Protocol (MCP)", "Delivering full model traceability in a private AI environment with Models-as-a-Service powered by llm-d", "Implementing agent guardrails to block biased or harmful responses"]'
+    : 'description_without_gid: "See how Ansible Lightspeed brings AI-assisted automation to your Ansible workflows in Visual Studio Code. This interactive demo walks through the full setup and first-use experience from start to finish."\n  tour_highlights: ["Installing the Red Hat Ansible extension from the VS Code Extensions Marketplace", "Enabling Ansible Lightspeed and inline suggestions in the extension settings", "Connecting to Ansible Lightspeed using a Red Hat customer portal account", "Activating the 90-day trial by accepting terms and conditions", "Generating an Ansible playbook using natural language prompts"]'}
 
 WRONG example (DO NOT do this):
   description_without_gid: "This guide walks developers through activating a 90-day trial of Ansible Lightspeed within Visual Studio Code. It covers the full setup from installing the extension and connecting a Red Hat account to generating AI-powered Ansible playbooks."

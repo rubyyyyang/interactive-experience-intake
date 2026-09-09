@@ -17,7 +17,7 @@ function doGet(e) {
     template.webAppBaseUrl = baseUrl;
     template.token = (e && e.parameter && e.parameter.token) || '';
     return template.evaluate()
-      .setTitle('Interactive Demo Status Tracker')
+      .setTitle('Interactive Experience Status Tracker')
       .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
   }
 
@@ -25,7 +25,7 @@ function doGet(e) {
   const template = HtmlService.createTemplateFromFile('Index');
   template.webAppBaseUrl = baseUrl;
   return template.evaluate()
-    .setTitle('Interactive Demo Intake')
+    .setTitle('Interactive Experience Intake')
     .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
 }
 
@@ -150,9 +150,23 @@ function submitIntakeForReview(payload) {
   var ytResult = null;
   if (isYouTube) {
     ytResult = routeYouTubeSubmission_(submission);
-    try { notifyYouTubeViaWebhook_(submission, _demoUrl, ytResult); } catch (e) { Logger.log('YouTube Slack notification failed: ' + e.message); }
+
+    // Slack + creator email notifications handled by Finder via webhook
+    try { notifyYouTubeViaWebhook_(submission, _demoUrl, ytResult); } catch (e) { Logger.log('YouTube webhook failed: ' + e.message); }
   } else {
+    // Arcade Creator Intake: save and immediately process workflow
     saveResult = saveSubmissionToSheet_(submission);
+
+    // Immediate workflow processing (polling will retry on failure)
+    if (saveResult && saveResult.rowIndex) {
+      try {
+        console.log('Immediate workflow processing for row ' + saveResult.rowIndex);
+        processWorkflowRow_(saveResult.rowIndex, null, null);
+      } catch (error) {
+        console.log('Immediate workflow processing failed, polling will retry: ' + error.message);
+        // Row is left in Pending or retryable state - polling fallback will handle it
+      }
+    }
   }
 
   logAnalyticsEvent_('form_submitted', {
@@ -201,8 +215,10 @@ function installWorkflowQueueTrigger() {
 
   ScriptApp.newTrigger('processPendingWorkflowRows')
     .timeBased()
-    .everyMinutes(1)
+    .everyMinutes(5)
     .create();
+
+  console.log('Workflow queue trigger installed: processPendingWorkflowRows every 5 minutes');
 }
 
 function testGeminiFromAppsScript() {
@@ -709,70 +725,133 @@ function getWorkflowColumnMap_(sheet) {
   return map;
 }
 
-function processPendingWorkflowRows() {
-  const lock = LockService.getScriptLock();
-
-  if (!lock.tryLock(1000)) {
-    console.log('Workflow processor already running.');
-    return;
+/**
+ * Process a single workflow row with atomic claim under lock
+ * Shared by both immediate submission processing and polling fallback
+ * Returns true if processed, false if row was not claimed (already processing/completed)
+ */
+function processWorkflowRow_(rowIndex, sheet, columnMap) {
+  if (!sheet) {
+    const ss = getTargetSpreadsheet_();
+    sheet = ss.getSheetByName(INTAKE_SUBMISSIONS_SHEET);
   }
 
+  if (!columnMap) {
+    columnMap = getWorkflowColumnMap_(sheet);
+  }
+
+  // Acquire lock for atomic claim operation
+  const lock = LockService.getScriptLock();
+  if (!lock.tryLock(1000)) {
+    console.log('Could not acquire lock for row ' + rowIndex + ', skipping');
+    return false;
+  }
+
+  let claimed = false;
+  let currentAttempts = 0;
+
   try {
-    const ss = getTargetSpreadsheet_();
-    const sheet = ss.getSheetByName(INTAKE_SUBMISSIONS_SHEET);
+    // Under lock: atomically read status, verify Pending, claim by setting Processing
+    const currentStatus = String(
+      sheet.getRange(rowIndex, columnMap['AI Workflow Status']).getValue() || ''
+    ).trim();
 
-    if (!sheet) {
-      throw new Error('Could not find sheet: ' + INTAKE_SUBMISSIONS_SHEET);
+    if (currentStatus !== 'Pending') {
+      // Already claimed or completed by another execution
+      return false;
     }
 
-    ensureWorkflowTrackingColumns_(sheet);
+    // Read current attempts count
+    currentAttempts = Number(
+      sheet.getRange(rowIndex, columnMap['AI Workflow Attempts']).getValue() || 0
+    );
 
-    const columnMap = getWorkflowColumnMap_(sheet);
-    const lastRow = sheet.getLastRow();
+    // Atomically claim the row
+    sheet.getRange(rowIndex, columnMap['AI Workflow Status']).setValue('Processing');
+    sheet.getRange(rowIndex, columnMap['AI Workflow Started At']).setValue(new Date().toISOString());
+    sheet.getRange(rowIndex, columnMap['AI Workflow Error']).setValue('');
 
-    if (lastRow <= 1) return;
-
-    const values = sheet
-      .getRange(2, 1, lastRow - 1, sheet.getLastColumn())
-      .getValues();
-
-    let processed = 0;
-    const maxPerRun = 3;
-
-    for (let i = 0; i < values.length; i++) {
-      if (processed >= maxPerRun) break;
-
-      const rowIndex = i + 2;
-      const status = String(values[i][columnMap['AI Workflow Status'] - 1] || '').trim();
-
-      if (status !== 'Pending') continue;
-
-      sheet.getRange(rowIndex, columnMap['AI Workflow Status']).setValue('Processing');
-      sheet.getRange(rowIndex, columnMap['AI Workflow Started At']).setValue(new Date().toISOString());
-      sheet.getRange(rowIndex, columnMap['AI Workflow Error']).setValue('');
-
-      try {
-        const result = triggerOldCreatorWorkflow_(rowIndex);
-
-        sheet.getRange(rowIndex, columnMap['AI Workflow Status']).setValue('Completed');
-        sheet.getRange(rowIndex, columnMap['AI Workflow Completed At']).setValue(new Date().toISOString());
-        sheet.getRange(rowIndex, columnMap['AI Workflow Result']).setValue(formatWorkflowResult_(result));
-      } catch (error) {
-        const attempts = (Number(values[i][columnMap['AI Workflow Attempts'] - 1]) || 0) + 1;
-        sheet.getRange(rowIndex, columnMap['AI Workflow Attempts']).setValue(attempts);
-        sheet.getRange(rowIndex, columnMap['AI Workflow Error']).setValue(error.message || String(error));
-        if (attempts < 3) {
-          sheet.getRange(rowIndex, columnMap['AI Workflow Status']).setValue('Pending');
-        } else {
-          sheet.getRange(rowIndex, columnMap['AI Workflow Status']).setValue('Failed');
-        }
-      }
-
-      processed++;
-    }
+    claimed = true;
   } finally {
     lock.releaseLock();
   }
+
+  // If we didn't claim the row, exit
+  if (!claimed) {
+    return false;
+  }
+
+  // Now outside the lock, process the workflow
+  try {
+    const result = triggerOldCreatorWorkflow_(rowIndex);
+
+    sheet.getRange(rowIndex, columnMap['AI Workflow Status']).setValue('Completed');
+    sheet.getRange(rowIndex, columnMap['AI Workflow Completed At']).setValue(new Date().toISOString());
+    sheet.getRange(rowIndex, columnMap['AI Workflow Result']).setValue(formatWorkflowResult_(result));
+
+    console.log('Workflow completed for row ' + rowIndex);
+    return true;
+
+  } catch (error) {
+    const attempts = currentAttempts + 1;
+    sheet.getRange(rowIndex, columnMap['AI Workflow Attempts']).setValue(attempts);
+    sheet.getRange(rowIndex, columnMap['AI Workflow Error']).setValue(error.message || String(error));
+
+    if (attempts < 3) {
+      sheet.getRange(rowIndex, columnMap['AI Workflow Status']).setValue('Pending');
+      console.log('Workflow failed for row ' + rowIndex + ', attempt ' + attempts + '/3, will retry');
+    } else {
+      sheet.getRange(rowIndex, columnMap['AI Workflow Status']).setValue('Failed');
+      console.log('Workflow failed permanently for row ' + rowIndex + ' after 3 attempts');
+    }
+
+    throw error; // Propagate error to caller
+  }
+}
+
+function processPendingWorkflowRows() {
+  // No lock here - processWorkflowRow_() owns row-level locking
+  const ss = getTargetSpreadsheet_();
+  const sheet = ss.getSheetByName(INTAKE_SUBMISSIONS_SHEET);
+
+  if (!sheet) {
+    throw new Error('Could not find sheet: ' + INTAKE_SUBMISSIONS_SHEET);
+  }
+
+  ensureWorkflowTrackingColumns_(sheet);
+
+  const columnMap = getWorkflowColumnMap_(sheet);
+  const lastRow = sheet.getLastRow();
+
+  if (lastRow <= 1) return;
+
+  const values = sheet
+    .getRange(2, 1, lastRow - 1, sheet.getLastColumn())
+    .getValues();
+
+  let processed = 0;
+  const maxPerRun = 3;
+
+  for (let i = 0; i < values.length; i++) {
+    if (processed >= maxPerRun) break;
+
+    const rowIndex = i + 2;
+    const status = String(values[i][columnMap['AI Workflow Status'] - 1] || '').trim();
+
+    if (status !== 'Pending') continue;
+
+    try {
+      const wasProcessed = processWorkflowRow_(rowIndex, sheet, columnMap);
+      if (wasProcessed) {
+        processed++;
+      }
+    } catch (error) {
+      // Error already logged and handled by processWorkflowRow_
+      processed++;
+    }
+  }
+
+  console.log('Polling processed ' + processed + ' workflow rows');
 }
 
 function resetFailedWorkflowRows() {

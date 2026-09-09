@@ -385,6 +385,18 @@
       margin-top: -12px;
       margin-bottom: 12px;
     }
+
+    /* AI Draft Rating Buttons */
+    #ratingLooksGood:hover,
+    #ratingNeedsImprovement:hover {
+      background: #f8f9fa;
+      border-color: #80868b;
+    }
+
+    /* Confidence details summary hover */
+    #confidenceRow details summary:hover {
+      color: #1a73e8;
+    }
   </style>
 </head>
 
@@ -395,16 +407,13 @@
       <h1>Interactive Experience Intake</h1>
       <p class="subtle" style="margin-bottom:0;">Paste your Arcade demo or YouTube URL below. AI will pre-fill most fields — you just review and submit.</p>
     </div>
-    <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+    <div style="display:flex; gap:18px; align-items:center; flex-wrap:wrap;">
       <a href="https://docs.google.com/document/d/15NOQvsdNdalxsxmmFEKPeCaH9khH1Um7uMjzsjqZf3Y/edit?tab=t.0" target="_blank"
          style="color: #5f6368; font-size: 0.82rem; text-decoration: none; white-space:nowrap;"
          onmouseover="this.style.color='#1a73e8'" onmouseout="this.style.color='#5f6368'">User Guide</a>
-      <a href="#" onclick="return promptFeedback();"
-         style="color: #5f6368; font-size: 0.82rem; text-decoration: none; white-space:nowrap;"
-         onmouseover="this.style.color='#1a73e8'" onmouseout="this.style.color='#5f6368'">Give feedback</a>
       <a href="https://redhat.enterprise.slack.com/archives/C07HQMHFWQG" target="_blank"
          style="color: #5f6368; font-size: 0.82rem; text-decoration: none; white-space:nowrap;"
-         onmouseover="this.style.color='#1a73e8'" onmouseout="this.style.color='#5f6368'">Need help? #forum-arcade-creators</a>
+         onmouseover="this.style.color='#1a73e8'" onmouseout="this.style.color='#5f6368'">Need help?</a>
       <a href="#" onclick="navigateToStatus(); return false;"
          style="color: #1a73e8; font-size: 0.85rem; text-decoration: none; padding: 6px 14px; border: 1px solid #dadce0; border-radius: 6px; transition: background 0.15s; white-space:nowrap;"
          onmouseover="this.style.background='#f1f3f4'" onmouseout="this.style.background=''">Status Tracker</a>
@@ -468,17 +477,22 @@
       </div>
     </div>
 
-    <div id="reviewBanner"></div>
-
-<details>
-  <summary>How AI generated this draft</summary>
-
-  <label>Model and prompt version</label>
-  <input id="aiModelInfo" readonly>
-
-  <label>Review notes</label>
-  <textarea id="aiConfidenceNotes" readonly></textarea>
-</details>
+    <!-- Compact confidence + explanation -->
+    <div id="confidenceRow" style="display:none; margin:12px 0 20px 0;">
+      <details style="font-size:0.82rem; color:#5f6368;">
+        <summary style="cursor:pointer; list-style:none; user-select:none; display:inline;">
+          <span id="confidenceSummary"></span>
+          <span style="color:#5f6368; margin-left:4px;">· How AI generated this draft ›</span>
+        </summary>
+        <div style="margin-top:12px; padding:12px; background:#f8f9fa; border-radius:6px; border:1px solid #e8eaed;">
+          <label style="display:block; font-size:0.8rem; font-weight:500; color:#5f6368; margin-bottom:6px;">Model and prompt version</label>
+          <input id="aiModelInfo" readonly style="width:100%; padding:8px; border:1px solid #dadce0; border-radius:4px; font-size:0.82rem; background:#fff; margin-bottom:12px; box-sizing:border-box;">
+          <label style="display:block; font-size:0.8rem; font-weight:500; color:#5f6368; margin-bottom:6px;">Review notes</label>
+          <textarea id="aiConfidenceNotes" readonly style="width:100%; min-height:70px; padding:8px; border:1px solid #dadce0; border-radius:4px; font-size:0.82rem; background:#fff; resize:vertical; box-sizing:border-box;"></textarea>
+        </div>
+      </details>
+      <div id="confidenceFieldTags" style="margin-top:10px;"></div>
+    </div>
 
 <!-- ===== CONTENT ===== -->
 <div class="form-section">
@@ -652,6 +666,21 @@
       </label>
     </div>
     </div>
+</div>
+
+<!-- AI Draft Feedback Section -->
+<div id="aiDraftFeedbackSection" style="display:none; margin:24px 0 20px 0;">
+  <div style="font-size:0.85rem; color:#5f6368; margin-bottom:8px;">
+    How was the AI-generated draft? <span style="font-size:0.8rem; color:#80868b;">Optional</span>
+  </div>
+  <div style="display:flex; gap:12px;">
+    <button type="button" id="ratingLooksGood" onclick="handleAiRating('accurate')" style="padding:8px 16px; border:1px solid #dadce0; border-radius:6px; background:#fff; color:#3c4043; font-size:0.85rem; cursor:pointer; transition:all 0.15s;">
+      Looks good
+    </button>
+    <button type="button" id="ratingNeedsImprovement" onclick="handleAiRating('needs_improvement')" style="padding:8px 16px; border:1px solid #dadce0; border-radius:6px; background:#fff; color:#3c4043; font-size:0.85rem; cursor:pointer; transition:all 0.15s;">
+      Needs improvement
+    </button>
+  </div>
 </div>
 
 <button id="submitButton" onclick="submitForReview()">Submit for Review</button>
@@ -969,7 +998,8 @@
         steps: currentExtractedGuide?.steps || [],
         links: currentExtractedGuide?.links || [],
         bodyText: document.getElementById('bodyText').value.trim(),
-        warnings: currentExtractedGuide?.warnings || []
+        warnings: currentExtractedGuide?.warnings || [],
+        isYouTube: currentExtractedGuide?.isYouTube || false
       };
     }
 
@@ -1307,8 +1337,14 @@ function clearConfidenceMarks() {
     el.classList.remove('confidence-high', 'confidence-medium', 'confidence-low');
     el.title = '';
   });
-  const banner = document.getElementById('reviewBanner');
-  if (banner) { banner.innerHTML = ''; banner.className = ''; banner.style.display = 'none'; }
+  const confidenceRow = document.getElementById('confidenceRow');
+  if (confidenceRow) {
+    confidenceRow.style.display = 'none';
+    const summary = document.getElementById('confidenceSummary');
+    const tags = document.getElementById('confidenceFieldTags');
+    if (summary) summary.innerHTML = '';
+    if (tags) tags.innerHTML = '';
+  }
 }
 
 function fieldHasValue(id) {
@@ -1331,8 +1367,11 @@ function markFieldConfidence(id, level) {
 }
 
 function showReviewBanner(fieldConfidence) {
-  const banner = document.getElementById('reviewBanner');
-  if (!banner) return;
+  const confidenceRow = document.getElementById('confidenceRow');
+  const confidenceSummary = document.getElementById('confidenceSummary');
+  const confidenceFieldTags = document.getElementById('confidenceFieldTags');
+
+  if (!confidenceRow || !confidenceSummary || !confidenceFieldTags) return;
 
   const counts = { high: 0, medium: 0, low: 0 };
   const mediumFields = [];
@@ -1346,7 +1385,10 @@ function showReviewBanner(fieldConfidence) {
   });
 
   const total = counts.high + counts.medium + counts.low;
-  if (total === 0) { banner.style.display = 'none'; return; }
+  if (total === 0) {
+    confidenceRow.style.display = 'none';
+    return;
+  }
 
   const reverseMap = {};
   Object.keys(FIELD_CONFIDENCE_MAP).forEach(function(elId) {
@@ -1354,37 +1396,24 @@ function showReviewBanner(fieldConfidence) {
     if (!reverseMap[draftKey]) reverseMap[draftKey] = elId;
   });
 
-  const bannerClass = lowFields.length > 2 ? 'review-banner-alert'
-    : lowFields.length > 0 ? 'review-banner-warning' : 'review-banner-good';
-
-  let message = '';
-  if (lowFields.length > 0) {
-    message = 'Some fields need your attention before submitting.';
-  } else if (counts.medium > 0) {
-    message = 'Looks good — a few fields are worth a quick check.';
-  } else {
-    message = 'All fields look good!';
-  }
-
-  let html = '';
-
-  html += '<div class="review-banner-counts"><strong>Draft confidence:</strong> ';
+  // Build compact confidence summary
+  let summaryHtml = '<strong style="color:#3c4043;">Draft confidence:</strong> ';
   const parts = [];
   if (counts.high) parts.push('<span style="color:#16a34a">' + counts.high + ' high</span>');
   if (counts.medium) parts.push('<span style="color:#d97706">' + counts.medium + ' medium</span>');
   if (counts.low) parts.push('<span style="color:#dc2626">' + counts.low + ' low</span>');
-  html += parts.join(' &middot; ');
-  html += '</div>';
+  summaryHtml += parts.join(' &middot; ');
 
-  html += '<div class="review-banner-message">' + message + '</div>';
+  confidenceSummary.innerHTML = summaryHtml;
 
+  // Build field tags if there are medium/low confidence fields
   const actionFields = lowFields.concat(mediumFields);
   if (actionFields.length > 0) {
-    html += '<div class="review-banner-fields">';
+    let tagsHtml = '<div style="display:flex; flex-wrap:wrap; gap:6px;">';
     lowFields.forEach(function(key) {
       const name = FIELD_DISPLAY_NAMES[key] || key;
       const targetId = reverseMap[key] || '';
-      html += '<span class="review-banner-field-tag review-banner-field-tag-low"'
+      tagsHtml += '<span class="review-banner-field-tag review-banner-field-tag-low"'
         + ' onclick="scrollToField(\'' + targetId + '\')"'
         + ' title="Needs input — click to review">'
         + name + '</span>';
@@ -1392,17 +1421,20 @@ function showReviewBanner(fieldConfidence) {
     mediumFields.forEach(function(key) {
       const name = FIELD_DISPLAY_NAMES[key] || key;
       const targetId = reverseMap[key] || '';
-      html += '<span class="review-banner-field-tag review-banner-field-tag-medium"'
+      tagsHtml += '<span class="review-banner-field-tag review-banner-field-tag-medium"'
         + ' onclick="scrollToField(\'' + targetId + '\')"'
         + ' title="Worth a check — click to review">'
         + name + '</span>';
     });
-    html += '</div>';
+    tagsHtml += '</div>';
+    confidenceFieldTags.innerHTML = tagsHtml;
+    confidenceFieldTags.style.display = 'block';
+  } else {
+    confidenceFieldTags.innerHTML = '';
+    confidenceFieldTags.style.display = 'none';
   }
 
-  banner.className = 'review-banner ' + bannerClass;
-  banner.innerHTML = html;
-  banner.style.display = 'block';
+  confidenceRow.style.display = 'block';
 }
 
 function scrollToField(elementId) {
@@ -1522,6 +1554,9 @@ try {
         editedFields.clear();
         aiDraftGenerated = true;
         attachFieldEditTracking();
+
+        // Show AI draft feedback section
+        document.getElementById('aiDraftFeedbackSection').style.display = 'block';
 
         window._isYouTube = !!(currentExtractedGuide && currentExtractedGuide.isYouTube);
 
@@ -1918,6 +1953,51 @@ async function submitForReview() {
       document.addEventListener('keydown', handleEsc);
 
       return false;
+    }
+
+    // AI Draft Rating handler
+    function handleAiRating(rating) {
+      const arcadeUrl = document.getElementById('arcadeUrl').value.trim();
+      const demoTitle = document.getElementById('demoTitle').value.trim();
+
+      // Log rating event
+      try {
+        google.script.run.logAnalyticsEventFromClient('ai_draft_rating', {
+          sessionId: analyticsSessionId,
+          metadata: {
+            arcadeUrl: arcadeUrl,
+            demoTitle: demoTitle,
+            rating: rating
+          }
+        });
+      } catch (e) {
+        // Silent fail - rating is optional
+      }
+
+      // Visual feedback - highlight selected button
+      const looksGoodBtn = document.getElementById('ratingLooksGood');
+      const needsImprovementBtn = document.getElementById('ratingNeedsImprovement');
+
+      if (rating === 'accurate') {
+        looksGoodBtn.style.background = '#e8f0fe';
+        looksGoodBtn.style.borderColor = '#1a73e8';
+        looksGoodBtn.style.color = '#1a73e8';
+        needsImprovementBtn.style.background = '#fff';
+        needsImprovementBtn.style.borderColor = '#dadce0';
+        needsImprovementBtn.style.color = '#3c4043';
+      } else if (rating === 'needs_improvement') {
+        needsImprovementBtn.style.background = '#e8f0fe';
+        needsImprovementBtn.style.borderColor = '#1a73e8';
+        needsImprovementBtn.style.color = '#1a73e8';
+        looksGoodBtn.style.background = '#fff';
+        looksGoodBtn.style.borderColor = '#dadce0';
+        looksGoodBtn.style.color = '#3c4043';
+
+        // Auto-open detailed feedback modal
+        setTimeout(function() {
+          promptFeedback();
+        }, 300);
+      }
     }
 
     window.addEventListener('beforeunload', function(event) {
