@@ -8,8 +8,10 @@ local-dev/
 claude-analysis-results.json
 submissions.local.json
 
-# Claude Code session artifacts
+# Claude Code session artifacts and workflow instructions
 .claude/
+AGENTS.md
+CLAUDE.md
 
 # Claude-generated temporary reports (root level only, not docs/)
 /*-REPORT.md
@@ -19,6 +21,12 @@ submissions.local.json
 /*-UPDATES.md
 /*-FIXES*.md
 /*-VERIFICATION*.md
+
+# Local-only documentation (kept out of shared repository)
+docs/superpowers/
+docs/aia-remediation-evidence-checklist.md
+docs/access-control.md
+docs/ai-monitoring-plan.md
 
 # Playwright
 /test-results/
