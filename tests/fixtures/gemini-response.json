@@ -1,0 +1,76 @@
+{
+  "demo_title": "Installing and enabling Ansible Lightspeed in Visual Studio Code",
+  "content_type_suggestion": "",
+  "description_without_gid": "See how Ansible Lightspeed brings AI-assisted automation to your Ansible workflows in Visual Studio Code. This interactive demo walks through the full setup and first-use experience from start to finish.",
+  "description_for_seo": "Learn how to install and activate Ansible Lightspeed with Watson Code Assistant in VS Code to generate AI-powered Ansible playbooks using natural language prompts.",
+  "language_suggestions": ["English"],
+  "cta_link_suggestions": [
+    {
+      "label": "Red Hat Ansible Automation Platform learning hub",
+      "url": "https://www.redhat.com/en/technologies/management/ansible/learn",
+      "reason": "Best next step for hands-on Ansible learning"
+    },
+    {
+      "label": "Getting started with Red Hat Ansible Automation Platform",
+      "url": "https://developers.redhat.com/products/ansible/getting-started",
+      "reason": "Developer-focused getting started guide"
+    },
+    {
+      "label": "Red Hat Ansible Automation Platform",
+      "url": "https://www.redhat.com/en/technologies/management/ansible",
+      "reason": "Product overview page"
+    }
+  ],
+  "seo_keywords": [
+    "Ansible Lightspeed",
+    "AI-assisted automation",
+    "Watson Code Assistant",
+    "Ansible VS Code extension",
+    "Ansible playbook generation",
+    "natural language Ansible",
+    "Red Hat Ansible Automation Platform"
+  ],
+  "vertical_suggestion": "",
+  "event_or_project_suggestion": "",
+  "primary_product_suggestion": "Red Hat Ansible Automation Platform",
+  "other_products_suggestion": [],
+  "other_products_other_text": "",
+  "tdp_suggestion": "Mission Critical IT Automation",
+  "sales_tactic_suggestion": "Mission Critical Automation - Enterprise-wide automation (expanding AAP in the enterprise)",
+  "marketing_program_suggestion": "Automation Campaign - Automation Acceleration",
+  "group_suggestion": "",
+  "tour_highlights": [
+    "Installing the Red Hat Ansible extension from the VS Code Extensions Marketplace",
+    "Enabling Ansible Lightspeed and inline suggestions in the extension settings",
+    "Connecting to Ansible Lightspeed using a Red Hat customer portal account",
+    "Activating the 90-day trial by accepting terms and conditions",
+    "Generating an Ansible playbook using natural language prompts"
+  ],
+  "field_confidence": {
+    "demo_title": "high",
+    "description_without_gid": "high",
+    "description_for_seo": "high",
+    "language_suggestions": "high",
+    "seo_keywords": "high",
+    "primary_product_suggestion": "high",
+    "other_products_suggestion": "high",
+    "tdp_suggestion": "medium",
+    "sales_tactic_suggestion": "medium",
+    "marketing_program_suggestion": "medium",
+    "cta_link_suggestions": "high",
+    "tour_highlights": "high"
+  },
+  "confidence_notes": [
+    "Demo walks through installing the Ansible VS Code extension, enabling Lightspeed, connecting a Red Hat account, activating a 90-day trial, and generating a playbook.",
+    "Screenshots show the VS Code Extensions Marketplace, Ansible extension settings panel, Red Hat SSO login page, trial activation dialog, and inline AI suggestions in a YAML file.",
+    "Guide title and step text repeatedly mention Ansible Lightspeed, Watson Code Assistant, and trial activation flow.",
+    "TDP and sales tactic inferred from primary product (Ansible) and use case (AI-assisted automation expansion).",
+    "Marketing program aligned with automation acceleration theme.",
+    "CTA links prioritize Ansible learning hub and developer getting started guides based on developer-focused use case."
+  ],
+  "fields_needing_creator_confirmation": [
+    "TDP",
+    "Sales Tactic",
+    "Marketing Program"
+  ]
+}

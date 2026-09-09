@@ -1,0 +1,22 @@
+{
+  "name": "arcade-intake-app",
+  "version": "1.0.0",
+  "description": "",
+  "main": "Code.js",
+  "directories": {
+    "doc": "docs"
+  },
+  "scripts": {
+    "test": "node tests/schema.test.js",
+    "test:smoke": "playwright test tests/smoke.spec.ts",
+    "test:auth-setup": "node playwright/auth.setup.mjs"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "devDependencies": {
+    "@playwright/test": "^1.62.1",
+    "@types/node": "^26.4.0"
+  }
+}

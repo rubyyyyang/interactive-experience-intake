@@ -3,23 +3,23 @@
 <head>
   <base target="_top">
   <meta charset="UTF-8">
-  <title>Interactive Demo Intake</title>
+  <title>Interactive Experience Intake</title>
 
   <style>
     body {
-      font-family: Arial, sans-serif;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
       max-width: 1120px;
       margin: 32px auto;
-      padding: 0 20px;
+      padding: 0 24px;
       color: #1f1f1f;
-      background: #fafafa;
+      background: #fff;
     }
 :root {
   --bg: #f6f7fb;
   --surface: #ffffff;
-  --ink: #111827;
-  --muted: #6b7280;
-  --border: #e5e7eb;
+  --ink: #1f1f1f;
+  --muted: #5f6368;
+  --border: #dadce0;
   --shadow: 0 8px 24px rgba(0,0,0,.06);
   --accent: #6d28d9;
   --accent2: #ede9fe;
@@ -48,7 +48,7 @@
 .review-banner-alert { background: #fef2f2; border: 1px solid #fecaca; }
 
 .review-banner-counts { padding: 16px 20px 4px; font-size: 14px; line-height: 1.6; }
-.review-banner-message { padding: 4px 20px 14px; font-size: 13px; color: #6b7280; }
+.review-banner-message { padding: 4px 20px 14px; font-size: 13px; color: #5f6368; }
 
 .review-banner-fields { padding: 0 20px 16px; }
 .review-banner-field-tag {
@@ -65,7 +65,7 @@
 .form-section {
   margin-top: 28px;
   padding-top: 20px;
-  border-top: 2px solid #e5e7eb;
+  border-top: 2px solid #dadce0;
 }
 
 .form-section:first-of-type {
@@ -75,25 +75,31 @@
 }
 
 .form-section-header {
-  font-size: 16px;
-  font-weight: 700;
-  color: #374151;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #3c4043;
   margin: 0 0 4px 0;
-  letter-spacing: 0.02em;
+  letter-spacing: 0.01em;
 }
 
 .form-section-subtitle {
   font-size: 13px;
-  color: #6b7280;
+  color: #5f6368;
   margin: 0 0 8px 0;
 }
 
     h1 {
-      margin-bottom: 4px;
+      font-size: 1.4rem;
+      font-weight: 500;
+      margin: 0 0 4px 0;
+      color: #1f1f1f;
     }
 
     h2 {
-      margin-top: 0;
+      font-size: 1.1rem;
+      font-weight: 500;
+      margin: 0 0 12px 0;
+      color: #3c4043;
     }
 
     h3 {
@@ -101,35 +107,36 @@
     }
 
     .subtle {
-      color: #666;
-      margin-top: 0;
+      color: #5f6368;
+      font-size: 0.9rem;
+      margin: 4px 0 20px 0;
     }
 
-
-
     .card {
-      border: 1px solid #ddd;
+      border: 1px solid #dadce0;
       border-radius: 8px;
-      padding: 20px;
-      margin: 20px 0;
+      padding: 20px 24px;
+      margin: 16px 0;
       background: #fff;
     }
 
     label {
       display: block;
       font-weight: 600;
+      font-size: 0.88rem;
+      color: #3c4043;
       margin-top: 14px;
     }
 
     .helper {
-      font-size: 13px;
-      color: #666;
+      font-size: 0.8rem;
+      color: #5f6368;
       margin-top: 4px;
     }
 
     .word-count {
-      font-size: 13px;
-      color: #666;
+      font-size: 0.8rem;
+      color: #888;
       margin-top: 4px;
     }
 
@@ -139,13 +146,21 @@
     select {
       width: 100%;
       box-sizing: border-box;
-      padding: 10px;
+      padding: 9px 12px;
       margin-top: 6px;
-      border: 1px solid #ccc;
-      border-radius: 4px;
-      font-family: Arial, sans-serif;
-      font-size: 14px;
+      border: 1px solid #dadce0;
+      border-radius: 6px;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      font-size: 0.88rem;
       background: #fff;
+      color: #1f1f1f;
+      transition: border-color 0.15s;
+    }
+
+    input:hover,
+    textarea:hover,
+    select:hover {
+      border-color: #bdc1c6;
     }
 
 
@@ -160,21 +175,34 @@
 
     button {
       margin-top: 16px;
-      padding: 10px 16px;
+      padding: 9px 20px;
       border: 0;
-      border-radius: 4px;
+      border-radius: 6px;
       cursor: pointer;
-      background: #222;
+      background: #1a73e8;
       color: #fff;
-      font-weight: 600;
+      font-size: 0.88rem;
+      font-weight: 500;
+      transition: background 0.15s;
+    }
+
+    button:hover:not(:disabled) {
+      background: #1765cc;
     }
 
     button.secondary {
-      background: #555;
+      background: #fff;
+      color: #5f6368;
+      border: 1px solid #dadce0;
+    }
+
+    button.secondary:hover:not(:disabled) {
+      background: #f1f3f4;
     }
 
     button:disabled {
-      background: #aaa;
+      background: #dadce0;
+      color: #888;
       cursor: not-allowed;
     }
 
@@ -187,21 +215,21 @@
 
     .status {
       margin-top: 12px;
-      color: #555;
+      color: #5f6368;
       white-space: pre-wrap;
     }
 
     .error {
-      color: #b00020;
+      color: #c5221f;
     }
 
     .success {
-      color: #176b2c;
+      color: #137333;
     }
 
     .required-note {
-      color: #b00020;
-      font-size: 13px;
+      color: #c5221f;
+      font-size: 0.8rem;
     }
 
     .checkbox-row {
@@ -223,23 +251,25 @@
 
     details {
       margin-top: 16px;
-      border: 1px solid #ddd;
-      border-radius: 6px;
-      padding: 12px;
-      background: #f8f8f8;
+      border: 1px solid #dadce0;
+      border-radius: 8px;
+      padding: 14px 16px;
+      background: #f8f9fa;
     }
 
     summary {
       cursor: pointer;
-      font-weight: 600;
+      font-weight: 500;
+      font-size: 0.88rem;
+      color: #3c4043;
     }
 
     input:focus,
     textarea:focus,
     select:focus {
-      outline: 2px solid #0066cc;
-      outline-offset: 1px;
-      border-color: #0066cc;
+      outline: none;
+      border-color: #1a73e8;
+      box-shadow: 0 0 0 2px rgba(26,115,232,0.2);
     }
 
     @media (max-width: 720px) {
@@ -252,33 +282,158 @@
         grid-template-columns: 1fr;
       }
     }
+
+    /* Feedback Modal */
+    .feedback-modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.5);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 10000;
+    }
+
+    .feedback-modal {
+      background: white;
+      border-radius: 8px;
+      padding: 24px;
+      max-width: 500px;
+      width: 90%;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
+    }
+
+    .feedback-modal h3 {
+      margin: 0 0 16px 0;
+      font-size: 1.1rem;
+      font-weight: 600;
+      color: #1f1f1f;
+    }
+
+    .feedback-modal label {
+      display: block;
+      font-size: 0.875rem;
+      font-weight: 500;
+      color: #3c4043;
+      margin-bottom: 6px;
+    }
+
+    .feedback-modal select,
+    .feedback-modal textarea {
+      width: 100%;
+      padding: 8px 12px;
+      border: 1px solid #dadce0;
+      border-radius: 4px;
+      font-size: 0.875rem;
+      font-family: inherit;
+      margin-bottom: 16px;
+      box-sizing: border-box;
+    }
+
+    .feedback-modal textarea {
+      min-height: 80px;
+      resize: vertical;
+    }
+
+    .feedback-modal-buttons {
+      display: flex;
+      gap: 12px;
+      justify-content: flex-end;
+      margin-top: 20px;
+    }
+
+    .feedback-modal-buttons button {
+      padding: 8px 16px;
+      border-radius: 4px;
+      border: none;
+      font-size: 0.875rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+
+    .feedback-modal-buttons .cancel-btn {
+      background: #f1f3f4;
+      color: #3c4043;
+    }
+
+    .feedback-modal-buttons .cancel-btn:hover {
+      background: #e8eaed;
+    }
+
+    .feedback-modal-buttons .submit-btn {
+      background: #1a73e8;
+      color: white;
+    }
+
+    .feedback-modal-buttons .submit-btn:hover {
+      background: #1765cc;
+    }
+
+    .feedback-modal-buttons .submit-btn:disabled {
+      background: #dadce0;
+      color: #80868b;
+      cursor: not-allowed;
+    }
+
+    .feedback-modal-error {
+      color: #d93025;
+      font-size: 0.8125rem;
+      margin-top: -12px;
+      margin-bottom: 12px;
+    }
+
+    /* AI Draft Rating Buttons */
+    #ratingLooksGood:hover,
+    #ratingNeedsImprovement:hover {
+      background: #f8f9fa;
+      border-color: #80868b;
+    }
+
+    /* Confidence details summary hover */
+    #confidenceRow details summary:hover {
+      color: #1a73e8;
+    }
   </style>
 </head>
 
 <body>
-  <h1>Interactive Demo Intake</h1>
-  <p class="subtle">
-    Paste your demo URL below. AI will pre-fill most fields — you just review and submit.
-  </p>
+  <img src="https://coolstuff.redhat.com/assets/stores/REDHAT/branding/site-logo.png" alt="Red Hat" style="display:block; height:28px; width:auto; margin-bottom:12px;">
+  <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; flex-wrap:wrap; gap:12px;">
+    <div>
+      <h1>Interactive Experience Intake</h1>
+      <p class="subtle" style="margin-bottom:0;">Paste your Arcade demo or YouTube URL below. AI will pre-fill most fields — you just review and submit.</p>
+    </div>
+    <div style="display:flex; gap:18px; align-items:center; flex-wrap:wrap;">
+      <a href="https://docs.google.com/document/d/15NOQvsdNdalxsxmmFEKPeCaH9khH1Um7uMjzsjqZf3Y/edit?tab=t.0" target="_blank"
+         style="color: #5f6368; font-size: 0.82rem; text-decoration: none; white-space:nowrap;"
+         onmouseover="this.style.color='#1a73e8'" onmouseout="this.style.color='#5f6368'">User Guide</a>
+      <a href="https://redhat.enterprise.slack.com/archives/C07HQMHFWQG" target="_blank"
+         style="color: #5f6368; font-size: 0.82rem; text-decoration: none; white-space:nowrap;"
+         onmouseover="this.style.color='#1a73e8'" onmouseout="this.style.color='#5f6368'">Need help?</a>
+      <a href="#" onclick="navigateToStatus(); return false;"
+         style="color: #1a73e8; font-size: 0.85rem; text-decoration: none; padding: 6px 14px; border: 1px solid #dadce0; border-radius: 6px; transition: background 0.15s; white-space:nowrap;"
+         onmouseover="this.style.background='#f1f3f4'" onmouseout="this.style.background=''">Status Tracker</a>
+    </div>
+  </div>
 
 <div class="card" style="border-left:4px solid #b45309; background:#fff7ed;">
   <strong>Pilot mode</strong> — please don't enter sensitive or confidential information.
-</div>
-
-<div style="text-align: right; margin-bottom: 12px;">
-  <a href="#" onclick="window.top.location.href = (window.location.href.split('?')[0] || '') + '?page=status'; return false;"
-     style="color: #0066cc; font-size: 0.9rem; text-decoration: none;">Check submission status</a>
+  <div style="margin-top:8px; font-size:0.82rem;">Prefer the original form? <a href="https://docs.google.com/forms/d/e/1FAIpQLSf47JpWYIHuVEu97fgXRJYaqxFA3E8lW01pkH4YiJr8vIY1Gg/viewform?usp=dialog" target="_blank" style="color:#b45309;">Submit via Google Form</a></div>
 </div>
 
   <div id="urlSection" class="card">
-<h2>1. Paste your demo URL</h2>
+<h2>1. Paste your URL</h2>
 
 <p class="helper" style="margin-bottom:12px;">
-  Make sure your demo is in the <strong>Red Hat Workspace</strong> (not a private space) before submitting.
+  Arcade demos: make sure they're in the <strong>Red Hat Workspace</strong>. YouTube videos: use the standard watch URL.
 </p>
 
-<label for="arcadeUrl">Demo URL <span class="required-note">*</span></label>
-<input id="arcadeUrl" placeholder="">
+<label for="arcadeUrl">Demo or Video URL <span class="required-note">*</span></label>
+<input id="arcadeUrl" placeholder="https://interact.redhat.com/share/... or https://youtube.com/watch?v=...">
 <input id="arcadeId" type="hidden">
 
 <button id="extractButton" onclick="extractGuide()">Extract Content</button>
@@ -294,7 +449,7 @@
 <input id="creationLink" type="hidden">
 
   
-    <label>Extracted Demo Title</label>
+    <label>Extracted Title</label>
     <input id="guideTitle">
     
     <label>Extracted Step Text</label>
@@ -314,21 +469,34 @@
 
   <div id="formSection" class="card no-left-border" style="display:none;">
     <h2>3. Review and submit</h2>
-    <div id="reviewBanner"></div>
 
-<details>
-  <summary>How AI generated this draft</summary>
+    <div style="background:#e8f0fe; border:1px solid #a8c7fa; border-radius:8px; padding:14px 18px; margin:0 0 16px 0;">
+      <div style="font-size:0.82rem; font-weight:600; color:#1a73e8; margin-bottom:6px;">AI-generated draft</div>
+      <div style="font-size:0.82rem; color:#3c4043; line-height:1.5;">
+        <strong style="color:#1a73e8;">Always review AI generated content prior to use.</strong> The fields below were generated by Gemini AI based on your demo content. Review each field carefully, edit values as needed, and ensure accuracy before submitting.
+      </div>
+    </div>
 
-  <label>Model and prompt version</label>
-  <input id="aiModelInfo" readonly>
+    <!-- Compact confidence + explanation -->
+    <div id="confidenceRow" style="display:none; margin:12px 0 20px 0;">
+      <details style="font-size:0.82rem; color:#5f6368;">
+        <summary style="cursor:pointer; list-style:none; user-select:none; display:inline;">
+          <span id="confidenceSummary"></span>
+          <span style="color:#5f6368; margin-left:4px;">· How AI generated this draft ›</span>
+        </summary>
+        <div style="margin-top:12px; padding:12px; background:#f8f9fa; border-radius:6px; border:1px solid #e8eaed;">
+          <label style="display:block; font-size:0.8rem; font-weight:500; color:#5f6368; margin-bottom:6px;">Model and prompt version</label>
+          <input id="aiModelInfo" readonly style="width:100%; padding:8px; border:1px solid #dadce0; border-radius:4px; font-size:0.82rem; background:#fff; margin-bottom:12px; box-sizing:border-box;">
+          <label style="display:block; font-size:0.8rem; font-weight:500; color:#5f6368; margin-bottom:6px;">Review notes</label>
+          <textarea id="aiConfidenceNotes" readonly style="width:100%; min-height:70px; padding:8px; border:1px solid #dadce0; border-radius:4px; font-size:0.82rem; background:#fff; resize:vertical; box-sizing:border-box;"></textarea>
+        </div>
+      </details>
+      <div id="confidenceFieldTags" style="margin-top:10px;"></div>
+    </div>
 
-  <label>Review notes</label>
-  <textarea id="aiConfidenceNotes" readonly></textarea>
-</details>
-
-<!-- ===== DEMO ===== -->
+<!-- ===== CONTENT ===== -->
 <div class="form-section">
-  <h3 class="form-section-header">Demo</h3>
+  <h3 class="form-section-header">Content</h3>
 
     <label>Title <span class="required-note">*</span></label>
     <input id="demoTitle">
@@ -347,7 +515,7 @@
         </div>
       </div>
 
-      <div>
+      <div class="yt-hide">
         <label>Language(s) <span class="required-note">*</span></label>
         <select id="language" multiple></select>
         <input id="languageOther" placeholder="Enter other language(s)" style="display:none;">
@@ -395,12 +563,40 @@
 <div class="form-section">
   <h3 class="form-section-header">Publishing</h3>
 
+    <label>Where should this demo be included? <span class="required-note">*</span></label>
+    <div class="helper">Select all that apply.</div>
+
+    <div id="distChannelGroup" style="margin-top:8px; padding:10px 14px; border-radius:6px;">
+      <div class="checkbox-row" style="margin-top:0;">
+        <input id="distInteractHub" type="checkbox" onchange="toggleDistributionChannel('distInteractHub')">
+        <label for="distInteractHub"><a href="https://script.google.com/a/macros/redhat.com/s/AKfycbzc6w3O8r_rrMq9Q3WYXICfMA4DvCUQhaehUoojrTplmMhdKHdF1FBBqIyVHqzRJC-ypw/exec" target="_blank" style="color:#1a73e8;">The Interact Hub</a> (internal only)</label>
+      </div>
+
+      <div class="checkbox-row">
+        <input id="distPublicSite" type="checkbox" onchange="toggleDistributionChannel('distPublicSite')">
+        <label for="distPublicSite"><a href="https://www.redhat.com/en/interactive-experiences" target="_blank" style="color:#1a73e8;">interact.redhat.com</a> (public)</label>
+      </div>
+
+      <div class="checkbox-row">
+        <input id="distEventCampaigns" type="checkbox" onchange="toggleDistributionChannel('distEventCampaigns')">
+        <label for="distEventCampaigns">Event campaigns (apps or booths)</label>
+      </div>
+      <input id="distEventDetail" placeholder="Which event or campaign?" style="display:none; margin-top:6px; margin-left:28px; width:calc(100% - 28px);">
+
+      <div class="checkbox-row">
+        <input id="distNone" type="checkbox" onchange="toggleDistributionChannel('distNone')">
+        <label for="distNone">None of the above</label>
+      </div>
+    </div>
+
+    <div class="yt-hide">
     <label>SEO description <span class="required-note">*</span></label>
     <textarea id="descriptionForSeo" oninput="updateWordCounts()" placeholder="Short description for search results"></textarea>
     <div id="descriptionForSeoCount" class="word-count"></div>
 
     <label>SEO keywords <span class="required-note">*</span></label>
     <textarea id="seoKeywords" placeholder="e.g., ansible automation, openshift virtualization"></textarea>
+    </div>
 
     <label>Call-to-action links <span class="required-note">*</span></label>
     <div class="helper">
@@ -416,13 +612,15 @@
     <label>Link 3 <span class="required-note">*</span></label>
     <input id="ctaLink3" placeholder="https://...">
 
+    <div class="yt-hide">
     <h3>Optional fields</h3>
 
-    <label>Optional: Should this IE be grouped with another or part of a larger collection?</label>
+    <label>Optional: Should this be grouped with another or part of a larger collection?</label>
     <textarea id="group"></textarea>
 
     <label>Optional: Have an Employee Advocacy link? Add it here.</label>
     <input id="employeeAdvocacy">
+    </div>
 </div>
 
 <!-- ===== CREATOR DETAILS ===== -->
@@ -449,6 +647,7 @@
     <select id="quarter"></select>
     <input id="quarterOther" placeholder="e.g., CY26Q3" style="display:none;">
 
+    <div class="yt-hide">
     <div class="checkbox-row">
       <input id="syntheticVoice" type="checkbox" checked>
       <label for="syntheticVoice">No synthetic voice was used</label>
@@ -462,29 +661,45 @@
     <div class="checkbox-row">
       <input id="requirementsConfirmed" type="checkbox">
       <label for="requirementsConfirmed">
-        I confirm this demo meets brand standards, includes English and Spanish captions, and is mobile-friendly.
+        I confirm this content meets brand standards, includes English and Spanish captions, and is mobile-friendly.
         <span class="required-note">*</span>
       </label>
     </div>
+    </div>
 </div>
 
-<button id="submitButton" onclick="submitForReview()">Submit</button>
+<!-- AI Draft Feedback Section -->
+<div id="aiDraftFeedbackSection" style="display:none; margin:24px 0 20px 0;">
+  <div style="font-size:0.85rem; color:#5f6368; margin-bottom:8px;">
+    How was the AI-generated draft? <span style="font-size:0.8rem; color:#80868b;">Optional</span>
+  </div>
+  <div style="display:flex; gap:12px;">
+    <button type="button" id="ratingLooksGood" onclick="handleAiRating('accurate')" style="padding:8px 16px; border:1px solid #dadce0; border-radius:6px; background:#fff; color:#3c4043; font-size:0.85rem; cursor:pointer; transition:all 0.15s;">
+      Looks good
+    </button>
+    <button type="button" id="ratingNeedsImprovement" onclick="handleAiRating('needs_improvement')" style="padding:8px 16px; border:1px solid #dadce0; border-radius:6px; background:#fff; color:#3c4043; font-size:0.85rem; cursor:pointer; transition:all 0.15s;">
+      Needs improvement
+    </button>
+  </div>
+</div>
+
+<button id="submitButton" onclick="submitForReview()">Submit for Review</button>
 <div id="submitStatus" class="status"></div>
   </div>
 
   <div id="successSection" class="card" style="display:none;">
-  <h2>You're all set!</h2>
+  <h2>Submitted!</h2>
   <p id="successMainMessage" class="subtle"></p>
 
-  <div id="successReference" style="margin-top:14px;"></div>
 
-  <div style="margin-top: 20px; display: flex; gap: 12px; flex-wrap: wrap;">
-    <button type="button" onclick="startAnotherSubmission()">Submit Another</button>
-    <button type="button" onclick="finishSession()" style="background:#fff; color:#1f1f1f; border:1px solid #ccc;">Finish</button>
+  <div style="margin-top:20px; padding:14px 18px; background:#f8f9fa; border:1px solid #dadce0; border-radius:8px;">
+    <div style="font-weight:600; font-size:0.88rem; color:#3c4043; margin-bottom:6px;">What's next</div>
+    <div style="font-size:0.84rem; color:#5f6368; line-height:1.5;">Your submission will appear on the Status Tracker within a few minutes. You can track its progress anytime from the link at the top of this page.</div>
   </div>
-  <p style="margin-top: 16px; font-size: 0.9rem; color: #666;">
-    You can always <a href="#" onclick="finishSession(); return false;" style="color: #0066cc;">check your submission status</a>.
-  </p>
+
+  <div style="margin-top: 20px;">
+    <button type="button" onclick="startAnotherSubmission()">Submit Another</button>
+  </div>
 </div>
 
   <script>
@@ -503,6 +718,11 @@
     let aiDraftGenerated = false;
     let sessionStartTime = Date.now();
     let sessionSubmissions = [];
+    var webAppBaseUrl = <?!= JSON.stringify(webAppBaseUrl) ?>;
+
+    function navigateToStatus() {
+      window.top.location.href = webAppBaseUrl + '?page=status';
+    }
 
     function gasCall(functionName, ...args) {
       return new Promise((resolve, reject) => {
@@ -640,6 +860,41 @@
       document.getElementById('event').addEventListener('change', toggleOtherFields);
     }
 
+    function applyYouTubeFormMode(isYt) {
+      document.querySelectorAll('.yt-hide').forEach(function(el) {
+        el.style.display = isYt ? 'none' : '';
+      });
+    }
+
+    function toggleDistributionChannel(clickedId) {
+      var channels = ['distInteractHub', 'distPublicSite', 'distEventCampaigns'];
+      if (clickedId === 'distNone' && document.getElementById('distNone').checked) {
+        channels.forEach(function(id) { document.getElementById(id).checked = false; });
+      } else if (channels.indexOf(clickedId) !== -1 && document.getElementById(clickedId).checked) {
+        document.getElementById('distNone').checked = false;
+      }
+      var eventDetail = document.getElementById('distEventDetail');
+      if (eventDetail) {
+        eventDetail.style.display = document.getElementById('distEventCampaigns').checked ? 'block' : 'none';
+        if (!document.getElementById('distEventCampaigns').checked) eventDetail.value = '';
+      }
+      updateDistChannelHighlight();
+    }
+
+    function updateDistChannelHighlight() {
+      var group = document.getElementById('distChannelGroup');
+      if (!group) return;
+      var anyChecked = document.getElementById('distInteractHub').checked
+        || document.getElementById('distPublicSite').checked
+        || document.getElementById('distEventCampaigns').checked
+        || document.getElementById('distNone').checked;
+      if (anyChecked) {
+        group.classList.remove('needs-input');
+      } else {
+        group.classList.add('needs-input');
+      }
+    }
+
     function toggleOtherFields() {
       document.getElementById('creatorTeamOther').style.display =
         document.getElementById('creatorTeams').value === 'Other' ? 'block' : 'none';
@@ -743,7 +998,8 @@
         steps: currentExtractedGuide?.steps || [],
         links: currentExtractedGuide?.links || [],
         bodyText: document.getElementById('bodyText').value.trim(),
-        warnings: currentExtractedGuide?.warnings || []
+        warnings: currentExtractedGuide?.warnings || [],
+        isYouTube: currentExtractedGuide?.isYouTube || false
       };
     }
 
@@ -799,6 +1055,12 @@
         group: document.getElementById('group').value.trim(),
         duration: document.getElementById('duration').value.trim(),
         employeeAdvocacy: document.getElementById('employeeAdvocacy').value.trim(),
+        distributionChannels: [
+          document.getElementById('distInteractHub').checked ? 'The Interact Hub' : '',
+          document.getElementById('distPublicSite').checked ? 'interact.redhat.com' : '',
+          document.getElementById('distEventCampaigns').checked ? ('Event campaigns' + (document.getElementById('distEventDetail').value.trim() ? ': ' + document.getElementById('distEventDetail').value.trim() : '')) : '',
+          document.getElementById('distNone').checked ? 'None' : ''
+        ].filter(Boolean),
         requirementsConfirmed: document.getElementById('requirementsConfirmed').checked,
         aiConfidenceNotes: document.getElementById('aiConfidenceNotes').value.trim(),
         aiFieldsNeedingConfirmation: ''
@@ -809,7 +1071,7 @@
       const missing = [];
       const warnings = [];
 
-      if (!form.arcadeUrl) missing.push('Interactive Demo URL');
+      if (!form.arcadeUrl) missing.push('Demo or Video URL');
       if (!form.email) missing.push('Email Address');
       if (!form.creatorName) missing.push('Creator Name(s)');
       if (!form.creatorTeams) missing.push('Creator Team(s)');
@@ -831,17 +1093,18 @@
       }
 
       if (!form.descriptionWithoutGid) missing.push('Description');
-      if (!form.descriptionForSeo) missing.push('Description for SEO');
-
-      if (!form.language.length) missing.push('Language');
-      if (form.language.includes('Other') && !form.languageOther) {
-        missing.push('Other Language');
+      if (!window._isYouTube) {
+        if (!form.descriptionForSeo) missing.push('Description for SEO');
+        if (!form.language.length) missing.push('Language');
+        if (form.language.includes('Other') && !form.languageOther) {
+          missing.push('Other Language');
+        }
+        if (!form.seoKeywords) missing.push('Keywords for SEO');
       }
 
       if (!form.ctaLinks || form.ctaLinks.length < 3) {
         missing.push('3 CTA links');
       }
-      if (!form.seoKeywords) missing.push('Keywords for SEO');
       if (!form.vertical) missing.push('Vertical');
       if (!form.event) missing.push('Event / Project');
 
@@ -861,7 +1124,8 @@
       if (!form.tdp) missing.push('Technology Decision Point');
       if (!form.salesTactic) missing.push('Sales Tactic');
       if (!form.marketingProgram) missing.push('Marketing Program');
-      if (!form.requirementsConfirmed) missing.push('Requirements confirmation checkbox');
+      if (!form.distributionChannels || form.distributionChannels.length === 0) missing.push('Where to include this content');
+      if (!window._isYouTube && !form.requirementsConfirmed) missing.push('Requirements confirmation checkbox');
 
       return { missing, warnings };
     }
@@ -902,7 +1166,7 @@ async function extractGuide() {
   const arcadeUrl = document.getElementById('arcadeUrl').value.trim();
 
   if (!arcadeUrl) {
-    setStatus('extractStatus', 'Please paste a demo URL to get started.', 'error');
+    setStatus('extractStatus', 'Please paste a demo or YouTube URL to get started.', 'error');
     return;
   }
 
@@ -1050,6 +1314,7 @@ function highlightEmptyRequired() {
       el.classList.remove('needs-input');
     }
   });
+  updateDistChannelHighlight();
 }
 
 function attachRequiredFieldListeners() {
@@ -1072,8 +1337,14 @@ function clearConfidenceMarks() {
     el.classList.remove('confidence-high', 'confidence-medium', 'confidence-low');
     el.title = '';
   });
-  const banner = document.getElementById('reviewBanner');
-  if (banner) { banner.innerHTML = ''; banner.className = ''; banner.style.display = 'none'; }
+  const confidenceRow = document.getElementById('confidenceRow');
+  if (confidenceRow) {
+    confidenceRow.style.display = 'none';
+    const summary = document.getElementById('confidenceSummary');
+    const tags = document.getElementById('confidenceFieldTags');
+    if (summary) summary.innerHTML = '';
+    if (tags) tags.innerHTML = '';
+  }
 }
 
 function fieldHasValue(id) {
@@ -1096,8 +1367,11 @@ function markFieldConfidence(id, level) {
 }
 
 function showReviewBanner(fieldConfidence) {
-  const banner = document.getElementById('reviewBanner');
-  if (!banner) return;
+  const confidenceRow = document.getElementById('confidenceRow');
+  const confidenceSummary = document.getElementById('confidenceSummary');
+  const confidenceFieldTags = document.getElementById('confidenceFieldTags');
+
+  if (!confidenceRow || !confidenceSummary || !confidenceFieldTags) return;
 
   const counts = { high: 0, medium: 0, low: 0 };
   const mediumFields = [];
@@ -1111,7 +1385,10 @@ function showReviewBanner(fieldConfidence) {
   });
 
   const total = counts.high + counts.medium + counts.low;
-  if (total === 0) { banner.style.display = 'none'; return; }
+  if (total === 0) {
+    confidenceRow.style.display = 'none';
+    return;
+  }
 
   const reverseMap = {};
   Object.keys(FIELD_CONFIDENCE_MAP).forEach(function(elId) {
@@ -1119,37 +1396,24 @@ function showReviewBanner(fieldConfidence) {
     if (!reverseMap[draftKey]) reverseMap[draftKey] = elId;
   });
 
-  const bannerClass = lowFields.length > 2 ? 'review-banner-alert'
-    : lowFields.length > 0 ? 'review-banner-warning' : 'review-banner-good';
-
-  let message = '';
-  if (lowFields.length > 0) {
-    message = 'Some fields need your attention before submitting.';
-  } else if (counts.medium > 0) {
-    message = 'Looks good — a few fields are worth a quick check.';
-  } else {
-    message = 'All fields look good!';
-  }
-
-  let html = '';
-
-  html += '<div class="review-banner-counts"><strong>Draft confidence:</strong> ';
+  // Build compact confidence summary
+  let summaryHtml = '<strong style="color:#3c4043;">Draft confidence:</strong> ';
   const parts = [];
   if (counts.high) parts.push('<span style="color:#16a34a">' + counts.high + ' high</span>');
   if (counts.medium) parts.push('<span style="color:#d97706">' + counts.medium + ' medium</span>');
   if (counts.low) parts.push('<span style="color:#dc2626">' + counts.low + ' low</span>');
-  html += parts.join(' &middot; ');
-  html += '</div>';
+  summaryHtml += parts.join(' &middot; ');
 
-  html += '<div class="review-banner-message">' + message + '</div>';
+  confidenceSummary.innerHTML = summaryHtml;
 
+  // Build field tags if there are medium/low confidence fields
   const actionFields = lowFields.concat(mediumFields);
   if (actionFields.length > 0) {
-    html += '<div class="review-banner-fields">';
+    let tagsHtml = '<div style="display:flex; flex-wrap:wrap; gap:6px;">';
     lowFields.forEach(function(key) {
       const name = FIELD_DISPLAY_NAMES[key] || key;
       const targetId = reverseMap[key] || '';
-      html += '<span class="review-banner-field-tag review-banner-field-tag-low"'
+      tagsHtml += '<span class="review-banner-field-tag review-banner-field-tag-low"'
         + ' onclick="scrollToField(\'' + targetId + '\')"'
         + ' title="Needs input — click to review">'
         + name + '</span>';
@@ -1157,17 +1421,20 @@ function showReviewBanner(fieldConfidence) {
     mediumFields.forEach(function(key) {
       const name = FIELD_DISPLAY_NAMES[key] || key;
       const targetId = reverseMap[key] || '';
-      html += '<span class="review-banner-field-tag review-banner-field-tag-medium"'
+      tagsHtml += '<span class="review-banner-field-tag review-banner-field-tag-medium"'
         + ' onclick="scrollToField(\'' + targetId + '\')"'
         + ' title="Worth a check — click to review">'
         + name + '</span>';
     });
-    html += '</div>';
+    tagsHtml += '</div>';
+    confidenceFieldTags.innerHTML = tagsHtml;
+    confidenceFieldTags.style.display = 'block';
+  } else {
+    confidenceFieldTags.innerHTML = '';
+    confidenceFieldTags.style.display = 'none';
   }
 
-  banner.className = 'review-banner ' + bannerClass;
-  banner.innerHTML = html;
-  banner.style.display = 'block';
+  confidenceRow.style.display = 'block';
 }
 
 function scrollToField(elementId) {
@@ -1202,7 +1469,7 @@ let currentDraft = null;
 
 
 function populateFormFromDraft(draft) {
-  document.getElementById('demoTitle').value = draft.demo_title || '';
+  // Title always comes from extracted guide, never AI-generated
 
   let combinedDescription = draft.description_without_gid || draft.description_with_gid || '';
   if (Array.isArray(draft.tour_highlights) && draft.tour_highlights.length > 0) {
@@ -1278,9 +1545,7 @@ try {
         document.getElementById('otherProductsOther').value = '';
         document.getElementById('group').value = '';
 
-        if (!draft.demo_title && extractedGuide.title) {
-          draft.demo_title = extractedGuide.title;
-        }
+        document.getElementById('demoTitle').value = extractedGuide.title || '';
 
         document.getElementById('aiModelInfo').value =
           `${currentAiMeta.modelUsed} | ${currentAiMeta.promptVersion} | ${currentAiMeta.generatedAt}`;
@@ -1290,13 +1555,26 @@ try {
         aiDraftGenerated = true;
         attachFieldEditTracking();
 
-        const stepCount = (currentExtractedGuide && currentExtractedGuide.steps && currentExtractedGuide.steps.length)
-          || (currentExtractedGuide && currentExtractedGuide.stepTexts && currentExtractedGuide.stepTexts.length)
-          || 0;
-        if (stepCount > 0) {
-          const minutes = Math.ceil(stepCount / 8);
-          document.getElementById('duration').value = '~' + minutes + ' minute' + (minutes !== 1 ? 's' : '');
+        // Show AI draft feedback section
+        document.getElementById('aiDraftFeedbackSection').style.display = 'block';
+
+        window._isYouTube = !!(currentExtractedGuide && currentExtractedGuide.isYouTube);
+
+        if (window._isYouTube && extractedGuide.youtubeDuration) {
+          document.getElementById('duration').value = extractedGuide.youtubeDuration;
+          document.getElementById('duration').readOnly = true;
+        } else {
+          document.getElementById('duration').readOnly = false;
+          const stepCount = (currentExtractedGuide && currentExtractedGuide.steps && currentExtractedGuide.steps.length)
+            || (currentExtractedGuide && currentExtractedGuide.stepTexts && currentExtractedGuide.stepTexts.length)
+            || 0;
+          if (stepCount > 0) {
+            const minutes = Math.ceil(stepCount / 8);
+            document.getElementById('duration').value = '~' + minutes + ' minute' + (minutes !== 1 ? 's' : '');
+          }
         }
+
+        applyYouTubeFormMode(window._isYouTube);
 
         const formSection = document.getElementById('formSection');
         if (formSection) {
@@ -1359,16 +1637,17 @@ function setSubmitSuccessStatus(data) {
 
   const successSection = document.getElementById('successSection');
   const mainMessage = document.getElementById('successMainMessage');
-  const reference = document.getElementById('successReference');
 
-  let friendlyAction = 'Your interactive demo has been saved and will appear on the status tracker within a few minutes.';
+  let friendlyAction = 'Your submission has been sent for review.';
 
-  if (action === 'created_new_creator_only') {
-    friendlyAction = 'Your interactive demo has been saved as a new request and will appear on the status tracker within a few minutes.';
+  if (demoTitle) {
+    friendlyAction = '"' + demoTitle + '" has been submitted for review.';
   }
 
   if (action === 'updated_existing_request') {
-    friendlyAction = 'Your interactive demo has been added to the existing request and will appear on the status tracker within a few minutes.';
+    friendlyAction = demoTitle
+      ? '"' + demoTitle + '" has been added to an existing request.'
+      : 'Your submission has been added to an existing request.';
   }
 
   if (sessionSubmissions.length > 1) {
@@ -1376,10 +1655,6 @@ function setSubmitSuccessStatus(data) {
   }
 
   mainMessage.textContent = friendlyAction;
-
-  reference.innerHTML = requestNumber
-    ? '<strong>Reference:</strong> Request #' + escapeHtml(requestNumber)
-    : '';
 
   successSection.style.display = 'block';
   successSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -1398,6 +1673,9 @@ function startAnotherSubmission() {
   if (successSection) successSection.style.display = 'none';
 
   currentExtractedGuide = null;
+  window._isYouTube = false;
+  applyYouTubeFormMode(false);
+  document.getElementById('duration').readOnly = false;
   currentAiMeta = {
     modelUsed: '',
     promptVersion: '',
@@ -1432,10 +1710,7 @@ function startAnotherSubmission() {
 
   // Clear success text.
   const successMainMessage = document.getElementById('successMainMessage');
-  const successReference = document.getElementById('successReference');
-
   if (successMainMessage) successMainMessage.textContent = '';
-  if (successReference) successReference.innerHTML = '';
 
   // Reset UI helpers safely.
   if (typeof clearConfidenceMarks === 'function') {
@@ -1470,11 +1745,7 @@ function startAnotherSubmission() {
 }
 
 function finishSession() {
-  let baseUrl = '';
-  try {
-    baseUrl = window.location.href.split('?')[0];
-  } catch (e) {}
-  window.top.location.href = baseUrl + '?page=status';
+  navigateToStatus();
 }
 
 async function submitForReview() {
@@ -1519,6 +1790,11 @@ async function submitForReview() {
       aiMeta: currentAiMeta
     });
 
+    if (data && data.success === false) {
+      setStatus('submitStatus', data.message || 'Submission failed.', 'error');
+      return;
+    }
+
     setSubmitSuccessStatus(data);
   } catch (err) {
     setStatus(
@@ -1544,6 +1820,185 @@ async function submitForReview() {
         }
       }
     }).catch(function() {});
+
+    function promptFeedback() {
+      // Capture current context
+      const arcadeUrl = document.getElementById('arcadeUrl').value.trim();
+      const demoTitle = document.getElementById('demoTitle').value.trim();
+
+      // Create modal overlay
+      const overlay = document.createElement('div');
+      overlay.className = 'feedback-modal-overlay';
+
+      // Create modal content
+      const modal = document.createElement('div');
+      modal.className = 'feedback-modal';
+
+      modal.innerHTML = `
+        <h3>Give Feedback</h3>
+
+        <label for="feedbackField">What needs improvement? <span style="color:#d93025">*</span></label>
+        <select id="feedbackField">
+          <option value="">Select a field or category...</option>
+          <option value="Overall draft">Overall draft quality</option>
+          <option value="Description">Description</option>
+          <option value="Primary Product">Primary Product</option>
+          <option value="Technology Decision Point">Technology Decision Point (TDP)</option>
+          <option value="SEO Description">SEO Description</option>
+          <option value="SEO Keywords">SEO Keywords</option>
+          <option value="Call-to-Action Links">Call-to-Action Links</option>
+          <option value="Sales Tactic">Sales Tactic</option>
+          <option value="Marketing Program">Marketing Program</option>
+          <option value="Multiple fields">Multiple fields</option>
+          <option value="Other">Other</option>
+        </select>
+        <div id="feedbackFieldError" class="feedback-modal-error" style="display:none;">Please select a field</div>
+
+        <label for="feedbackIssue">What was wrong? <span style="color:#d93025">*</span></label>
+        <textarea id="feedbackIssue" placeholder="Describe the issue or inaccuracy you encountered"></textarea>
+        <div id="feedbackIssueError" class="feedback-modal-error" style="display:none;">Please describe the issue</div>
+
+        <label for="feedbackComments">Additional comments (optional)</label>
+        <textarea id="feedbackComments" placeholder="Any other feedback or suggestions"></textarea>
+
+        <div class="feedback-modal-buttons">
+          <button type="button" class="cancel-btn">Cancel</button>
+          <button type="button" class="submit-btn">Submit Feedback</button>
+        </div>
+      `;
+
+      overlay.appendChild(modal);
+      document.body.appendChild(overlay);
+
+      // Focus first field
+      setTimeout(() => document.getElementById('feedbackField').focus(), 100);
+
+      // Handle cancel
+      const cancelBtn = modal.querySelector('.cancel-btn');
+      cancelBtn.onclick = function() {
+        overlay.remove();
+      };
+
+      // Click outside to close
+      overlay.onclick = function(e) {
+        if (e.target === overlay) {
+          overlay.remove();
+        }
+      };
+
+      // Handle submit
+      const submitBtn = modal.querySelector('.submit-btn');
+      submitBtn.onclick = function() {
+        const field = document.getElementById('feedbackField').value.trim();
+        const issue = document.getElementById('feedbackIssue').value.trim();
+        const comments = document.getElementById('feedbackComments').value.trim();
+
+        // Clear previous errors
+        document.getElementById('feedbackFieldError').style.display = 'none';
+        document.getElementById('feedbackIssueError').style.display = 'none';
+
+        // Validate
+        let hasError = false;
+        if (!field) {
+          document.getElementById('feedbackFieldError').style.display = 'block';
+          hasError = true;
+        }
+        if (!issue) {
+          document.getElementById('feedbackIssueError').style.display = 'block';
+          hasError = true;
+        }
+
+        if (hasError) {
+          return;
+        }
+
+        // Disable submit button
+        submitBtn.disabled = true;
+        submitBtn.textContent = 'Submitting...';
+
+        // Submit feedback
+        try {
+          google.script.run
+            .withSuccessHandler(function() {
+              overlay.remove();
+              alert("Thank you for your feedback! It has been recorded.");
+            })
+            .withFailureHandler(function(error) {
+              overlay.remove();
+              alert("Feedback recorded locally. Please also share in #forum-arcade-creators if possible.");
+            })
+            .logAnalyticsEventFromClient('feedback_submitted', {
+              sessionId: analyticsSessionId,
+              metadata: {
+                arcadeUrl: arcadeUrl,
+                demoTitle: demoTitle,
+                field: field,
+                issue: issue,
+                comments: comments
+              }
+            });
+        } catch (e) {
+          overlay.remove();
+          alert("Feedback recorded locally. Please also share in #forum-arcade-creators if possible.");
+        }
+      };
+
+      // ESC key to close
+      const handleEsc = function(e) {
+        if (e.key === 'Escape') {
+          overlay.remove();
+          document.removeEventListener('keydown', handleEsc);
+        }
+      };
+      document.addEventListener('keydown', handleEsc);
+
+      return false;
+    }
+
+    // AI Draft Rating handler
+    function handleAiRating(rating) {
+      const arcadeUrl = document.getElementById('arcadeUrl').value.trim();
+      const demoTitle = document.getElementById('demoTitle').value.trim();
+
+      // Log rating event
+      try {
+        google.script.run.logAnalyticsEventFromClient('ai_draft_rating', {
+          sessionId: analyticsSessionId,
+          metadata: {
+            arcadeUrl: arcadeUrl,
+            demoTitle: demoTitle,
+            rating: rating
+          }
+        });
+      } catch (e) {
+        // Silent fail - rating is optional
+      }
+
+      // Visual feedback - highlight selected button
+      const looksGoodBtn = document.getElementById('ratingLooksGood');
+      const needsImprovementBtn = document.getElementById('ratingNeedsImprovement');
+
+      if (rating === 'accurate') {
+        looksGoodBtn.style.background = '#e8f0fe';
+        looksGoodBtn.style.borderColor = '#1a73e8';
+        looksGoodBtn.style.color = '#1a73e8';
+        needsImprovementBtn.style.background = '#fff';
+        needsImprovementBtn.style.borderColor = '#dadce0';
+        needsImprovementBtn.style.color = '#3c4043';
+      } else if (rating === 'needs_improvement') {
+        needsImprovementBtn.style.background = '#e8f0fe';
+        needsImprovementBtn.style.borderColor = '#1a73e8';
+        needsImprovementBtn.style.color = '#1a73e8';
+        looksGoodBtn.style.background = '#fff';
+        looksGoodBtn.style.borderColor = '#dadce0';
+        looksGoodBtn.style.color = '#3c4043';
+
+        // Auto-open detailed feedback modal
+        setTimeout(function() {
+          promptFeedback();
+        }, 300);
+      }
+    }
 
     window.addEventListener('beforeunload', function(event) {
       if (!isSubmitting && aiDraftGenerated) {

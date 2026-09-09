@@ -1,0 +1,47 @@
+{
+  "arcadeId": "test-arcade-id-12345",
+  "title": "Installing and enabling Ansible Lightspeed in Visual Studio Code",
+  "guideUrl": "https://interact.redhat.com/share/test-arcade-id-12345/guide",
+  "shareUrl": "https://interact.redhat.com/share/test-arcade-id-12345",
+  "duration": "3 min",
+  "steps": [
+    {
+      "stepNumber": 1,
+      "text": "Open VS Code Extensions Marketplace and search for Red Hat Ansible",
+      "imageUrl": "https://example.com/screenshot1.png",
+      "imageAlt": "VS Code Extensions Marketplace"
+    },
+    {
+      "stepNumber": 2,
+      "text": "Install the Red Hat Ansible extension",
+      "imageUrl": "https://example.com/screenshot2.png",
+      "imageAlt": "Install button in extension detail view"
+    },
+    {
+      "stepNumber": 3,
+      "text": "Open extension settings and enable Ansible Lightspeed",
+      "imageUrl": "https://example.com/screenshot3.png",
+      "imageAlt": "Extension settings panel with Lightspeed toggle"
+    },
+    {
+      "stepNumber": 4,
+      "text": "Connect to Ansible Lightspeed using Red Hat account",
+      "imageUrl": "https://example.com/screenshot4.png",
+      "imageAlt": "Red Hat SSO login page"
+    },
+    {
+      "stepNumber": 5,
+      "text": "Activate 90-day trial by accepting terms",
+      "imageUrl": "https://example.com/screenshot5.png",
+      "imageAlt": "Trial activation dialog"
+    }
+  ],
+  "links": [
+    {
+      "label": "Learn more about Ansible Lightspeed",
+      "href": "https://www.redhat.com/en/technologies/management/ansible/ansible-lightspeed"
+    }
+  ],
+  "bodyText": "This interactive demo shows how to install and enable Ansible Lightspeed with Watson Code Assistant in Visual Studio Code...",
+  "extractedAt": "2026-08-31T12:00:00.000Z"
+}

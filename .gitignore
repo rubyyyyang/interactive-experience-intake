@@ -7,3 +7,31 @@ local-dev/
 .DS_Store
 claude-analysis-results.json
 submissions.local.json
+
+# Claude Code session artifacts and workflow instructions
+.claude/
+AGENTS.md
+CLAUDE.md
+
+# Claude-generated temporary reports (root level only, not docs/)
+/*-REPORT.md
+/*-SUMMARY.md
+/*-IMPLEMENTATION.md
+/*-IMPROVEMENTS.md
+/*-UPDATES.md
+/*-FIXES*.md
+/*-VERIFICATION*.md
+
+# Local-only documentation (kept out of shared repository)
+docs/superpowers/
+docs/aia-remediation-evidence-checklist.md
+docs/access-control.md
+docs/ai-monitoring-plan.md
+
+# Playwright
+/test-results/
+/playwright-report/
+/blob-report/
+/playwright/.cache/
+/playwright/.auth/
+/playwright/.profile/
