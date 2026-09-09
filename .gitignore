@@ -8,6 +8,18 @@ local-dev/
 claude-analysis-results.json
 submissions.local.json
 
+# Claude Code session artifacts
+.claude/
+
+# Claude-generated temporary reports (root level only, not docs/)
+/*-REPORT.md
+/*-SUMMARY.md
+/*-IMPLEMENTATION.md
+/*-IMPROVEMENTS.md
+/*-UPDATES.md
+/*-FIXES*.md
+/*-VERIFICATION*.md
+
 # Playwright
 /test-results/
 /playwright-report/
