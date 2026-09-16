@@ -119,6 +119,8 @@ function buildSubmissionFromRow_(row, headerMap) {
     status: get(col.STATUS),
     dateSubmitted: get(col.CREATOR_SUBMITTED_TS) || get(col.STATUS_RECEIVED_TS),
     primaryProduct: get(col.PRIMARY_PRODUCT),
+    primaryTopic: get(col.PRIMARY_TOPIC),
+    otherTopics: get(col.TOPIC),
     contentType: get(col.CONTENT_TYPE),
     creatorName: get(col.CREATOR_NAME),
     requestorName: get(col.REQUESTOR_NAME),

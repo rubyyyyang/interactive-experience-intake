@@ -19,6 +19,8 @@ const STATUS_TRACKER_COLUMNS = {
   STATUS_RECEIVED_TS: 'Status Received Timestamp',
   STATUS_PUBLISHED_TS: 'Status Published Timestamp',
   PRIMARY_PRODUCT: 'Primary Product',
+  PRIMARY_TOPIC: 'Primary Topic',
+  TOPIC: 'Topic',
   CONTENT_TYPE: 'Content Type',
   CREATOR_NAME: 'Creator Name',
   REQUESTOR_NAME: 'Requestor Name',
