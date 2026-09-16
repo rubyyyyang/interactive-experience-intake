@@ -1,17 +1,12 @@
-# Arcade Intake Assistant User Guide (Developer Reference)
+# Interactive Experience Intake User Guide
 
-**IMPORTANT:** This is a developer/internal reference copy only.
-
-**The canonical user-facing User Guide is maintained as a Google Doc:**  
-https://docs.google.com/document/d/15NOQvsdNdalxsxmmFEKPeCaH9khH1Um7uMjzsjqZf3Y/edit?tab=t.0
-
-This Markdown file is kept for version control and reference but should NOT be used as the authoritative user documentation. Always direct users to the Google Doc above.
+This guide covers the Interactive Experience Intake application for submitting Interactive Demos and Video Demos.
 
 ---
 
-## What is Arcade Intake Assistant?
+## What is Interactive Experience Intake?
 
-Arcade Intake Assistant is an internal Red Hat tool that streamlines the submission of Arcade demos and YouTube videos for inclusion in the Interactive Experiences library. The tool uses AI (Google Gemini) to analyze your demo content and automatically generate suggested metadata, significantly reducing the manual effort required to complete intake forms.
+Interactive Experience Intake is an internal Red Hat tool that streamlines the submission of Interactive Demos and Video Demos for inclusion in the Interactive Experiences library. The tool uses AI (Google Gemini) to analyze your demo content and automatically generate suggested metadata, significantly reducing the manual effort required to complete intake forms.
 
 **Note:** The current pilot uses Gemini 2.5 Flash.
 
@@ -21,7 +16,8 @@ Arcade Intake Assistant is an internal Red Hat tool that streamlines the submiss
 2. **Extract content** — The tool fetches guide content including title, steps, screenshots, and duration
 3. **AI generates draft** — Gemini analyzes the extracted content and suggests metadata fields like:
    - Description and SEO description
-   - Product classifications
+   - Product classifications (Primary Product, other related products)
+   - Topic classifications (Primary Topic, other related topics) — **Interactive Demo only**
    - Technology Decision Points (TDPs)
    - Sales tactics and marketing programs
    - Keywords
@@ -31,17 +27,18 @@ Arcade Intake Assistant is an internal Red Hat tool that streamlines the submiss
 
 ## Example Use Case
 
-**Scenario:** You've created an Arcade demo showing how to set up OpenShift Virtualization.
+**Scenario:** You've created an Interactive Demo showing how to set up OpenShift Virtualization.
 
 1. Copy the share URL from Arcade (e.g., `https://interact.redhat.com/share/abc123`)
 2. Paste it into the Intake Assistant
 3. Click "Extract Content" — the tool reads your demo title, steps, and screenshots
 4. Click "Generate Draft" — Gemini analyzes your demo and suggests:
-   - Primary product: "OpenShift Virtualization"
+   - Primary Product: "OpenShift Virtualization"
+   - Primary Topic: "Virtualization"
    - TDP: "Modernize and optimize IT"
    - Description draft based on your demo steps
    - SEO keywords related to virtualization
-5. Review each field — correct any inaccuracies (e.g., Gemini might guess the wrong TDP)
+5. Review each field — correct any inaccuracies (e.g., Gemini might guess the wrong TDP or Topic)
 6. Submit for review
 
 ## Important: AI Output May Be Inaccurate
@@ -109,6 +106,28 @@ https://source.redhat.com/departments/legal/legal_compliance_ethics/compliance_f
 
 Consult Red Hat's internal AI use policies for complete guidelines.
 
+## Metadata Fields
+
+The intake form includes several types of metadata to help organize and discover your content:
+
+### Product Classification
+- **Primary Product** (required) — The main Red Hat product featured in your demo
+- **Product** (optional) — Other related products shown or mentioned
+
+### Topic Classification — Interactive Demo Only
+- **Primary Topic** (required for Interactive Demo) — The main subject area or use case
+- **Topic** (optional for Interactive Demo) — Additional related topics
+
+Topic fields appear only for Interactive Demo submissions and are used to organize content on interact.redhat.com. Video Demo submissions do not include Topic fields.
+
+### Other Metadata
+- **Technology Decision Point (TDP)** — Strategic business driver
+- **Sales Tactic** — Sales methodology alignment
+- **Marketing Program** — Campaign or program association
+- **Content Type** — Format/style classification
+
+The AI will suggest values for most fields. You can accept, edit, or replace any suggestion.
+
 ## Support and Contact
 
 **Need help?**
@@ -149,8 +168,11 @@ A: The admin team reviews all submissions before publishing to the Interactive E
 **Q: How long does review take?**  
 A: Check the Status Tracker for real-time updates on your submission status.
 
-**Q: Can I submit YouTube videos?**  
-A: Yes! Paste a YouTube watch URL instead of an Arcade link. Some fields (like languages and SEO) are hidden for YouTube submissions.
+**Q: Can I submit Video Demos?**  
+A: Yes! Paste a YouTube watch URL instead of an Arcade link. Some fields are specific to Interactive Demos (like Primary Topic and Topic) and will not appear for Video Demo submissions.
+
+**Q: What's the difference between "Primary Product" and "Product" in the Status Tracker?**  
+A: "Primary Product" is the main product featured in your demo. "Product" lists any additional related products. Similarly, "Primary Topic" is the main subject area, and "Topic" lists additional related topics (Interactive Demo only).
 
 ---
 
