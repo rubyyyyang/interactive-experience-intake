@@ -2,7 +2,7 @@
 
 The Interactive Experience Intake is the creator-facing Google Apps Script application for submitting and tracking Interactive Experience content.
 
-It works together with the [Interactive Experience Hub](https://github.com/rubyyyyyang/interactive-experience-hub), which handles downstream lifecycle processing and notifications.
+It works together with the [Interactive Experience Hub](https://github.com/rubyyyyyang/interactive-experience-hub), which handles downstream lifecycle management, notifications, search and discovery, and supporting data workflows.
 
 ## What the Intake app owns
 
@@ -71,16 +71,22 @@ Production deployment is currently performed manually in Google Apps Script afte
 
 ## Documentation
 
-The canonical application user guide is:
+Intake-specific documentation:
 
-[`docs/user-guide.md`](docs/user-guide.md)
+- [User Guide](docs/user-guide.md) — Creator-facing Intake workflow, submission, review, and status tracking
+- [Guide Extraction JSON](docs/guide-extraction-json-usage.md) — Technical reference for guide extraction JSON structure and behavior
 
-Guide Extraction JSON technical reference:
+Broader system documentation is maintained in the Interactive Experience Hub repository:
 
-[`docs/guide-extraction-json-usage.md`](docs/guide-extraction-json-usage.md)
+- [Architecture](https://github.com/rubyyyyang/interactive-experience-hub/blob/main/docs/architecture.md) — How Intake and Hub connect, data flows, and major workflows
+- [Runbook](https://github.com/rubyyyyang/interactive-experience-hub/blob/main/docs/runbook.md) — Testing, deployment, triggers, and troubleshooting
+- 
+## Internal Resources
 
-## Related repository
+- [Google Apps Script project](https://script.google.com/home/projects/13DEk6NBZ-BPZ9MFPoKH_V-4is6EWKKSgJnoQf3JoIZZR0Epulo4UihCE/edit)
+- [Production Intake app](https://script.google.com/a/macros/redhat.com/s/AKfycby41BSoZbpLqdkdRG5B5hvdr7-c1KT-TaCw9_WV3_Q0ag13oe_CjHt-JUIDeHzdSTAg/exec)
+- [Interactive Experience Status Tracker](https://script.google.com/a/redhat.com/macros/s/AKfycby41BSoZbpLqdkdRG5B5hvdr7-c1KT-TaCw9_WV3_Q0ag13oe_CjHt-JUIDeHzdSTAg/exec?page=status)
+- [Tracking Analytics spreadsheet](https://docs.google.com/spreadsheets/d/1Krzrseza6KaejdsD3bFD7lVcNuLUSm3FCe-oOJLUhI4/edit?gid=1424090944#gid=1424090944)
 
-Downstream lifecycle orchestration, notifications, Discovery, and supporting data workflows are maintained in:
 
-[Interactive Experience Hub](https://github.com/rubyyyyyang/interactive-experience-hub)
+
