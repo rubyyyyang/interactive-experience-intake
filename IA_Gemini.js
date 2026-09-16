@@ -803,6 +803,8 @@ The response must be a single JSON object with exactly these fields:
   "primary_product_suggestion": "",
   "other_products_suggestion": [],
   "other_products_other_text": "",
+  "primary_topic_suggestion": "",
+  "other_topics_suggestion": [],
   "tdp_suggestion": "",
   "sales_tactic_suggestion": "",
   "marketing_program_suggestion": "",
@@ -863,6 +865,9 @@ Important field rules:
 - For primary_product_suggestion, choose only from the allowed Product options.
 - For other_products_suggestion, choose zero or more values only from the allowed Product options.
 - If the guide references a product not in the allowed list, include "Other" in other_products_suggestion AND set other_products_other_text to the actual product name(s) (e.g., "Veeam Kasten, Portworx"). If "Other" is selected but you cannot identify the product name, set other_products_other_text to "" and include "other_products_suggestion" in fields_needing_creator_confirmation.
+${isYouTube
+  ? '- Do NOT generate primary_topic_suggestion or other_topics_suggestion for YouTube videos. Return empty string and empty array respectively. Topics are only used for interactive demos.'
+  : '- For primary_topic_suggestion, choose only from the allowed Topic options.\n- For other_topics_suggestion, choose zero or more values only from the allowed Topic options.'}
 - For tdp_suggestion, choose only from the allowed Technology Decision Point options.
 - For sales_tactic_suggestion, choose only from the allowed Sales Tactic options.
 - For marketing_program_suggestion, choose only from the allowed Marketing Program options.
@@ -878,7 +883,7 @@ Important field rules:
 
 field_confidence rules:
 - Return a "field_confidence" object where each key is a field name and the value is "high", "medium", or "low".
-- Include confidence for: demo_title, description_without_gid, description_for_seo, language_suggestions, seo_keywords, primary_product_suggestion, other_products_suggestion, tdp_suggestion, sales_tactic_suggestion, marketing_program_suggestion, cta_link_suggestions, tour_highlights.
+- Include confidence for: demo_title, description_without_gid, description_for_seo, language_suggestions, seo_keywords, primary_product_suggestion, other_products_suggestion, ${isYouTube ? '' : 'primary_topic_suggestion, other_topics_suggestion, '}tdp_suggestion, sales_tactic_suggestion, marketing_program_suggestion, cta_link_suggestions, tour_highlights.
 - "high" = strong direct evidence from guide text and screenshots.
 - "medium" = reasonable inference but some assumptions were made.
 - "low" = weak or no evidence, best guess or taxonomy fallback used.
@@ -934,6 +939,9 @@ ${toOptionList(FIELD_OPTIONS.events)}
 
 Allowed Product options:
 ${toOptionList(FIELD_OPTIONS.products)}
+
+Allowed Topic options:
+${toOptionList(FIELD_OPTIONS.topics)}
 
 Allowed Technology Decision Point options:
 ${toOptionList(FIELD_OPTIONS.tdps)}
@@ -1105,6 +1113,8 @@ cta_link_suggestions: normalizeCtaSuggestions_(draft),
     primary_product_suggestion: draft.primary_product_suggestion || '',
     other_products_suggestion: normalizeStringArray(draft.other_products_suggestion),
     other_products_other_text: draft.other_products_other_text || '',
+    primary_topic_suggestion: draft.primary_topic_suggestion || '',
+    other_topics_suggestion: normalizeStringArray(draft.other_topics_suggestion),
     tdp_suggestion: draft.tdp_suggestion || '',
     sales_tactic_suggestion: draft.sales_tactic_suggestion || '',
     marketing_program_suggestion: draft.marketing_program_suggestion || '',

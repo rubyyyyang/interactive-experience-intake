@@ -9,14 +9,14 @@ It works together with the [Interactive Experience Hub](https://github.com/rubyy
 The Intake app currently supports:
 
 - creator submissions
-- Interactive Demo and YouTube intake routing
-- AI-assisted metadata drafting and classification
+- Interactive Demo and Video Demo intake routing
+- AI-assisted metadata drafting and classification (Primary Topic + Topic for Interactive Demo, excluded for Video Demo)
 - creator and admin review experiences
 - Action Status processing
 - creator-facing Status Tracker
 - initial repository writes and downstream handoff to the Hub
 
-Interactive Experience is the overall content program. Interactive Demo and YouTube are individual content types supported by the workflow.
+Interactive Experience is the overall content program. Interactive Demo and Video Demo are individual content types supported by the workflow.
 
 ## Development
 
@@ -50,15 +50,18 @@ Local authentication state is excluded from Git.
 
 ## Apps Script
 
-Git is the shared source of truth for the codebase. Google Apps Script is the runtime and deployment environment.
+**GitHub `main` is the source of truth for Apps Script source.** Start work from the latest `main` branch, test changes in the DEV Apps Script project, then commit the tested source back to `main`. Avoid unreconciled source edits directly in Apps Script.
+
+Google Apps Script is the runtime and deployment environment.
 
 For normal development:
 
 ```text
 local changes
 → tests
-→ clasp push
-→ validate in the Apps Script development deployment
+→ clasp push to DEV
+→ validate in the DEV Apps Script deployment
+→ commit tested source to GitHub main
 → manually update the production deployment
 ```
 

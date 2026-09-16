@@ -1046,7 +1046,7 @@
 <div class="header">
   <h1 id="pageTitle">Interactive Experience Status Tracker</h1>
   <div style="display:flex; gap:18px; align-items:center; flex-wrap:wrap;">
-    <a href="https://docs.google.com/document/d/15NOQvsdNdalxsxmmFEKPeCaH9khH1Um7uMjzsjqZf3Y/edit?tab=t.0" target="_blank" class="help-link">User Guide</a>
+    <a href="https://github.com/rubyyyyang/interactive-experience-intake/blob/main/docs/user-guide.md" target="_blank" class="help-link">User Guide</a>
     <a href="https://redhat.enterprise.slack.com/archives/C07HQMHFWQG" target="_blank" class="help-link">Need help?</a>
     <a href="#" onclick="navigateToIntake(); return false;">Submit new</a>
   </div>
@@ -1129,6 +1129,8 @@
     'Event': 'events',
     'Primary Product': 'products',
     'Product': 'products',
+    'Primary Topic': 'topics',
+    'Topic': 'topics',
     'TDP': 'tdps',
     'Sales Tactic': 'salesTactics',
     'Marketing Program': 'marketingPrograms',
@@ -1406,7 +1408,7 @@
       }
 
       tr.innerHTML =
-        '<td class="title-cell">' + (isProcessing ? '' : '<span class="row-chevron">&#9654;</span>') + escapeHtml(sub.title || 'Untitled') + (/(?:youtu\.be|youtube\.com)/.test(sub.creationLink || sub.productionLink || '') ? ' <span style="font-size:0.65rem;padding:1px 5px;border-radius:3px;background:#f0f0f0;color:#666;vertical-align:middle;">YouTube</span>' : ' <span style="font-size:0.65rem;padding:1px 5px;border-radius:3px;background:#f0f0f0;color:#666;vertical-align:middle;">Demo</span>') + '</td>' +
+        '<td class="title-cell">' + (isProcessing ? '' : '<span class="row-chevron">&#9654;</span>') + escapeHtml(sub.title || 'Untitled') + (/(?:youtu\.be|youtube\.com)/.test(sub.creationLink || sub.productionLink || '') ? ' <span style="font-size:0.65rem;padding:1px 5px;border-radius:3px;background:#f0f0f0;color:#666;vertical-align:middle;">Video Demo</span>' : ' <span style="font-size:0.65rem;padding:1px 5px;border-radius:3px;background:#f0f0f0;color:#666;vertical-align:middle;">Demo</span>') + '</td>' +
         '<td class="drupal-cell hide-mobile">' + drupalHtml + '</td>' +
         '<td class="creator-cell" title="' + escapeHtml(sub.creatorName || '') + '">' + escapeHtml(sub.creatorName || '—') + '</td>' +
         '<td><span class="status-badge ' + getStatusClass(sub.status) + '">' + escapeHtml(sub.status || '—') + '</span></td>' +
@@ -1502,8 +1504,8 @@
     var _isYtLink = /(?:youtu\.be|youtube\.com)/.test(sub.creationLink || sub.productionLink || '');
     var linksHtml = '';
     if (sub.creationLink && /^https?:\/\//i.test(sub.creationLink)) {
-      linksHtml += '<div class="link-row"><strong>' + (_isYtLink ? 'YouTube Video Link' : 'Creation Demo Link') +
-        '</strong><div class="link-desc">' + (_isYtLink ? 'The YouTube URL submitted by creator' : 'The link submitted by creator previously') + '</div>' + renderLink(sub.creationLink, sub.creationLink) + '</div>';
+      linksHtml += '<div class="link-row"><strong>' + (_isYtLink ? 'Video Demo Link' : 'Creation Demo Link') +
+        '</strong><div class="link-desc">' + (_isYtLink ? 'The video URL submitted by creator' : 'The link submitted by creator previously') + '</div>' + renderLink(sub.creationLink, sub.creationLink) + '</div>';
     }
     if (sub.productionLink && /^https?:\/\//i.test(sub.productionLink)) {
       linksHtml += '<div class="link-row"><strong>' + (_isYtLink ? 'Production Video Link' : 'Production Demo Link') + '</strong><div class="link-desc">Version-controlled copy, published for live use</div>' + renderLink(sub.productionLink, sub.productionLink) + '</div>';
@@ -1520,8 +1522,8 @@
       detailHtml += '<div class="detail-section" style="grid-column: 1 / -1;"><div class="links-bar">' + linksHtml + '</div>';
       if (canEdit && !hasAction(sub)) {
         var _isYt = /(?:youtu\.be\/|youtube\.com)/.test(sub.creationLink || sub.productionLink || '');
-        var _linkLabel = _isYt ? 'YouTube Video Link' : 'Creation Demo Link';
-        var _linkDesc = _isYt ? 'Submit an updated YouTube URL to replace the current link' : 'Submit an updated Arcade link to replace the current creation link';
+        var _linkLabel = _isYt ? 'Video Demo Link' : 'Creation Demo Link';
+        var _linkDesc = _isYt ? 'Submit an updated video URL to replace the current link' : 'Submit an updated Arcade link to replace the current creation link';
         var _linkPlaceholder = _isYt ? 'https://youtube.com/watch?v=...' : 'https://app.arcade.software/share/...';
         detailHtml += '<div class="edit-meta-panel" id="new-link-panel-' + sub.requestNumber + '">' +
           '<div style="padding:12px 0; max-width:600px;">' +
@@ -1550,6 +1552,8 @@
     detailHtml += kvRow('Final Demo Title', sub.title, 'Final Demo Title');
     detailHtml += kvRow('Product', sub.primaryProduct, 'Primary Product');
     detailHtml += kvRow('Other Products', sub.otherProducts, 'Product');
+    detailHtml += kvRow('Primary Topic', sub.primaryTopic, 'Primary Topic');
+    detailHtml += kvRow('Topic', sub.otherTopics, 'Topic');
     detailHtml += kvRow('Content Type', sub.contentType, 'Content Type');
     detailHtml += kvRow('Duration', sub.duration, 'Duration');
     detailHtml += kvRow('Language', sub.language, 'Language');

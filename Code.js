@@ -85,6 +85,12 @@ function submitIntakeForReview(payload) {
     form.otherProductsOther ? `Other: ${form.otherProductsOther}` : ''
   ].filter(Boolean).join(', ');
 
+  const primaryTopicFinal = stripFormulaPrefix_(form.primaryTopic);
+
+  const otherTopicsFinal = Array.isArray(form.otherTopics)
+    ? form.otherTopics.join(', ')
+    : '';
+
   const ctaLinksFinal = Array.isArray(form.ctaLinks)
     ? form.ctaLinks.join('\n')
     : form.ctaLink || '';
@@ -110,6 +116,8 @@ function submitIntakeForReview(payload) {
     'Is this for a specific event or project?': stripFormulaPrefix_(eventFinal),
     'Primary product featured?': stripFormulaPrefix_(primaryProductFinal),
     'Optional: Other related products?': stripFormulaPrefix_(otherProductsFinal),
+    'Primary Topic': primaryTopicFinal,
+    'Topic': otherTopicsFinal,
     'Related Technology Decision Point?': stripFormulaPrefix_(form.tdp),
     'Related Sales Tactic?': stripFormulaPrefix_(form.salesTactic),
     'Related Marketing Program?': stripFormulaPrefix_(form.marketingProgram),

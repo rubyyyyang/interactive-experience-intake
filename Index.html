@@ -405,10 +405,10 @@
   <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; flex-wrap:wrap; gap:12px;">
     <div>
       <h1>Interactive Experience Intake</h1>
-      <p class="subtle" style="margin-bottom:0;">Paste your Arcade demo or YouTube URL below. AI will pre-fill most fields — you just review and submit.</p>
+      <p class="subtle" style="margin-bottom:0;">Paste your Arcade demo or video URL below. AI will pre-fill most fields — you just review and submit.</p>
     </div>
     <div style="display:flex; gap:18px; align-items:center; flex-wrap:wrap;">
-      <a href="https://docs.google.com/document/d/15NOQvsdNdalxsxmmFEKPeCaH9khH1Um7uMjzsjqZf3Y/edit?tab=t.0" target="_blank"
+      <a href="https://github.com/rubyyyyang/interactive-experience-intake/blob/main/docs/user-guide.md" target="_blank"
          style="color: #5f6368; font-size: 0.82rem; text-decoration: none; white-space:nowrap;"
          onmouseover="this.style.color='#1a73e8'" onmouseout="this.style.color='#5f6368'">User Guide</a>
       <a href="https://redhat.enterprise.slack.com/archives/C07HQMHFWQG" target="_blank"
@@ -429,7 +429,7 @@
 <h2>1. Paste your URL</h2>
 
 <p class="helper" style="margin-bottom:12px;">
-  Arcade demos: make sure they're in the <strong>Red Hat Workspace</strong>. YouTube videos: use the standard watch URL.
+  Arcade demos: make sure they're in the <strong>Red Hat Workspace</strong>. Video Demos: use the standard watch URL.
 </p>
 
 <label for="arcadeUrl">Demo or Video URL <span class="required-note">*</span></label>
@@ -536,6 +536,14 @@
     <input id="otherProductsOther" placeholder="Product name(s) not in the list" style="display:none;">
     <div class="helper">Hold Cmd (Mac) or Ctrl (Windows) to select multiple.</div>
     <button type="button" class="secondary" onclick="clearMultiSelect('otherProducts', 'otherProductsOther')">Clear</button>
+
+    <label class="yt-hide">Primary Topic <span class="required-note">*</span></label>
+    <select id="primaryTopic" class="yt-hide"></select>
+
+    <label class="yt-hide">Optional: Other related topics?</label>
+    <select id="otherTopics" class="yt-hide" multiple></select>
+    <div class="helper yt-hide">Hold Cmd (Mac) or Ctrl (Windows) to select multiple.</div>
+    <button type="button" class="secondary yt-hide" onclick="clearMultiSelect('otherTopics')">Clear</button>
 </div>
 
 <!-- ===== AUDIENCE ===== -->
@@ -847,6 +855,8 @@
       populateSelect('event', options.events);
       populateSelect('primaryProduct', options.products);
       populateSelect('otherProducts', options.products, false);
+      populateSelect('primaryTopic', options.topics);
+      populateSelect('otherTopics', options.topics, false);
       populateSelect('tdp', options.tdps);
       populateSelect('salesTactic', options.salesTactics);
       populateSelect('marketingProgram', options.marketingPrograms);
@@ -864,6 +874,10 @@
       document.querySelectorAll('.yt-hide').forEach(function(el) {
         el.style.display = isYt ? 'none' : '';
       });
+      if (isYt) {
+        document.getElementById('primaryTopic').value = '';
+        clearMultiSelect('otherTopics');
+      }
     }
 
     function toggleDistributionChannel(clickedId) {
@@ -1046,6 +1060,9 @@
         otherProducts: getMultiSelectValues('otherProducts'),
         otherProductsOther: document.getElementById('otherProductsOther').value.trim(),
 
+        primaryTopic: window._isYouTube ? '' : document.getElementById('primaryTopic').value,
+        otherTopics: window._isYouTube ? [] : getMultiSelectValues('otherTopics'),
+
         tdp: document.getElementById('tdp').value,
         salesTactic: document.getElementById('salesTactic').value,
         marketingProgram: document.getElementById('marketingProgram').value,
@@ -1121,6 +1138,8 @@
         missing.push('Other Related Products');
       }
 
+      if (!window._isYouTube && !form.primaryTopic) missing.push('Primary Topic');
+
       if (!form.tdp) missing.push('Technology Decision Point');
       if (!form.salesTactic) missing.push('Sales Tactic');
       if (!form.marketingProgram) missing.push('Marketing Program');
@@ -1166,7 +1185,7 @@ async function extractGuide() {
   const arcadeUrl = document.getElementById('arcadeUrl').value.trim();
 
   if (!arcadeUrl) {
-    setStatus('extractStatus', 'Please paste a demo or YouTube URL to get started.', 'error');
+    setStatus('extractStatus', 'Please paste a demo or video URL to get started.', 'error');
     return;
   }
 
@@ -1279,6 +1298,8 @@ const FIELD_CONFIDENCE_MAP = {
   'seoKeywords': 'seo_keywords',
   'primaryProduct': 'primary_product_suggestion',
   'otherProducts': 'other_products_suggestion',
+  'primaryTopic': 'primary_topic_suggestion',
+  'otherTopics': 'other_topics_suggestion',
   'tdp': 'tdp_suggestion',
   'salesTactic': 'sales_tactic_suggestion',
   'marketingProgram': 'marketing_program_suggestion'
@@ -1295,6 +1316,7 @@ const FIELD_DISPLAY_NAMES = {
   'description_for_seo': 'SEO Description', 'language_suggestions': 'Language',
   'seo_keywords': 'SEO Keywords', 'vertical_suggestion': 'Vertical',
   'event_or_project_suggestion': 'Event/Project', 'primary_product_suggestion': 'Primary Product',
+  'primary_topic_suggestion': 'Primary Topic', 'other_topics_suggestion': 'Topic',
   'other_products_suggestion': 'Other Products', 'tdp_suggestion': 'Technology Decision Point',
   'sales_tactic_suggestion': 'Sales Tactic', 'marketing_program_suggestion': 'Marketing Program',
   'cta_link_suggestions': 'CTA Links', 'tour_highlights': 'Tour Highlights'
@@ -1494,6 +1516,8 @@ function populateFormFromDraft(draft) {
   if (draft.other_products_other_text) {
     document.getElementById('otherProductsOther').value = draft.other_products_other_text;
   }
+  setSelectValue('primaryTopic', draft.primary_topic_suggestion);
+  setMultiSelectValues('otherTopics', draft.other_topics_suggestion || []);
   setSelectValue('tdp', draft.tdp_suggestion);
   setSelectValue('salesTactic', draft.sales_tactic_suggestion);
   setSelectValue('marketingProgram', draft.marketing_program_suggestion);
