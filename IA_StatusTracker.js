@@ -281,6 +281,11 @@ function getAllSubmissions() {
     const email = Session.getActiveUser().getEmail();
     if (!email) return { success: false, error: 'Could not determine your email. Please make sure you are logged in.' };
 
+    // Server-side authorization: only admin can access All Submissions
+    if (!isAdmin_(email)) {
+      return { success: false, error: 'Admin access required for All Submissions.' };
+    }
+
     const { rows, headerMap } = getRequestMasterData_();
     const creatorEmailIdx = headerMap[STATUS_TRACKER_COLUMNS.CREATOR_EMAIL];
     const requestorEmailIdx = headerMap[STATUS_TRACKER_COLUMNS.REQUESTOR_EMAIL];
@@ -528,17 +533,31 @@ function submitCreatorResponse(payload) {
     const isUserAdmin = isAdmin_(email);
     let authorized = isUserAdmin;
     let currentActionStatus = '';
+    let creatorEmail = '';
+    let requestorEmail = '';
+
+    // Determine if this is a lifecycle response (needs stricter authorization)
+    const isLifecycleResponse = payload.type === 'lifecycle_response' ||
+                               (payload.action && ['Improve completion', 'Consider retirement'].indexOf(payload.action) !== -1);
 
     if (!authorized) {
       const targetNumber = String(payload.number).trim();
       for (let i = 0; i < rows.length; i++) {
         if (String(rows[i][numIdx] || '').trim() === targetNumber) {
-          const creatorEmail = creatorEmailIdx != null ? String(rows[i][creatorEmailIdx] || '').toLowerCase().trim() : '';
-          const requestorEmail = requestorEmailIdx != null ? String(rows[i][requestorEmailIdx] || '').toLowerCase().trim() : '';
+          creatorEmail = creatorEmailIdx != null ? String(rows[i][creatorEmailIdx] || '').toLowerCase().trim() : '';
+          requestorEmail = requestorEmailIdx != null ? String(rows[i][requestorEmailIdx] || '').toLowerCase().trim() : '';
           const userEmailLower = email.toLowerCase().trim();
 
-          if (creatorEmail === userEmailLower || requestorEmail === userEmailLower) {
-            authorized = true;
+          // Lifecycle responses: only creator (lifecycle owner) can respond
+          // Metadata edits: creator OR requestor (broader access for collaboration)
+          if (isLifecycleResponse) {
+            if (creatorEmail === userEmailLower) {
+              authorized = true;
+            }
+          } else {
+            if (creatorEmail === userEmailLower || requestorEmail === userEmailLower) {
+              authorized = true;
+            }
           }
 
           // Also read current Action Status for lock check
@@ -568,8 +587,6 @@ function submitCreatorResponse(payload) {
 
     // PENDING LOCK: If Action Status is "Pending Review", only admin can submit/overwrite
     // Creator must wait until admin moves it to "Resubmit" state
-    const isLifecycleResponse = payload.type === 'lifecycle_response' ||
-                               (payload.action && ['Improve completion', 'Consider retirement'].indexOf(payload.action) !== -1);
 
     if (isLifecycleResponse && currentActionStatus === 'Pending Review' && !isUserAdmin) {
       return { success: false, error: 'Response is pending admin review. You can resubmit after admin feedback.' };

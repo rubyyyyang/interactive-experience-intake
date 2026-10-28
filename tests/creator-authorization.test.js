@@ -33,12 +33,22 @@ function testCreatorAuthorization() {
       shouldAllow: true
     },
     {
-      name: 'Requestor can respond to their requested submission',
+      name: 'Requestor can respond to metadata edits on their requested submission',
       userEmail: 'requestor@example.com',
       submissionCreatorEmail: 'creator@example.com',
       submissionRequestorEmail: 'requestor@example.com',
       isAdmin: false,
+      isLifecycleResponse: false,
       shouldAllow: true
+    },
+    {
+      name: 'Requestor CANNOT respond to lifecycle decisions (creator-only)',
+      userEmail: 'requestor@example.com',
+      submissionCreatorEmail: 'creator@example.com',
+      submissionRequestorEmail: 'requestor@example.com',
+      isAdmin: false,
+      isLifecycleResponse: true,
+      shouldAllow: false
     }
   ];
 
@@ -121,6 +131,13 @@ function shouldAllowResponse(scenario) {
   // Authorization check
   if (scenario.isAdmin) return true;
   if (scenario.userEmail === scenario.submissionCreatorEmail) return true;
+
+  // Lifecycle responses: creator-only (requestor NOT allowed)
+  // Metadata edits: creator OR requestor
+  if (scenario.isLifecycleResponse) {
+    return false; // Already checked creator above
+  }
+
   if (scenario.submissionRequestorEmail && scenario.userEmail === scenario.submissionRequestorEmail) return true;
   return false;
 }

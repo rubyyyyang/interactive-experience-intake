@@ -1614,35 +1614,50 @@
       '' +
       '</div>';
 
-    // Left column: content info + audience + program
+    // Core metadata (always visible)
     detailHtml += '<div class="detail-section"><div class="detail-kv">';
     detailHtml += kvRow('Final Demo Title', sub.title, 'Final Demo Title');
     detailHtml += kvRow('Primary Product', sub.primaryProduct, 'Primary Product');
-    detailHtml += kvRow('Product', sub.otherProducts, 'Product');
     detailHtml += kvRow('Primary Topic', sub.primaryTopic, 'Primary Topic');
-    detailHtml += kvRow('Topic', sub.otherTopics, 'Topic');
-    detailHtml += kvRow('Content Type', sub.contentType, 'Content Type');
-    detailHtml += kvRow('Duration', sub.duration, 'Duration');
-    detailHtml += kvRow('Language', sub.language, 'Language');
-    detailHtml += kvRow('Quarter', sub.quarter, 'Quarter');
-    detailHtml += kvRow('Vertical', sub.vertical, 'Verticals');
-    detailHtml += kvRow('Event', sub.event, 'Event');
-    detailHtml += kvRow('Destination Channels', sub.destinationChannels, 'Destination Channels');
     detailHtml += kvRow('TDP', sub.tdp, 'TDP');
-    detailHtml += kvRow('Sales Tactic', sub.salesTactic, 'Sales Tactic');
-    detailHtml += kvRow('Marketing Program', sub.marketingProgram, 'Marketing Program');
-    detailHtml += kvRow('Primary Audience', sub.primaryAudience, 'Primary Audience');
-    detailHtml += kvRow('Personas', sub.personas, 'Personas');
-    detailHtml += kvRow('Pain Points', sub.painPoints, 'Pain Points');
-    detailHtml += kvRow('SEO Words', sub.seoWords, 'SEOWords');
-    detailHtml += kvRow('SEO Description', sub.descriptionForSeo, 'Description for SEO');
+    detailHtml += kvRow('Content Type', sub.contentType, 'Content Type');
     detailHtml += '</div></div>';
 
-    // Right column: people + technical
+    // Creator info (always visible)
     detailHtml += '<div class="detail-section"><div class="detail-kv">';
     detailHtml += kvRow('Creator', sub.creatorName, 'Creator Name');
     detailHtml += kvRow('Creator Team', sub.creatorTeam, 'Creator Team');
     detailHtml += '</div></div>';
+
+    // More metadata disclosure
+    detailHtml += '<div class="detail-section" style="grid-column: 1 / -1;">' +
+      '<button class="more-metadata-toggle" onclick="event.stopPropagation(); toggleMoreMetadata(\'' + sub.requestNumber + '\');" style="background:none;border:none;color:#1a73e8;cursor:pointer;font-size:0.85rem;padding:4px 0;display:flex;align-items:center;gap:4px;">' +
+        '<span id="more-toggle-icon-' + sub.requestNumber + '">▸</span> More metadata' +
+      '</button>' +
+      '<div id="more-metadata-' + sub.requestNumber + '" style="display:none;margin-top:8px;">' +
+        '<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">' +
+          '<div class="detail-kv">' +
+            kvRow('Product', sub.otherProducts, 'Product') +
+            kvRow('Topic', sub.otherTopics, 'Topic') +
+            kvRow('Duration', sub.duration, 'Duration') +
+            kvRow('Language', sub.language, 'Language') +
+            kvRow('Quarter', sub.quarter, 'Quarter') +
+            kvRow('Vertical', sub.vertical, 'Verticals') +
+            kvRow('Event', sub.event, 'Event') +
+            kvRow('Destination Channels', sub.destinationChannels, 'Destination Channels') +
+          '</div>' +
+          '<div class="detail-kv">' +
+            kvRow('Sales Tactic', sub.salesTactic, 'Sales Tactic') +
+            kvRow('Marketing Program', sub.marketingProgram, 'Marketing Program') +
+            kvRow('Primary Audience', sub.primaryAudience, 'Primary Audience') +
+            kvRow('Personas', sub.personas, 'Personas') +
+            kvRow('Pain Points', sub.painPoints, 'Pain Points') +
+            kvRow('SEO Words', sub.seoWords, 'SEOWords') +
+            kvRow('SEO Description', sub.descriptionForSeo, 'Description for SEO') +
+          '</div>' +
+        '</div>' +
+      '</div>' +
+    '</div>';
 
     // Description as full-width row inside grid
     var desc = sub.description || '';
@@ -1710,6 +1725,20 @@
       short.style.display = 'block';
       full.style.display = 'none';
       btn.textContent = 'Show more';
+    }
+  }
+
+  function toggleMoreMetadata(num) {
+    var content = document.getElementById('more-metadata-' + num);
+    var icon = document.getElementById('more-toggle-icon-' + num);
+    if (content && icon) {
+      if (content.style.display === 'none') {
+        content.style.display = 'block';
+        icon.textContent = '▾';
+      } else {
+        content.style.display = 'none';
+        icon.textContent = '▸';
+      }
     }
   }
 
