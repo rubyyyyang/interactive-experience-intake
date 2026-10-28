@@ -1225,15 +1225,8 @@
     // Group pre-publishing stages
     if (s === 'Received' || s === 'Approved') return 'In review';
 
-    // Show actual statuses for final stages
-    if (s === 'Submitted' || s === 'In review' || s === 'Published' || s === 'Demo Published' || s === 'Retired') {
-      return s;
-    }
-
-    // Closed maps to Retired for creator presentation
-    if (s === 'Closed') return 'Retired';
-
-    // Pass through other statuses unchanged
+    // Pass through actual statuses unchanged
+    // Show Retired only for actually retired content, not Closed
     return s;
   }
 
@@ -1312,14 +1305,17 @@
       return '<span class="rec-badge rec-retirement">Retirement review</span>';
     }
 
-    // "Performing well" = no action + positive flags
+    // "Performing well" = no action + positive flags + no conflicting negative evidence
     // CRITICAL: Only show when clear positive evidence exists, never for new/neutral content
+    // Exclude content with Low completion flag (new high-usage content that hasn't matured)
     if (action === 'No action needed') {
       var hasPositiveSignal = flags.indexOf('High usage') !== -1 ||
                             flags.indexOf('High engagement') !== -1 ||
                             flags.indexOf('High business impact') !== -1 ||
                             flags.indexOf('High-value niche') !== -1;
-      if (hasPositiveSignal) {
+      var hasLowCompletion = flags.indexOf('Low completion') !== -1;
+
+      if (hasPositiveSignal && !hasLowCompletion) {
         return '<span class="rec-badge rec-performing">Performing well</span>';
       }
     }

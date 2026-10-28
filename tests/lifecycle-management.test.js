@@ -36,16 +36,18 @@ function testRecommendationMapping() {
   console.log('✓ Recommendation mapping test passed\n');
 }
 
-// Test 2: "Performing well" requires positive flags (not signals)
+// Test 2: "Performing well" requires positive flags + no Low completion
 function testPerformingWellRequiresSignals() {
-  console.log('Test: "Performing well" only shown with positive flags');
+  console.log('Test: "Performing well" only shown with positive flags and no Low completion');
 
   const cases = [
     { flags: 'High usage', shouldShow: true },
     { flags: 'High engagement', shouldShow: true },
     { flags: 'High business impact', shouldShow: true },
     { flags: 'High-value niche', shouldShow: true },
-    { flags: 'High usage, Low completion', shouldShow: true }, // Mixed flags, has positive
+    { flags: 'High usage, Low completion', shouldShow: false }, // Conflicting evidence - exclude
+    { flags: 'High engagement, Low completion', shouldShow: false }, // Conflicting evidence - exclude
+    { flags: 'High business impact, Sporadic activity', shouldShow: true }, // Positive + non-completion flag OK
     { flags: '', shouldShow: false }, // No flags
     { flags: 'Low completion', shouldShow: false }, // Only negative
     { flags: 'Mature content', shouldShow: false }, // Not positive
@@ -56,7 +58,10 @@ function testPerformingWellRequiresSignals() {
                        c.flags.indexOf('High engagement') !== -1 ||
                        c.flags.indexOf('High business impact') !== -1 ||
                        c.flags.indexOf('High-value niche') !== -1;
-    assert.strictEqual(hasPositive, c.shouldShow,
+    const hasLowCompletion = c.flags.indexOf('Low completion') !== -1;
+    const shouldShow = hasPositive && !hasLowCompletion;
+
+    assert.strictEqual(shouldShow, c.shouldShow,
       `Flags "${c.flags}" should ${c.shouldShow ? '' : 'not '}show Performing well`);
   });
 
