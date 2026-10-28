@@ -584,7 +584,7 @@ function submitCreatorResponse(payload) {
           var masterSheet = getTargetSpreadsheet_().getSheetByName('Request_Master');
           for (var mi = 0; mi < masterData.rows.length; mi++) {
             if (String(masterData.rows[mi][numIdx] || '').trim() === String(payload.number)) {
-              masterSheet.getRange(mi + 2, actionStatusIdx + 1).setValue('Pending review');
+              masterSheet.getRange(mi + 2, actionStatusIdx + 1).setValue('Pending Review');
               break;
             }
           }
@@ -650,7 +650,7 @@ function approveResponse(queueRowIndex, adminNotes, metadataOverrides) {
 
       const actionStatusIdx = headerMap[STATUS_TRACKER_COLUMNS.ACTION_STATUS];
       if (actionStatusIdx != null) {
-        masterSheet.getRange(masterRow, actionStatusIdx + 1).setValue('Complete');
+        masterSheet.getRange(masterRow, actionStatusIdx + 1).setValue('Completed');
       }
 
       var completedDateIdx = headerMap[STATUS_TRACKER_COLUMNS.ACTION_COMPLETED_DATE];
@@ -761,7 +761,7 @@ function rejectResponse(queueRowIndex, adminNotes) {
           const masterSheet = getTargetSpreadsheet_().getSheetByName('Request_Master');
           for (let i = 0; i < rows.length; i++) {
             if (String(rows[i][numIdx] || '').trim() === number) {
-              masterSheet.getRange(i + 2, actionStatusIdx + 1).setValue('Resubmit required');
+              masterSheet.getRange(i + 2, actionStatusIdx + 1).setValue('Resubmit');
               break;
             }
           }

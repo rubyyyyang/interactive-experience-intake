@@ -155,6 +155,41 @@ function extractLastLine_(multiLineValue) {
   return '';
 }
 
+/**
+ * Normalize Action Status to canonical values.
+ * Migration-compatible: recognizes legacy spellings, returns canonical.
+ *
+ * Canonical values (new writes):
+ * - "Open"
+ * - "Pending Review"
+ * - "Completed"
+ * - "Resubmit"
+ *
+ * Legacy aliases (existing data):
+ * - "Pending review" → "Pending Review"
+ * - "Complete" → "Completed"
+ * - "Resubmit required" → "Resubmit"
+ */
+function normalizeActionStatus_(status) {
+  var s = String(status || '').trim();
+  if (!s) return '';
+
+  // Canonical values pass through unchanged
+  if (s === 'Open' || s === 'Pending Review' || s === 'Completed' || s === 'Resubmit') {
+    return s;
+  }
+
+  // Normalize legacy aliases
+  var lower = s.toLowerCase();
+  if (lower === 'pending review') return 'Pending Review';
+  if (lower === 'complete' || lower === 'completed') return 'Completed';
+  if (lower === 'resubmit' || lower === 'resubmit required') return 'Resubmit';
+  if (lower === 'open') return 'Open';
+
+  // Unknown value - return as-is (don't break on unexpected data)
+  return s;
+}
+
 const FIELD_OPTIONS = {
   contentTypes: [
     'Business Intro',
