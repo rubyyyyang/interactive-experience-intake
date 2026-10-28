@@ -1215,6 +1215,28 @@
     return 'status-' + s;
   }
 
+  function getCreatorFacingStatus(status) {
+    // Map backend statuses to creator-friendly lifecycle
+    // Backend: Submitted → Received → In review → Approved → Published → Retired → Closed
+    // Creator: Submitted → In review → Published (+ Retired only when actually retired)
+    if (!status) return status;
+    var s = status.trim();
+
+    // Group pre-publishing stages
+    if (s === 'Received' || s === 'Approved') return 'In review';
+
+    // Show actual statuses for final stages
+    if (s === 'Submitted' || s === 'In review' || s === 'Published' || s === 'Demo Published' || s === 'Retired') {
+      return s;
+    }
+
+    // Closed maps to Retired for creator presentation
+    if (s === 'Closed') return 'Retired';
+
+    // Pass through other statuses unchanged
+    return s;
+  }
+
   function formatDate(dateStr) {
     if (!dateStr) return '';
     try {
@@ -1275,7 +1297,7 @@
     if (sub.status !== 'Published' && sub.status !== 'Demo Published') return '';
 
     var action = sub.perfAction || '';
-    var signals = sub.perfSignals || '';
+    var flags = sub.perfFlags || '';
 
     // "Boost sales impact" is admin-owned, not shown to creators
     if (action === 'Boost sales impact') return '';
@@ -1290,13 +1312,13 @@
       return '<span class="rec-badge rec-retirement">Retirement review</span>';
     }
 
-    // "Performing well" = no action + positive signals
+    // "Performing well" = no action + positive flags
     // CRITICAL: Only show when clear positive evidence exists, never for new/neutral content
     if (action === 'No action needed') {
-      var hasPositiveSignal = signals.indexOf('High usage') !== -1 ||
-                            signals.indexOf('High engagement') !== -1 ||
-                            signals.indexOf('High business impact') !== -1 ||
-                            signals.indexOf('High-value niche') !== -1;
+      var hasPositiveSignal = flags.indexOf('High usage') !== -1 ||
+                            flags.indexOf('High engagement') !== -1 ||
+                            flags.indexOf('High business impact') !== -1 ||
+                            flags.indexOf('High-value niche') !== -1;
       if (hasPositiveSignal) {
         return '<span class="rec-badge rec-performing">Performing well</span>';
       }
@@ -1473,11 +1495,12 @@
 
       var recommendationHtml = getRecommendationLabel(sub);
 
+      var displayStatus = isAdmin ? sub.status : getCreatorFacingStatus(sub.status);
       tr.innerHTML =
         '<td class="title-cell">' + (isProcessing ? '' : '<span class="row-chevron">&#9654;</span>') + escapeHtml(sub.title || 'Untitled') + (/(?:youtu\.be|youtube\.com)/.test(sub.creationLink || sub.productionLink || '') ? ' <span style="font-size:0.65rem;padding:1px 5px;border-radius:3px;background:#f0f0f0;color:#666;vertical-align:middle;">Video Demo</span>' : ' <span style="font-size:0.65rem;padding:1px 5px;border-radius:3px;background:#f0f0f0;color:#666;vertical-align:middle;">Demo</span>') + '</td>' +
         '<td class="drupal-cell hide-mobile">' + drupalHtml + '</td>' +
         '<td class="creator-cell creator-col" title="' + escapeHtml(sub.creatorName || '') + '">' + escapeHtml(sub.creatorName || '—') + '</td>' +
-        '<td><span class="status-badge ' + getStatusClass(sub.status) + '">' + escapeHtml(sub.status || '—') + '</span></td>' +
+        '<td><span class="status-badge ' + getStatusClass(displayStatus) + '">' + escapeHtml(displayStatus || '—') + '</span></td>' +
         '<td class="recommendation-cell">' + recommendationHtml + '</td>' +
         '<td class="date-cell">' + formatDate(getDisplayDate(sub)) + '</td>';
 
@@ -2954,6 +2977,7 @@
     document.getElementById('mainView').style.display = 'none';
     document.getElementById('loadingState').style.display = 'none';
 
+    var displayStatus = isAdmin ? sub.status : getCreatorFacingStatus(sub.status);
     var view = document.getElementById('tokenView');
     view.style.display = 'block';
     view.innerHTML = '<div class="single-view">' +
@@ -2962,7 +2986,7 @@
         escapeHtml(sub.creatorName || '') +
         (sub.primaryProduct ? ' · ' + escapeHtml(sub.primaryProduct) : '') +
         (sub.dateSubmitted ? ' · Submitted ' + formatDate(sub.dateSubmitted) : '') +
-        ' · <span class="status-badge ' + getStatusClass(sub.status) + '">' + escapeHtml(sub.status || 'Unknown') + '</span>' +
+        ' · <span class="status-badge ' + getStatusClass(displayStatus) + '">' + escapeHtml(displayStatus || 'Unknown') + '</span>' +
       '</div>' +
       buildLifecycle(sub) +
       buildDetailSections(sub) +
