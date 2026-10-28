@@ -1781,7 +1781,62 @@
       return html;
     }
 
-    // Other action types handled in next task
+    // "Retirement review" = Consider retirement
+    if (action === 'Consider retirement') {
+      var bannerClass = 'action-needed';
+      var bannerTitle = 'RETIREMENT REVIEW';
+      var bannerDetail = 'This demo may need lifecycle confirmation. Please review and decide whether to keep it active or retire it.';
+
+      if (status === 'Pending review') {
+        bannerClass = 'response-pending';
+        bannerTitle = 'RESPONSE SUBMITTED';
+        bannerDetail = 'Your response is pending admin review. You cannot submit another response until admin provides feedback.';
+      } else if (status === 'Complete') {
+        bannerClass = 'action-complete';
+        bannerTitle = 'COMPLETED';
+        bannerDetail = 'Lifecycle decision completed and approved.';
+      } else if (status === 'Resubmit required') {
+        bannerClass = 'action-needed';
+        bannerTitle = 'MORE INFORMATION NEEDED';
+        bannerDetail = 'Admin has requested additional information. Please review feedback and resubmit.';
+      }
+
+      var html = '<div class="action-banner ' + bannerClass + '">' +
+        '<div class="banner-title">' + bannerTitle + '</div>' +
+        '<div class="banner-detail">' + escapeHtml(bannerDetail) + '</div>';
+
+      if (reason) {
+        html += '<div class="banner-reason">Reason: ' + escapeHtml(reason) + '</div>';
+      }
+
+      // Show response form only if action needed or resubmit required
+      if (status === 'Action needed' || status === 'Resubmit required') {
+        html += '<div class="response-form" id="response-form-' + num + '">' +
+          '<div class="form-row">' +
+            '<label>Your decision *</label>' +
+            '<select id="resp-sel-' + num + '" onclick="event.stopPropagation();">' +
+              '<option value="">Select...</option>' +
+              '<option value="Keep active">Keep active</option>' +
+              '<option value="Retire">Retire</option>' +
+              '<option value="Need help">I need help</option>' +
+            '</select>' +
+          '</div>' +
+          '<div style="font-size:0.75rem;color:#5f6368;margin-top:-6px;margin-bottom:12px;">Note: "Retire" is a recommendation. Admin approval is required before the demo is actually retired.</div>' +
+          '<div class="form-row">' +
+            '<label>Notes</label>' +
+            '<textarea id="resp-notes-' + num + '" placeholder="Why you made this decision..." onclick="event.stopPropagation();"></textarea>' +
+          '</div>' +
+          '<div class="form-actions">' +
+            '<button class="btn-primary" id="resp-btn-' + num + '" onclick="event.stopPropagation(); submitLifecycleResponse(\'' + num + '\', \'Consider retirement\');">Submit Decision</button>' +
+          '</div>' +
+        '</div>';
+      }
+
+      html += '</div>';
+      return html;
+    }
+
+    // No other action types for creators (Boost sales impact is admin-owned)
     return '';
   }
 
