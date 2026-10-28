@@ -1083,8 +1083,8 @@
   <div class="controls-bar">
     <div class="tabs">
       <button class="tab active" data-tab="my" onclick="switchTab('my')">My Submissions</button>
-      <button class="tab" data-tab="all" onclick="switchTab('all')">All Submissions</button>
-      <button class="tab" data-tab="reports" onclick="switchTab('reports')">Reports</button>
+      <button class="tab admin-only" data-tab="all" onclick="switchTab('all')" style="display:none;">All Submissions</button>
+      <button class="tab admin-only" data-tab="reports" onclick="switchTab('reports')" style="display:none;">Reports</button>
     </div>
     <div class="controls-right">
       <select id="statusFilter" onchange="onStatusFilterChange()">
@@ -2098,6 +2098,14 @@
           allSubmissions = result.submissions || [];
           userEmail = result.userEmail || '';
           isAdmin = result.isAdmin || false;
+
+          // Show admin-only tabs
+          if (isAdmin) {
+            document.querySelectorAll('.tab.admin-only').forEach(function(tab) {
+              tab.style.display = '';
+            });
+          }
+
           EDITABLE_FIELDS = result.editableFields || [];
           FIELD_OPTIONS_MAP = result.fieldOptions || {};
           document.querySelectorAll('.detail-row').forEach(function(r) { r.remove(); });
@@ -2409,6 +2417,12 @@
   // --- Controls ---
 
   function switchTab(tab) {
+    // Prevent non-admins from accessing admin tabs
+    if (!isAdmin && (tab === 'all' || tab === 'reports')) {
+      alert('Admin access required for this tab.');
+      return;
+    }
+
     trackEvent('status_tab_switch', { tab: tab });
     activeTab = tab;
     document.querySelectorAll('.tab').forEach(function(btn) {
@@ -2971,6 +2985,14 @@
           allSubmissions = result.submissions || [];
           userEmail = result.userEmail || '';
           isAdmin = result.isAdmin || false;
+
+          // Show admin-only tabs
+          if (isAdmin) {
+            document.querySelectorAll('.tab.admin-only').forEach(function(tab) {
+              tab.style.display = '';
+            });
+          }
+
           EDITABLE_FIELDS = result.editableFields || [];
           FIELD_OPTIONS_MAP = result.fieldOptions || {};
 
