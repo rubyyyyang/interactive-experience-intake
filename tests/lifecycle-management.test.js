@@ -36,28 +36,31 @@ function testRecommendationMapping() {
   console.log('✓ Recommendation mapping test passed\n');
 }
 
-// Test 2: "Performing well" requires positive signals
+// Test 2: "Performing well" requires positive flags (not signals)
 function testPerformingWellRequiresSignals() {
-  console.log('Test: "Performing well" only shown with positive signals');
+  console.log('Test: "Performing well" only shown with positive flags');
 
   const cases = [
-    { signals: 'High usage', flags: '', shouldShow: true },
-    { signals: 'High engagement', flags: '', shouldShow: true },
-    { signals: 'High business impact', flags: '', shouldShow: true },
-    { signals: '', flags: '', shouldShow: false }, // No signals
-    { signals: 'Mature content', flags: '', shouldShow: false }, // Not positive
+    { flags: 'High usage', shouldShow: true },
+    { flags: 'High engagement', shouldShow: true },
+    { flags: 'High business impact', shouldShow: true },
+    { flags: 'High-value niche', shouldShow: true },
+    { flags: 'High usage, Low completion', shouldShow: true }, // Mixed flags, has positive
+    { flags: '', shouldShow: false }, // No flags
+    { flags: 'Low completion', shouldShow: false }, // Only negative
+    { flags: 'Mature content', shouldShow: false }, // Not positive
   ];
 
   cases.forEach(c => {
-    const hasPositive = c.signals.indexOf('High usage') !== -1 ||
-                       c.signals.indexOf('High engagement') !== -1 ||
-                       c.signals.indexOf('High business impact') !== -1 ||
-                       c.signals.indexOf('High-value niche') !== -1;
+    const hasPositive = c.flags.indexOf('High usage') !== -1 ||
+                       c.flags.indexOf('High engagement') !== -1 ||
+                       c.flags.indexOf('High business impact') !== -1 ||
+                       c.flags.indexOf('High-value niche') !== -1;
     assert.strictEqual(hasPositive, c.shouldShow,
-      `Signals "${c.signals}" should ${c.shouldShow ? '' : 'not '}show Performing well`);
+      `Flags "${c.flags}" should ${c.shouldShow ? '' : 'not '}show Performing well`);
   });
 
-  console.log('✓ Performing well signal requirement test passed\n');
+  console.log('✓ Performing well flag requirement test passed\n');
 }
 
 // Test 3: Action Status compatibility
