@@ -1716,6 +1716,72 @@
   // --- Action banner & response form ---
 
   function buildActionBanner(sub) {
+    // Only show for creator-owned actions
+    if (!hasAction(sub) || !isCreatorAction(sub.perfAction)) return '';
+
+    var num = sub.requestNumber;
+    var action = sub.perfAction;
+    var reason = sub.perfActionReason || '';
+    var status = getResponseStatus_(sub);
+
+    // "Update needed" = Improve completion
+    if (action === 'Improve completion') {
+      var bannerClass = 'action-needed';
+      var bannerTitle = 'UPDATE NEEDED';
+      var bannerDetail = 'This demo needs content improvements to increase completion rate.';
+
+      if (status === 'Pending review') {
+        bannerClass = 'response-pending';
+        bannerTitle = 'RESPONSE SUBMITTED';
+        bannerDetail = 'Your response is pending admin review. You cannot submit another response until admin provides feedback.';
+      } else if (status === 'Complete') {
+        bannerClass = 'action-complete';
+        bannerTitle = 'COMPLETED';
+        bannerDetail = 'Update completed and approved.';
+      } else if (status === 'Resubmit required') {
+        bannerClass = 'action-needed';
+        bannerTitle = 'MORE INFORMATION NEEDED';
+        bannerDetail = 'Admin has requested additional information. Please review feedback and resubmit.';
+      }
+
+      var html = '<div class="action-banner ' + bannerClass + '">' +
+        '<div class="banner-title">' + bannerTitle + '</div>' +
+        '<div class="banner-detail">' + escapeHtml(bannerDetail) + '</div>';
+
+      if (reason) {
+        html += '<div class="banner-reason">Reason: ' + escapeHtml(reason) + '</div>';
+      }
+
+      // Show response form only if action needed or resubmit required
+      if (status === 'Action needed' || status === 'Resubmit required') {
+        html += '<div class="response-form" id="response-form-' + num + '">' +
+          '<div class="form-row">' +
+            '<label>Your response *</label>' +
+            '<select id="resp-sel-' + num + '" onclick="event.stopPropagation();">' +
+              '<option value="">Select...</option>' +
+              '<option value="Updated">I\'ve updated it</option>' +
+              '<option value="Need help">I need help</option>' +
+            '</select>' +
+          '</div>' +
+          '<div class="form-row">' +
+            '<label>New Creation / Version Link</label>' +
+            '<input type="url" id="resp-link-' + num + '" placeholder="https://app.arcade.software/share/..." onclick="event.stopPropagation();">' +
+          '</div>' +
+          '<div class="form-row">' +
+            '<label>Notes</label>' +
+            '<textarea id="resp-notes-' + num + '" placeholder="Describe what you changed..." onclick="event.stopPropagation();"></textarea>' +
+          '</div>' +
+          '<div class="form-actions">' +
+            '<button class="btn-primary" id="resp-btn-' + num + '" onclick="event.stopPropagation(); submitLifecycleResponse(\'' + num + '\', \'Improve completion\');">Submit Response</button>' +
+          '</div>' +
+        '</div>';
+      }
+
+      html += '</div>';
+      return html;
+    }
+
+    // Other action types handled in next task
     return '';
   }
 
@@ -1746,6 +1812,47 @@
   function showResponseForm(num) {
     var form = document.getElementById('response-form-' + num);
     if (form) form.style.display = form.style.display === 'none' ? 'block' : 'none';
+  }
+
+  function submitLifecycleResponse(num, action) {
+    var sub = allSubmissions.find(function(s) { return s.requestNumber === num; });
+    if (!sub) return;
+
+    var response = document.getElementById('resp-sel-' + num).value;
+    if (!response) {
+      alert('Please select a response.');
+      return;
+    }
+
+    var payload = {
+      number: num,
+      title: sub.title || '',
+      type: 'lifecycle_response',
+      action: action,
+      response: response,
+      newLink: (document.getElementById('resp-link-' + num) || {}).value || '',
+      notes: (document.getElementById('resp-notes-' + num) || {}).value || '',
+      metadataChanges: {}
+    };
+
+    var btn = document.getElementById('resp-btn-' + num);
+    if (btn) { btn.disabled = true; btn.textContent = 'Submitting...'; }
+
+    google.script.run
+      .withSuccessHandler(function(result) {
+        if (result.success) {
+          showToast('Response submitted for #' + num);
+          reloadSubmissions();
+        } else {
+          alert('Error: ' + result.error);
+          if (btn) { btn.disabled = false; btn.textContent = 'Submit Response'; }
+        }
+      })
+      .withFailureHandler(function(err) {
+        alert('Failed: ' + (err.message || err));
+        if (btn) { btn.disabled = false; btn.textContent = 'Submit Response'; }
+      })
+      .submitCreatorResponse(payload);
   }
 
   function submitActionResponse(num) {
