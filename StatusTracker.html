@@ -186,6 +186,33 @@
       background: #f1f3f4;
       color: #3c4043;
     }
+
+    /* Recommendation badges */
+    .rec-badge {
+      display: inline-block;
+      padding: 3px 10px;
+      border-radius: 12px;
+      font-size: 0.75rem;
+      font-weight: 500;
+      white-space: nowrap;
+    }
+
+    .rec-performing {
+      background: #e6f4ea;
+      color: #137333;
+    }
+
+    .rec-update {
+      background: #fef7e0;
+      color: #b06000;
+      border: 1px solid #f9d67a;
+    }
+
+    .rec-retirement {
+      background: #fce8e6;
+      color: #c5221f;
+      border: 1px solid #f28b82;
+    }
     .status-badge::before {
       content: '';
       display: inline-block;
@@ -1082,11 +1109,12 @@
     <table>
       <thead>
         <tr>
-          <th class="sortable" data-sort="title" onclick="onSortClick('title')" style="width:38%;">Title</th>
+          <th class="sortable" data-sort="title" onclick="onSortClick('title')" style="width:30%;">Title</th>
           <th class="hide-mobile" style="width:8%;">Live Page</th>
-          <th class="sortable" data-sort="creatorName" onclick="onSortClick('creatorName')" style="width:22%;">Creator</th>
-          <th class="sortable" data-sort="status" onclick="onSortClick('status')" style="width:16%;">Status</th>
-          <th class="sortable sort-desc" data-sort="dateSubmitted" onclick="onSortClick('dateSubmitted')" style="width:16%;">Submitted</th>
+          <th id="creatorHeader" class="sortable creator-col" data-sort="creatorName" onclick="onSortClick('creatorName')" style="width:18%;">Creator</th>
+          <th class="sortable" data-sort="status" onclick="onSortClick('status')" style="width:14%;">Status</th>
+          <th class="sortable" data-sort="recommendation" onclick="onSortClick('recommendation')" style="width:18%;">Recommendation</th>
+          <th class="sortable sort-desc" data-sort="dateSubmitted" onclick="onSortClick('dateSubmitted')" style="width:12%;">Submitted</th>
         </tr>
       </thead>
       <tbody id="tableBody"></tbody>
@@ -1242,8 +1270,44 @@
     return '';
   }
 
-  var CREATOR_ACTIONS = ['Improve completion', 'Boost sales impact', 'Consider retirement'];
-  var ADMIN_ACTIONS = ['Review data linkage', 'Create page', 'Increase visibility', 'Needs review'];
+  function getRecommendationLabel(sub) {
+    // Only show labels for published content with recommendations
+    if (sub.status !== 'Published' && sub.status !== 'Demo Published') return '';
+
+    var action = sub.perfAction || '';
+    var signals = sub.perfSignals || '';
+
+    // "Boost sales impact" is admin-owned, not shown to creators
+    if (action === 'Boost sales impact') return '';
+
+    // "Update needed" = Improve completion (creator action)
+    if (action === 'Improve completion') {
+      return '<span class="rec-badge rec-update">Update needed</span>';
+    }
+
+    // "Retirement review" = Consider retirement (creator decision)
+    if (action === 'Consider retirement') {
+      return '<span class="rec-badge rec-retirement">Retirement review</span>';
+    }
+
+    // "Performing well" = no action + positive signals
+    // CRITICAL: Only show when clear positive evidence exists, never for new/neutral content
+    if (action === 'No action needed') {
+      var hasPositiveSignal = signals.indexOf('High usage') !== -1 ||
+                            signals.indexOf('High engagement') !== -1 ||
+                            signals.indexOf('High business impact') !== -1 ||
+                            signals.indexOf('High-value niche') !== -1;
+      if (hasPositiveSignal) {
+        return '<span class="rec-badge rec-performing">Performing well</span>';
+      }
+    }
+
+    // No label for new content, insufficient data, neutral performance
+    return '';
+  }
+
+  var CREATOR_ACTIONS = ['Improve completion', 'Consider retirement'];
+  var ADMIN_ACTIONS = ['Review data linkage', 'Create page', 'Increase visibility', 'Needs review', 'Boost sales impact'];
 
   function isCreatorAction(action) {
     return action && CREATOR_ACTIONS.indexOf(action) !== -1;
@@ -1407,11 +1471,14 @@
           '</div>';
       }
 
+      var recommendationHtml = getRecommendationLabel(sub);
+
       tr.innerHTML =
         '<td class="title-cell">' + (isProcessing ? '' : '<span class="row-chevron">&#9654;</span>') + escapeHtml(sub.title || 'Untitled') + (/(?:youtu\.be|youtube\.com)/.test(sub.creationLink || sub.productionLink || '') ? ' <span style="font-size:0.65rem;padding:1px 5px;border-radius:3px;background:#f0f0f0;color:#666;vertical-align:middle;">Video Demo</span>' : ' <span style="font-size:0.65rem;padding:1px 5px;border-radius:3px;background:#f0f0f0;color:#666;vertical-align:middle;">Demo</span>') + '</td>' +
         '<td class="drupal-cell hide-mobile">' + drupalHtml + '</td>' +
-        '<td class="creator-cell" title="' + escapeHtml(sub.creatorName || '') + '">' + escapeHtml(sub.creatorName || '—') + '</td>' +
+        '<td class="creator-cell creator-col" title="' + escapeHtml(sub.creatorName || '') + '">' + escapeHtml(sub.creatorName || '—') + '</td>' +
         '<td><span class="status-badge ' + getStatusClass(sub.status) + '">' + escapeHtml(sub.status || '—') + '</span></td>' +
+        '<td class="recommendation-cell">' + recommendationHtml + '</td>' +
         '<td class="date-cell">' + formatDate(getDisplayDate(sub)) + '</td>';
 
       if (!isProcessing) {
@@ -2185,6 +2252,17 @@
     document.querySelectorAll('.tab').forEach(function(btn) {
       btn.classList.toggle('active', btn.getAttribute('data-tab') === tab);
     });
+
+    // Show/hide Creator column based on tab
+    var creatorHeader = document.getElementById('creatorHeader');
+    var creatorCells = document.querySelectorAll('.creator-col');
+    if (tab === 'my') {
+      if (creatorHeader) creatorHeader.style.display = 'none';
+      creatorCells.forEach(function(cell) { cell.style.display = 'none'; });
+    } else {
+      if (creatorHeader) creatorHeader.style.display = '';
+      creatorCells.forEach(function(cell) { cell.style.display = ''; });
+    }
 
     var isReports = tab === 'reports';
     document.getElementById('tableWrapper').style.display = isReports ? 'none' : '';
