@@ -516,6 +516,65 @@ function submitCreatorResponse(payload) {
       return { success: false, error: 'Missing required fields.' };
     }
 
+    // Authorization and pending lock checks
+    const { rows, headerMap } = getRequestMasterData_();
+    const numIdx = headerMap[STATUS_TRACKER_COLUMNS.NUMBER];
+    const creatorEmailIdx = headerMap[STATUS_TRACKER_COLUMNS.CREATOR_EMAIL];
+    const requestorEmailIdx = headerMap[STATUS_TRACKER_COLUMNS.REQUESTOR_EMAIL];
+    const actionStatusIdx = headerMap[STATUS_TRACKER_COLUMNS.ACTION_STATUS];
+
+    if (numIdx == null) return { success: false, error: 'Configuration error.' };
+
+    const isUserAdmin = isAdmin_(email);
+    let authorized = isUserAdmin;
+    let currentActionStatus = '';
+
+    if (!authorized) {
+      const targetNumber = String(payload.number).trim();
+      for (let i = 0; i < rows.length; i++) {
+        if (String(rows[i][numIdx] || '').trim() === targetNumber) {
+          const creatorEmail = creatorEmailIdx != null ? String(rows[i][creatorEmailIdx] || '').toLowerCase().trim() : '';
+          const requestorEmail = requestorEmailIdx != null ? String(rows[i][requestorEmailIdx] || '').toLowerCase().trim() : '';
+          const userEmailLower = email.toLowerCase().trim();
+
+          if (creatorEmail === userEmailLower || requestorEmail === userEmailLower) {
+            authorized = true;
+          }
+
+          // Also read current Action Status for lock check
+          if (actionStatusIdx != null) {
+            currentActionStatus = normalizeActionStatus_(String(rows[i][actionStatusIdx] || '').trim());
+          }
+
+          break;
+        }
+      }
+    } else {
+      // Admin is authorized, but still need to read current status for context
+      const targetNumber = String(payload.number).trim();
+      for (let i = 0; i < rows.length; i++) {
+        if (String(rows[i][numIdx] || '').trim() === targetNumber) {
+          if (actionStatusIdx != null) {
+            currentActionStatus = normalizeActionStatus_(String(rows[i][actionStatusIdx] || '').trim());
+          }
+          break;
+        }
+      }
+    }
+
+    if (!authorized) {
+      return { success: false, error: 'Not authorized to respond to this submission.' };
+    }
+
+    // PENDING LOCK: If Action Status is "Pending Review", only admin can submit/overwrite
+    // Creator must wait until admin moves it to "Resubmit" state
+    const isLifecycleResponse = payload.type === 'lifecycle_response' ||
+                               (payload.action && ['Improve completion', 'Consider retirement'].indexOf(payload.action) !== -1);
+
+    if (isLifecycleResponse && currentActionStatus === 'Pending Review' && !isUserAdmin) {
+      return { success: false, error: 'Response is pending admin review. You can resubmit after admin feedback.' };
+    }
+
     const hasResponse = payload.response && ['Done', 'Declined', 'Need help'].indexOf(payload.response) !== -1;
     const hasMetadata = payload.metadataChanges && typeof payload.metadataChanges === 'object'
       && Object.keys(payload.metadataChanges).length > 0;
@@ -525,8 +584,13 @@ function submitCreatorResponse(payload) {
     }
 
     let type = 'response';
-    if (hasResponse && hasMetadata) type = 'response+metadata';
-    else if (hasMetadata && !hasResponse) type = 'metadata_edit';
+    if (payload.type === 'lifecycle_response') {
+      type = 'lifecycle_response';
+    } else if (hasResponse && hasMetadata) {
+      type = 'response+metadata';
+    } else if (hasMetadata && !hasResponse) {
+      type = 'metadata_edit';
+    }
 
     const metadataJson = hasMetadata ? JSON.stringify(payload.metadataChanges) : '';
 
