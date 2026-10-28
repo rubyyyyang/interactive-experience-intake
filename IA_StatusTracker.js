@@ -666,13 +666,13 @@ function submitCreatorResponse(payload) {
 
       try {
         var masterData = getRequestMasterData_();
-        var numIdx = masterData.headerMap[STATUS_TRACKER_COLUMNS.NUMBER];
-        var actionStatusIdx = masterData.headerMap[STATUS_TRACKER_COLUMNS.ACTION_STATUS];
-        if (numIdx != null && actionStatusIdx != null) {
+        var masterNumIdx = masterData.headerMap[STATUS_TRACKER_COLUMNS.NUMBER];
+        var masterActionStatusIdx = masterData.headerMap[STATUS_TRACKER_COLUMNS.ACTION_STATUS];
+        if (masterNumIdx != null && masterActionStatusIdx != null) {
           var masterSheet = getTargetSpreadsheet_().getSheetByName('Request_Master');
           for (var mi = 0; mi < masterData.rows.length; mi++) {
-            if (String(masterData.rows[mi][numIdx] || '').trim() === String(payload.number)) {
-              masterSheet.getRange(mi + 2, actionStatusIdx + 1).setValue('Pending Review');
+            if (String(masterData.rows[mi][masterNumIdx] || '').trim() === String(payload.number)) {
+              masterSheet.getRange(mi + 2, masterActionStatusIdx + 1).setValue('Pending Review');
               break;
             }
           }
