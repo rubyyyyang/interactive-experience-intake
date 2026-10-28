@@ -270,7 +270,14 @@ function getMySubmissions(searchName) {
       return dateB - dateA;
     });
 
-    return { success: true, submissions, isAdmin: admin };
+    // Mark submissions as "mine" for frontend filtering
+    for (let s = 0; s < submissions.length; s++) {
+      const ce = submissions[s].creatorEmail ? submissions[s].creatorEmail.toLowerCase() : '';
+      const re = submissions[s].requestorEmail ? submissions[s].requestorEmail.toLowerCase() : '';
+      submissions[s].isMine = (ce === lowerEmail || re === lowerEmail);
+    }
+
+    return { success: true, submissions, userEmail: lowerEmail, isAdmin: admin, editableFields: EDITABLE_METADATA_FIELDS_, fieldOptions: FIELD_OPTIONS };
   } catch (e) {
     return { success: false, error: e.message || String(e) };
   }

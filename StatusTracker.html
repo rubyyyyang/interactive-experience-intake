@@ -2143,7 +2143,7 @@
         }
       })
       .withFailureHandler(function() {})
-      .getAllSubmissions();
+      .getMySubmissions();
   }
 
   function promptFeedback() {
@@ -3035,7 +3035,7 @@
       .withFailureHandler(function(err) {
         showError(err && err.message ? err.message : String(err));
       })
-      .getAllSubmissions();
+      .getMySubmissions();
   }
 </script>
 </body>
