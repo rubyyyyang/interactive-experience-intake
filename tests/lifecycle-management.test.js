@@ -12,60 +12,57 @@ function testRecommendationMapping() {
   console.log('Test: Recommendation label mapping');
 
   const mappings = [
-    { action: 'Improve completion', expected: 'Update needed' },
-    { action: 'Consider retirement', expected: 'Retirement review' },
-    { action: 'Boost sales impact', expected: '' }, // Hidden from creators
-    { action: 'No action needed', signals: 'High usage', expected: 'Performing well' },
-    { action: 'No action needed', signals: '', expected: '' }, // No label for neutral
-    { action: '', signals: '', expected: '' } // New/insufficient data
+    { action: 'Improve completion', tier: 'Top', expected: 'Update needed' }, // Action takes precedence
+    { action: 'Improve completion', tier: 'Mid', expected: 'Update needed' },
+    { action: 'Consider retirement', tier: 'Low', expected: 'Retirement review' },
+    { action: 'Boost sales impact', tier: 'Top', expected: '' }, // Hidden from creators
+    { action: 'No action needed', tier: 'Top', expected: 'Top performer' }, // Top tier
+    { action: 'No action needed', tier: 'Mid', expected: '' }, // No label for Mid
+    { action: 'No action needed', tier: 'Low', expected: '' }, // No label for Low
+    { action: 'No action needed', tier: 'Inactive', expected: '' }, // No label for Inactive
+    { action: 'No action needed', tier: '', expected: '' }, // No label for missing tier
+    { action: '', tier: '', expected: '' } // New/insufficient data
   ];
 
   mappings.forEach(m => {
     let label = '';
-    if (m.action === 'Improve completion') label = 'Update needed';
+    if (m.action === 'Boost sales impact') label = '';
+    else if (m.action === 'Improve completion') label = 'Update needed';
     else if (m.action === 'Consider retirement') label = 'Retirement review';
-    else if (m.action === 'Boost sales impact') label = '';
-    else if (m.action === 'No action needed' && m.signals && m.signals.indexOf('High') !== -1) {
-      label = 'Performing well';
-    }
+    else if (m.tier === 'Top') label = 'Top performer';
 
     assert.strictEqual(label, m.expected,
-      `Failed: ${m.action} with signals "${m.signals}" should map to "${m.expected}"`);
+      `Failed: action="${m.action}" tier="${m.tier}" should map to "${m.expected}"`);
   });
 
   console.log('✓ Recommendation mapping test passed\n');
 }
 
-// Test 2: "Performing well" requires positive flags + no Low completion
+// Test 2: "Top performer" uses Performance Tier (not custom flags)
 function testPerformingWellRequiresSignals() {
-  console.log('Test: "Performing well" only shown with positive flags and no Low completion');
+  console.log('Test: "Top performer" shown only for Top tier');
 
   const cases = [
-    { flags: 'High usage', shouldShow: true },
-    { flags: 'High engagement', shouldShow: true },
-    { flags: 'High business impact', shouldShow: true },
-    { flags: 'High-value niche', shouldShow: true },
-    { flags: 'High usage, Low completion', shouldShow: false }, // Conflicting evidence - exclude
-    { flags: 'High engagement, Low completion', shouldShow: false }, // Conflicting evidence - exclude
-    { flags: 'High business impact, Sporadic activity', shouldShow: true }, // Positive + non-completion flag OK
-    { flags: '', shouldShow: false }, // No flags
-    { flags: 'Low completion', shouldShow: false }, // Only negative
-    { flags: 'Mature content', shouldShow: false }, // Not positive
+    { tier: 'Top', action: 'No action needed', shouldShow: true },
+    { tier: 'Mid', action: 'No action needed', shouldShow: false },
+    { tier: 'Low', action: 'No action needed', shouldShow: false },
+    { tier: 'Inactive', action: 'No action needed', shouldShow: false },
+    { tier: '', action: 'No action needed', shouldShow: false },
+    { tier: 'Top', action: 'Improve completion', shouldShow: false }, // Action takes precedence
   ];
 
   cases.forEach(c => {
-    const hasPositive = c.flags.indexOf('High usage') !== -1 ||
-                       c.flags.indexOf('High engagement') !== -1 ||
-                       c.flags.indexOf('High business impact') !== -1 ||
-                       c.flags.indexOf('High-value niche') !== -1;
-    const hasLowCompletion = c.flags.indexOf('Low completion') !== -1;
-    const shouldShow = hasPositive && !hasLowCompletion;
+    // Reuse existing Performance Tier (score >= 70 = Top)
+    const shouldShow = c.tier === 'Top' &&
+                      c.action !== 'Improve completion' &&
+                      c.action !== 'Consider retirement' &&
+                      c.action !== 'Boost sales impact';
 
     assert.strictEqual(shouldShow, c.shouldShow,
-      `Flags "${c.flags}" should ${c.shouldShow ? '' : 'not '}show Performing well`);
+      `Tier "${c.tier}" with action "${c.action}" should ${c.shouldShow ? '' : 'not '}show Top performer`);
   });
 
-  console.log('✓ Performing well flag requirement test passed\n');
+  console.log('✓ Top performer tier requirement test passed\n');
 }
 
 // Test 3: Action Status compatibility

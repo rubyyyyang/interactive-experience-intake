@@ -1290,11 +1290,12 @@
     if (sub.status !== 'Published' && sub.status !== 'Demo Published') return '';
 
     var action = sub.perfAction || '';
-    var flags = sub.perfFlags || '';
+    var tier = sub.perfTier || '';
 
     // "Boost sales impact" is admin-owned, not shown to creators
     if (action === 'Boost sales impact') return '';
 
+    // Creator-required actions take precedence over tier
     // "Update needed" = Improve completion (creator action)
     if (action === 'Improve completion') {
       return '<span class="rec-badge rec-update">Update needed</span>';
@@ -1305,22 +1306,13 @@
       return '<span class="rec-badge rec-retirement">Retirement review</span>';
     }
 
-    // "Performing well" = no action + positive flags + no conflicting negative evidence
-    // CRITICAL: Only show when clear positive evidence exists, never for new/neutral content
-    // Exclude content with Low completion flag (new high-usage content that hasn't matured)
-    if (action === 'No action needed') {
-      var hasPositiveSignal = flags.indexOf('High usage') !== -1 ||
-                            flags.indexOf('High engagement') !== -1 ||
-                            flags.indexOf('High business impact') !== -1 ||
-                            flags.indexOf('High-value niche') !== -1;
-      var hasLowCompletion = flags.indexOf('Low completion') !== -1;
-
-      if (hasPositiveSignal && !hasLowCompletion) {
-        return '<span class="rec-badge rec-performing">Performing well</span>';
-      }
+    // "Top performer" = no creator-required action + Top tier
+    // Reuses existing performance framework (score >= 70)
+    if (tier === 'Top') {
+      return '<span class="rec-badge rec-performing">Top performer</span>';
     }
 
-    // No label for new content, insufficient data, neutral performance
+    // Mid / Low / Inactive / insufficient data → no label
     return '';
   }
 
