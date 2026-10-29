@@ -595,7 +595,7 @@ function submitCreatorResponse(payload) {
     // PENDING LOCK: If Action Status is "Pending Review", only admin can submit/overwrite
     // Creator must wait until admin moves it to "Resubmit" state
 
-    if (isLifecycleResponse && currentActionStatus === 'Pending Review' && !isUserAdmin) {
+    if (isLifecycleResponse && currentActionStatus === 'Pending review' && !isUserAdmin) {
       return { success: false, error: 'Response is pending admin review. You can resubmit after admin feedback.' };
     }
 
@@ -688,7 +688,7 @@ function submitCreatorResponse(payload) {
           var masterSheet = getTargetSpreadsheet_().getSheetByName('Request_Master');
           for (var mi = 0; mi < masterData.rows.length; mi++) {
             if (String(masterData.rows[mi][masterNumIdx] || '').trim() === String(payload.number)) {
-              masterSheet.getRange(mi + 2, masterActionStatusIdx + 1).setValue('Pending Review');
+              masterSheet.getRange(mi + 2, masterActionStatusIdx + 1).setValue('Pending review');
               break;
             }
           }
@@ -754,7 +754,7 @@ function approveResponse(queueRowIndex, adminNotes, metadataOverrides) {
 
       const actionStatusIdx = headerMap[STATUS_TRACKER_COLUMNS.ACTION_STATUS];
       if (actionStatusIdx != null) {
-        masterSheet.getRange(masterRow, actionStatusIdx + 1).setValue('Completed');
+        masterSheet.getRange(masterRow, actionStatusIdx + 1).setValue('Complete');
       }
 
       var completedDateIdx = headerMap[STATUS_TRACKER_COLUMNS.ACTION_COMPLETED_DATE];
@@ -865,7 +865,7 @@ function rejectResponse(queueRowIndex, adminNotes) {
           const masterSheet = getTargetSpreadsheet_().getSheetByName('Request_Master');
           for (let i = 0; i < rows.length; i++) {
             if (String(rows[i][numIdx] || '').trim() === number) {
-              masterSheet.getRange(i + 2, actionStatusIdx + 1).setValue('Resubmit');
+              masterSheet.getRange(i + 2, actionStatusIdx + 1).setValue('Resubmit required');
               break;
             }
           }

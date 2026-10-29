@@ -174,17 +174,22 @@ function normalizeActionStatus_(status) {
   var s = String(status || '').trim();
   if (!s) return '';
 
-  // Canonical values pass through unchanged
-  if (s === 'Open' || s === 'Pending Review' || s === 'Completed' || s === 'Resubmit') {
+  // Sheet-native canonical values pass through unchanged
+  if (s === 'Action needed' || s === 'Assignee notified' || s === 'Assignee responded' ||
+      s === 'Pending review' || s === 'Complete' || s === 'Resubmit required') {
     return s;
   }
 
-  // Normalize legacy aliases
+  // Normalize aliases to Sheet-native values
   var lower = s.toLowerCase();
-  if (lower === 'pending review') return 'Pending Review';
-  if (lower === 'complete' || lower === 'completed') return 'Completed';
-  if (lower === 'resubmit' || lower === 'resubmit required') return 'Resubmit';
-  if (lower === 'open') return 'Open';
+  if (lower === 'open') return 'Action needed';
+  if (lower === 'pending review') return 'Pending review';
+  if (lower === 'completed' || lower === 'complete') return 'Complete';
+  if (lower === 'resubmit') return 'Resubmit required';
+  if (lower === 'action needed') return 'Action needed';
+  if (lower === 'assignee notified') return 'Assignee notified';
+  if (lower === 'assignee responded') return 'Assignee responded';
+  if (lower === 'resubmit required') return 'Resubmit required';
 
   // Unknown value - return as-is (don't break on unexpected data)
   return s;

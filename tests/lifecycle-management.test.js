@@ -65,26 +65,26 @@ function testPerformingWellRequiresSignals() {
   console.log('✓ Top performer tier requirement test passed\n');
 }
 
-// Test 3: Action Status compatibility
+// Test 3: Action Status Sheet-native values
 function testActionStatusCompatibility() {
-  console.log('Test: Action Status values compatible with Hub');
+  console.log('Test: Action Status uses Sheet-native values');
 
-  const CANONICAL = {
-    PENDING: 'Pending Review',
-    COMPLETED: 'Completed',
-    RESUBMIT: 'Resubmit',
-    OPEN: 'Open'
+  const SHEET_NATIVE = {
+    ACTION_NEEDED: 'Action needed',
+    PENDING_REVIEW: 'Pending review',
+    COMPLETE: 'Complete',
+    RESUBMIT_REQUIRED: 'Resubmit required',
+    ASSIGNEE_NOTIFIED: 'Assignee notified',
+    ASSIGNEE_RESPONDED: 'Assignee responded'
   };
 
-  // Verify canonical values (not lowercase variants)
-  assert.strictEqual(CANONICAL.PENDING, 'Pending Review', 'Title case required');
-  assert.notStrictEqual(CANONICAL.PENDING, 'Pending review', 'Not lowercase');
-  assert.strictEqual(CANONICAL.COMPLETED, 'Completed', 'Full word required');
-  assert.notStrictEqual(CANONICAL.COMPLETED, 'Complete', 'Not abbreviated');
-  assert.strictEqual(CANONICAL.RESUBMIT, 'Resubmit', 'Simple form required');
-  assert.notStrictEqual(CANONICAL.RESUBMIT, 'Resubmit required', 'Not verbose');
+  // Verify Sheet-native canonical values (must match Sheet data validation)
+  assert.strictEqual(SHEET_NATIVE.ACTION_NEEDED, 'Action needed', 'Sheet-native initial state');
+  assert.strictEqual(SHEET_NATIVE.PENDING_REVIEW, 'Pending review', 'Sheet-native pending state');
+  assert.strictEqual(SHEET_NATIVE.COMPLETE, 'Complete', 'Sheet-native complete state');
+  assert.strictEqual(SHEET_NATIVE.RESUBMIT_REQUIRED, 'Resubmit required', 'Sheet-native resubmit state');
 
-  console.log('✓ Action Status compatibility test passed\n');
+  console.log('✓ Action Status Sheet-native values test passed\n');
 }
 
 // Test 4: Boost sales impact not shown to creators
