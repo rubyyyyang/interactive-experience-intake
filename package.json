@@ -7,7 +7,7 @@
     "doc": "docs"
   },
   "scripts": {
-    "test": "node tests/schema.test.js && node tests/lifecycle-management.test.js && node tests/action-status-vocabulary.test.js && node tests/creator-authorization.test.js && node tests/data-scope.test.js",
+    "test": "node tests/schema.test.js && node tests/lifecycle-management.test.js && node tests/action-status-vocabulary.test.js && node tests/creator-authorization.test.js && node tests/data-scope.test.js && node tests/lifecycle-response-validation.test.js",
     "test:smoke": "playwright test tests/smoke.spec.ts",
     "test:auth-setup": "node playwright/auth.setup.mjs"
   },

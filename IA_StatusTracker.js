@@ -599,7 +599,23 @@ function submitCreatorResponse(payload) {
       return { success: false, error: 'Response is pending admin review. You can resubmit after admin feedback.' };
     }
 
-    const hasResponse = payload.response && ['Done', 'Declined', 'Need help'].indexOf(payload.response) !== -1;
+    // Validate response based on type
+    let hasResponse = false;
+    if (payload.response) {
+      if (isLifecycleResponse) {
+        // Lifecycle responses: validate based on action
+        const lifecycleValues = payload.action === 'Improve completion'
+          ? ['Updated', 'Need help']
+          : payload.action === 'Consider retirement'
+            ? ['Keep active', 'Retire', 'Need help']
+            : [];
+        hasResponse = lifecycleValues.indexOf(payload.response) !== -1;
+      } else {
+        // Legacy non-lifecycle responses
+        hasResponse = ['Done', 'Declined', 'Need help'].indexOf(payload.response) !== -1;
+      }
+    }
+
     const hasMetadata = payload.metadataChanges && typeof payload.metadataChanges === 'object'
       && Object.keys(payload.metadataChanges).length > 0;
 
