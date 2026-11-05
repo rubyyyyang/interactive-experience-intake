@@ -72,6 +72,12 @@ const STATUS_TRACKER_COLUMNS = {
   PERF_TREND: 'Performance L90 Trend',
   PERF_SIGNALS: 'Performance Signals',
   PERF_FLAGS: 'Performance Flags',
+  PLAYERS_PER_MONTH: 'All-time Players/ Active Months',
+  COMPLETION_RATE: 'All-time Completion Rate',
+  MT_OPPORTUNITY: 'All-time MT Opportunity Value',
+  MT_WON: 'All-time MT Won Value',
+  CONTENT_AGE: 'Content Age',
+  METRICS_LAST_SYNC: 'Metrics Last Sync',
   // Metadata columns not previously tracked
   PRIORITY: 'Priority',
   DEADLINE: 'Deadline',
@@ -672,10 +678,16 @@ function toOptionList(options) {
   return options.map((item, index) => `${index + 1}. ${item}`).join('\n');
 }
 
+// Response Queue headers - match actual sheet schema
+// Note: "Action Status" column should be renamed to "Review Status" in the sheet
 const RESPONSE_QUEUE_HEADERS_ = [
-  'Timestamp', 'Submitter Email', 'Number', 'Demo Title', 'Type',
-  'Recommended Action', 'Response', 'New Link', 'Notes',
-  'Metadata Changes', 'Approval', 'Processed', 'Admin Notes'
+  'Demo Number', 'Assigned', 'email', 'Demo Title', 'Review Status', 'Timestamp',
+  'Action Taken', 'New Creation Link', 'Target Update Date', 'Additional Comments',
+  'Admin Notes', 'Action Completed Date', 'Number', 'Demo Page Link',
+  'Production Demo Link', 'Creator Name', 'Creator Email', 'Primary Product',
+  'Marketing Program', 'TDP', 'Sales Tactic', 'Demo Description', 'Language',
+  'SEOWords', 'Description for SEO', 'CTALink', 'Recommended Action',
+  'Action Priority', 'Recommended action reason'
 ];
 
 function getTargetSpreadsheet_() {

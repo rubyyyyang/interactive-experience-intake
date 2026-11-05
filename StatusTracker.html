@@ -211,8 +211,26 @@
     .rec-retirement {
       background: #fce8e6;
       color: #c5221f;
-      border: 1px solid #f28b82;
     }
+
+    /* Workflow status badges (secondary, smaller) */
+    .workflow-badge {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 10px;
+      font-size: 0.7rem;
+      font-weight: 400;
+      white-space: nowrap;
+      margin-top: 3px;
+      background: #fef7e0;
+      color: #b06000;
+    }
+
+    .workflow-badge-retirement {
+      background: #fce8e6;
+      color: #c5221f;
+    }
+
     .status-badge::before {
       content: '';
       display: inline-block;
@@ -248,7 +266,10 @@
     .lifecycle {
       display: flex;
       align-items: flex-start;
-      padding: 8px 0 20px;
+      padding: 16px 0 16px;
+      margin-top: 24px;
+      margin-bottom: 16px;
+      border-top: 1px solid #e8eaed;
       overflow-x: auto;
     }
 
@@ -317,14 +338,60 @@
       text-align: center;
     }
 
+    /* Lifecycle v2 - icon-based horizontal timeline */
+    .lifecycle-v2 {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 8px;
+      overflow-x: auto;
+      padding: 8px 0;
+    }
+
+    .lc-step-v2 {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      flex: 1;
+      min-width: 60px;
+    }
+
+    .lc-icon-v2 {
+      width: 20px;
+      height: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 8px;
+    }
+
+    .lc-icon-v2 svg {
+      display: block;
+    }
+
+    .lc-label-v2 {
+      font-size: 0.7rem;
+      color: #3c4043;
+      text-align: center;
+      line-height: 1.3;
+      margin-bottom: 4px;
+      font-weight: 500;
+    }
+
+    .lc-date-v2 {
+      font-size: 0.65rem;
+      color: #80868b;
+      text-align: center;
+    }
+
     /* Detail sections */
     .detail-sections {
       display: grid;
       grid-template-columns: 1fr 1fr;
       gap: 20px 40px;
       margin-top: 16px;
-      border-top: 1px solid #dadce0;
-      padding-top: 18px;
+      border-top: none;
+      padding-top: 0;
     }
 
     .detail-section h4 {
@@ -863,27 +930,14 @@
     .rs-resubmit { color: #c5221f; }
 
     /* Action banner */
-    .action-banner {
-      border-radius: 8px;
-      padding: 16px;
-      margin-bottom: 16px;
+    /* Lifecycle status summary - cleaner alternative to heavy banner */
+    .recommendation-layer {
+      background: transparent;
+      border: none;
+      border-radius: 0;
+      padding: 0 0 0 16px;
+      margin-bottom: 28px;
     }
-    .action-banner.action-needed { background: #fef7e0; border: 1px solid #f9d67a; }
-    .action-banner.response-pending { background: #e8f0fe; border: 1px solid #a8c7fa; }
-    .action-banner.action-complete { background: #e6f4ea; border: 1px solid #a8dab5; }
-    .action-banner .banner-title {
-      font-size: 0.75rem;
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: 0.04em;
-      margin-bottom: 8px;
-    }
-    .action-banner.action-needed .banner-title { color: #e37400; }
-    .action-banner.response-pending .banner-title { color: #1a73e8; }
-    .action-banner.action-complete .banner-title { color: #137333; }
-    .action-banner .banner-detail { font-size: 0.85rem; color: #3c4043; margin: 6px 0; }
-    .action-banner .banner-reason { font-size: 0.82rem; color: #555; margin: 4px 0; line-height: 1.5; }
-    .action-banner .banner-perf { display: flex; gap: 14px; flex-wrap: wrap; font-size: 0.78rem; color: #5f6368; margin-top: 8px; }
 
     .response-form { margin-top: 12px; }
     .response-form .form-row { margin-bottom: 10px; }
@@ -1086,6 +1140,9 @@
       <button class="tab admin-only" data-tab="all" onclick="switchTab('all')" style="display:none;">All Submissions</button>
       <button class="tab admin-only" data-tab="reports" onclick="switchTab('reports')" style="display:none;">Reports</button>
     </div>
+    <button id="needsReviewFilter" class="admin-only" onclick="toggleNeedsReviewFilter()" style="display:none;margin-left:10px;padding:6px 12px;border:1px solid #dadce0;border-radius:16px;background:#fff;cursor:pointer;font-size:0.85rem;font-weight:500;color:#5f6368;">
+      Needs review (<span id="needsReviewCount">0</span>)
+    </button>
     <div class="controls-right">
       <select id="statusFilter" onchange="onStatusFilterChange()">
         <option value="" data-status="">All Statuses</option>
@@ -1200,6 +1257,22 @@
     return sub.dateSubmitted || sub.publishedDate || quarterToDate(sub.quarter);
   }
 
+  function getDateCellHtml(sub) {
+    var action = sub.perfAction || '';
+    var actionStatus = (sub.perfActionStatus || '').trim();
+
+    // For completed lifecycle actions, show "Updated" with completion date
+    if ((action === 'Improve completion' || action === 'Consider retirement') &&
+        actionStatus === 'Complete' &&
+        sub.actionCompletedDate) {
+      return '<div style="font-size:0.65rem;color:#888;text-transform:uppercase;margin-bottom:2px;">Updated</div>' +
+             '<div style="font-size:0.8rem;">' + formatDate(sub.actionCompletedDate) + '</div>';
+    }
+
+    // Normal date display
+    return formatDate(getDisplayDate(sub));
+  }
+
   function navigateToIntake() {
     window.top.location.href = webAppBaseUrl;
   }
@@ -1290,7 +1363,13 @@
     if (sub.status !== 'Published' && sub.status !== 'Demo Published') return '';
 
     var action = sub.perfAction || '';
+    var actionStatus = (sub.perfActionStatus || '').trim();
     var tier = sub.perfTier || '';
+
+    // Hide recommendation label when lifecycle action is Complete
+    if ((action === 'Improve completion' || action === 'Consider retirement') && actionStatus === 'Complete') {
+      return '';
+    }
 
     // "Boost sales impact" is admin-owned, not shown to creators
     if (action === 'Boost sales impact') return '';
@@ -1316,6 +1395,37 @@
     return '';
   }
 
+  function getWorkflowStatusLabel(sub) {
+    // Only show workflow labels for published content with creator-required actions
+    if (sub.status !== 'Published' && sub.status !== 'Demo Published') return '';
+
+    var action = sub.perfAction || '';
+    // Only show workflow status for creator-actionable recommendations
+    if (action !== 'Improve completion' && action !== 'Consider retirement') return '';
+
+    var actionStatus = (sub.perfActionStatus || '').trim();
+
+    // Action needed → no secondary label (initial state)
+    if (actionStatus === 'Action needed') return '';
+
+    // Complete → no badge shown (handled by date display instead)
+    if (actionStatus === 'Complete') return '';
+
+    // Pending review → red for Retirement review, amber for others
+    if (actionStatus === 'Pending review') {
+      var badgeClass = action === 'Consider retirement' ? 'workflow-badge workflow-badge-retirement' : 'workflow-badge';
+      return '<span class="' + badgeClass + '">Pending review</span>';
+    }
+
+    // Follow-up needed → red for Retirement review, amber for others
+    if (actionStatus === 'Follow-up needed') {
+      var badgeClass = action === 'Consider retirement' ? 'workflow-badge workflow-badge-retirement' : 'workflow-badge';
+      return '<span class="' + badgeClass + '">Follow-up needed</span>';
+    }
+
+    return '';
+  }
+
   var CREATOR_ACTIONS = ['Improve completion', 'Consider retirement'];
   var ADMIN_ACTIONS = ['Review data linkage', 'Create page', 'Increase visibility', 'Needs review', 'Boost sales impact'];
 
@@ -1332,7 +1442,9 @@
     var s = (sub.perfActionStatus || '').trim();
     if (s === 'Complete' || s === 'Completed') return 'Complete';
     if (s === 'Pending review' || s === 'Pending Review') return 'Pending review';
-    if (s === 'Resubmit required' || s === 'Resubmit') return 'Resubmit required';
+    // Canonical state: Follow-up needed
+    // Legacy read aliases: Resubmit required, Resubmit
+    if (s === 'Follow-up needed' || s === 'Resubmit required' || s === 'Resubmit') return 'Follow-up needed';
     return 'Action needed';
   }
 
@@ -1361,6 +1473,12 @@
 
     if (currentStatusFilter) {
       pool = pool.filter(function(s) { return s.status === currentStatusFilter; });
+    }
+
+    if (currentNeedsReviewFilter) {
+      pool = pool.filter(function(s) {
+        return (s.perfActionStatus || '').trim() === 'Pending review';
+      });
     }
 
     if (currentSearch) {
@@ -1414,17 +1532,18 @@
       ? allSubmissions.filter(function(s) { return s.isMine; })
       : allSubmissions;
     updateStatusFilterCounts(applyFilters_(basePool, 'status'), filtered.length);
-    var anyFilter = currentStatusFilter || currentSearch;
+    updateNeedsReviewButton();
+    var anyFilter = currentStatusFilter || currentSearch || currentNeedsReviewFilter;
     var resetAllBtn = document.getElementById('resetAllFiltersBtn');
     if (resetAllBtn) resetAllBtn.style.display = anyFilter ? '' : 'none';
 
     if (filtered.length === 0) {
       document.getElementById('tableWrapper').style.display = 'none';
       var emptyEl = document.getElementById('emptyState');
-      if (activeTab === 'my' && !currentStatusFilter && !currentSearch) {
+      if (activeTab === 'my' && !currentStatusFilter && !currentSearch && !currentNeedsReviewFilter) {
         emptyEl.innerHTML = '<p>No submissions found.</p>' +
           '<p style="font-size:0.85rem;color:#5f6368;">This tab matches by the creator email used during submission. Try the <a href="#" onclick="switchTab(\'all\'); return false;" style="color:#1a73e8;">All Submissions</a> tab to browse everything.</p>';
-      } else if (currentStatusFilter || currentSearch) {
+      } else if (currentStatusFilter || currentSearch || currentNeedsReviewFilter) {
         emptyEl.innerHTML = '<p>No submissions match your filters.</p>' +
           '<p style="font-size:0.85rem;color:#5f6368;">Try adjusting your search or filters.</p>';
       } else {
@@ -1474,7 +1593,7 @@
       var actionTags = '';
       if (hasAction(sub) && isCreatorAction(sub.perfAction)) {
         var rs = getResponseStatus_(sub);
-        var rc = rs === 'Complete' ? 'rs-complete' : rs === 'Pending review' ? 'rs-pending-review' : rs === 'Resubmit required' ? 'rs-resubmit' : 'rs-action-needed';
+        var rc = rs === 'Complete' ? 'rs-complete' : rs === 'Pending review' ? 'rs-pending-review' : rs === 'Follow-up needed' ? 'rs-followup' : 'rs-action-needed';
         actionTags = '<div class="rs-text ' + rc + '">' + escapeHtml(rs) + '</div>' +
           '<div><span class="action-badge ' + getActionBadgeClass(sub.perfAction) + '">' + escapeHtml(sub.perfAction) + '</span>' +
           (sub.perfActionPriority ? ' <span class="priority-badge ' + getPriorityBadgeClass(sub.perfActionPriority) + '">Priority: ' + escapeHtml(sub.perfActionPriority) + '</span>' : '') +
@@ -1482,6 +1601,13 @@
       }
 
       var recommendationHtml = getRecommendationLabel(sub);
+      var workflowHtml = getWorkflowStatusLabel(sub);
+
+      // Stack workflow label below recommendation label if present
+      var combinedRecommendationHtml = recommendationHtml;
+      if (workflowHtml) {
+        combinedRecommendationHtml = recommendationHtml + '<br>' + workflowHtml;
+      }
 
       var displayStatus = isAdmin ? sub.status : getCreatorFacingStatus(sub.status);
       tr.innerHTML =
@@ -1489,8 +1615,8 @@
         '<td class="drupal-cell hide-mobile">' + drupalHtml + '</td>' +
         '<td class="creator-cell creator-col" title="' + escapeHtml(sub.creatorName || '') + '">' + escapeHtml(sub.creatorName || '—') + '</td>' +
         '<td><span class="status-badge ' + getStatusClass(displayStatus) + '">' + escapeHtml(displayStatus || '—') + '</span></td>' +
-        '<td class="recommendation-cell">' + recommendationHtml + '</td>' +
-        '<td class="date-cell">' + formatDate(getDisplayDate(sub)) + '</td>';
+        '<td class="recommendation-cell">' + combinedRecommendationHtml + '</td>' +
+        '<td class="date-cell">' + getDateCellHtml(sub) + '</td>';
 
       if (!isProcessing) {
         tr.addEventListener('click', (function(submission, row) {
@@ -1521,12 +1647,122 @@
     var detailTr = document.createElement('tr');
     detailTr.className = 'detail-row';
     var td = document.createElement('td');
-    td.setAttribute('colspan', '5');
-    td.innerHTML = '<div class="detail-panel">' + buildLifecycle(sub) + buildDetailSections(sub) + '</div>';
+    // Set colspan to match current table column count
+    var headerCount = document.querySelectorAll('thead th').length;
+    td.setAttribute('colspan', headerCount > 0 ? headerCount : 6);
+    // Action section BEFORE lifecycle timeline, then original detail sections
+    td.innerHTML = '<div class="detail-panel">' + buildActionBanner(sub) + buildLifecycle(sub) + buildPerformanceSnapshot(sub) + buildDetailSections(sub) + '</div>';
     detailTr.appendChild(td);
 
     row.parentNode.insertBefore(detailTr, row.nextSibling);
     row.classList.add('expanded');
+  }
+
+  function formatCompactNumber(val) {
+    var num = Number(val);
+    if (isNaN(num)) return val;
+    if (num >= 1000000) return (num / 1000000).toFixed(2).replace(/\.?0+$/, '') + 'M';
+    if (num >= 1000) return (num / 1000).toFixed(1).replace(/\.0$/, '') + 'K';
+    return num.toLocaleString();
+  }
+
+  function buildPerformanceSnapshot(sub) {
+    // Only show for Published demos with performance data
+    var status = (sub.status || '').trim();
+    if (status !== 'Published') return '';
+
+    // Check if we have reliable performance data (getNumeric returns '' for missing)
+    var hasData = (sub.playersPerMonth != null && sub.playersPerMonth !== '') ||
+                  (sub.completionRate != null && sub.completionRate !== '') ||
+                  (sub.mtOpportunity != null && sub.mtOpportunity !== '') ||
+                  (sub.mtWon != null && sub.mtWon !== '') ||
+                  (sub.contentAge != null && sub.contentAge !== '');
+    if (!hasData) return '';
+
+    var html = '<div style="margin:32px 0 28px 0;padding-top:28px;border-top:1px solid #e8eaed;">';
+
+    // Header with Last refreshed
+    html += '<div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:12px;">';
+    html += '<h4 style="margin:0;font-size:0.9rem;font-weight:600;color:#3c4043;">Performance snapshot</h4>';
+
+    var refreshText = 'Not available';
+    if (sub.metricsLastSync) {
+      try {
+        var refreshDate = new Date(sub.metricsLastSync);
+        var months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+        refreshText = months[refreshDate.getMonth()] + ' ' + refreshDate.getDate() + ', ' + refreshDate.getFullYear();
+      } catch (e) {
+        refreshText = 'Not available';
+      }
+    }
+    html += '<div style="font-size:0.7rem;color:#80868b;">Last refreshed: ' + escapeHtml(refreshText) + '</div>';
+    html += '</div>';
+
+    // Five-card layout - compact
+    html += '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;">';
+
+    // Card 1: Avg. monthly players
+    var playersDisplay = 'Not available';
+    if (sub.playersPerMonth != null && sub.playersPerMonth !== '') {
+      var playersVal = Math.round(sub.playersPerMonth);
+      playersDisplay = formatCompactNumber(playersVal);
+    }
+    html += '<div style="border:1px solid #e8eaed;border-radius:6px;padding:10px;background:#fafafa;">' +
+      '<div style="font-size:0.7rem;font-weight:600;color:#80868b;margin-bottom:6px;">Avg. monthly players</div>' +
+      '<div style="font-size:1.05rem;font-weight:600;color:#3c4043;margin-bottom:2px;">' + playersDisplay + '</div>' +
+      '<div style="font-size:0.65rem;color:#999;">Benchmark: 15/month</div>' +
+      '</div>';
+
+    // Card 2: Completion rate
+    var crDisplay = 'Not available';
+    if (sub.completionRate != null && sub.completionRate !== '') {
+      var crPercent = Math.round(sub.completionRate * 100);
+      crDisplay = crPercent + '%';
+    }
+    html += '<div style="border:1px solid #e8eaed;border-radius:6px;padding:10px;background:#fafafa;">' +
+      '<div style="font-size:0.7rem;font-weight:600;color:#80868b;margin-bottom:6px;">Completion rate</div>' +
+      '<div style="font-size:1.05rem;font-weight:600;color:#3c4043;margin-bottom:2px;">' + crDisplay + '</div>' +
+      '<div style="font-size:0.65rem;color:#999;">Benchmark: 40%</div>' +
+      '</div>';
+
+    // Card 3: MTPV pipeline
+    var pipelineDisplay = 'Not available';
+    if (sub.mtOpportunity != null && sub.mtOpportunity !== '' && sub.mtOpportunity > 0) {
+      pipelineDisplay = '$' + formatCompactNumber(sub.mtOpportunity);
+    }
+    html += '<div style="border:1px solid #e8eaed;border-radius:6px;padding:10px;background:#fafafa;">' +
+      '<div style="font-size:0.7rem;font-weight:600;color:#80868b;margin-bottom:6px;">Attributed pipeline (MTPV)</div>' +
+      '<div style="font-size:1.05rem;font-weight:600;color:#3c4043;margin-bottom:2px;">' + pipelineDisplay + '</div>' +
+      '<div style="font-size:0.65rem;color:#999;">All-time</div>' +
+      '</div>';
+
+    // Card 4: MTPV won
+    var wonDisplay = 'Not available';
+    if (sub.mtWon != null && sub.mtWon !== '' && sub.mtWon > 0) {
+      wonDisplay = '$' + formatCompactNumber(sub.mtWon);
+    }
+    html += '<div style="border:1px solid #e8eaed;border-radius:6px;padding:10px;background:#fafafa;">' +
+      '<div style="font-size:0.7rem;font-weight:600;color:#80868b;margin-bottom:6px;">Attributed won (MTPV)</div>' +
+      '<div style="font-size:1.05rem;font-weight:600;color:#3c4043;margin-bottom:2px;">' + wonDisplay + '</div>' +
+      '<div style="font-size:0.65rem;color:#999;">All-time</div>' +
+      '</div>';
+
+    // Card 5: Content age
+    var ageDisplay = 'Not available';
+    if (sub.contentAge != null && sub.contentAge !== '') {
+      var ageMonths = Math.round(sub.contentAge);
+      ageDisplay = ageMonths === 1 ? '1 month' : ageMonths + ' months';
+    }
+    html += '<div style="border:1px solid #e8eaed;border-radius:6px;padding:10px;background:#fafafa;">' +
+      '<div style="font-size:0.7rem;font-weight:600;color:#80868b;margin-bottom:6px;">Content age</div>' +
+      '<div style="font-size:1.05rem;font-weight:600;color:#3c4043;margin-bottom:2px;">' + ageDisplay + '</div>' +
+      '<div style="font-size:0.65rem;color:#999;">&nbsp;</div>' +
+      '</div>';
+
+    html += '</div>'; // end grid
+    html += '</div>'; // end container
+
+    return html;
   }
 
   function buildLifecycle(sub) {
@@ -1553,7 +1789,18 @@
       }
     }
 
-    var html = '<div class="lifecycle">';
+    // Check if there's a Recommendation panel above
+    var hasRecommendation = hasAction(sub) && isCreatorAction(sub.perfAction) &&
+                            getResponseStatus_(sub) !== 'Complete' && currentStatus !== 'Retired';
+
+    // Add divider and spacing only if Recommendation is present
+    var containerStyle = hasRecommendation
+      ? 'margin:28px 0 24px 0;padding-top:28px;border-top:1px solid #e8eaed;'
+      : 'margin:0 0 24px 0;';
+
+    var html = '<div style="' + containerStyle + '">';
+    html += '<h4 style="margin:0 0 16px 0;font-size:0.9rem;font-weight:600;color:#3c4043;">Lifecycle timeline</h4>';
+    html += '<div class="lifecycle">';
 
     for (var i = 0; i < stages.length; i++) {
       var stage = stages[i];
@@ -1573,31 +1820,54 @@
         '</div>';
     }
 
-    html += '</div>';
+    html += '</div>'; // end lifecycle
+    html += '</div>'; // end container
     return html;
   }
 
   function buildDetailSections(sub) {
+    var html = '<div style="margin:28px 0 0 0;padding-top:28px;border-top:1px solid #e8eaed;">';
+    html += '<h4 style="margin:0 0 20px 0;font-size:0.9rem;font-weight:600;color:#3c4043;">Submission details</h4>';
+    html += buildDetailSectionsContent(sub);
+    html += '</div>';
+    return html;
+  }
+
+  function buildDetailSectionsContent(sub) {
     var canEdit = sub.isMine || isAdmin;
     var _isYtLink = /(?:youtu\.be|youtube\.com)/.test(sub.creationLink || sub.productionLink || '');
-    var linksHtml = '';
-    if (sub.creationLink && /^https?:\/\//i.test(sub.creationLink)) {
-      linksHtml += '<div class="link-row"><strong>' + (_isYtLink ? 'Video Demo Link' : 'Creation Demo Link') +
-        '</strong><div class="link-desc">' + (_isYtLink ? 'The video URL submitted by creator' : 'The link submitted by creator previously') + '</div>' + renderLink(sub.creationLink, sub.creationLink) + '</div>';
-    }
-    if (sub.productionLink && /^https?:\/\//i.test(sub.productionLink)) {
-      linksHtml += '<div class="link-row"><strong>' + (_isYtLink ? 'Production Video Link' : 'Production Demo Link') + '</strong><div class="link-desc">Version-controlled copy, published for live use</div>' + renderLink(sub.productionLink, sub.productionLink) + '</div>';
-    }
-    if (sub.drupalPageUrl && /^https?:\/\//i.test(sub.drupalPageUrl)) {
-      linksHtml += '<div class="link-row"><strong>Demo Page</strong><div class="link-desc">The live page with production version</div>' + renderLink(sub.drupalPageUrl, sub.drupalPageUrl) + '</div>';
-    }
 
     var descHtml = '';
-
     var detailHtml = '';
 
-    if (linksHtml) {
-      detailHtml += '<div class="detail-section" style="grid-column: 1 / -1;"><div class="links-bar">' + linksHtml + '</div>';
+    // Demo Links - simple text links
+    var hasLinks = (sub.creationLink && /^https?:\/\//i.test(sub.creationLink)) ||
+                   (sub.productionLink && /^https?:\/\//i.test(sub.productionLink)) ||
+                   (sub.drupalPageUrl && /^https?:\/\//i.test(sub.drupalPageUrl));
+
+    if (hasLinks) {
+      detailHtml += '<div class="detail-section" style="grid-column: 1 / -1;margin-bottom:12px;">';
+      detailHtml += '<h4 style="font-size:0.7rem;text-transform:uppercase;letter-spacing:0.04em;color:#80868b;margin:0 0 8px;">Demo Links</h4>';
+      detailHtml += '<div style="display:flex;gap:16px;flex-wrap:wrap;font-size:0.85rem;">';
+
+      if (sub.creationLink && /^https?:\/\//i.test(sub.creationLink)) {
+        detailHtml += renderLink(sub.creationLink, _isYtLink ? 'Video Demo Link' : 'Creation Demo Link');
+      }
+      if (sub.productionLink && /^https?:\/\//i.test(sub.productionLink)) {
+        detailHtml += '<span style="color:#dadce0;">·</span>';
+        detailHtml += renderLink(sub.productionLink, _isYtLink ? 'Production Video Link' : 'Production Demo Link');
+      }
+      if (sub.drupalPageUrl && /^https?:\/\//i.test(sub.drupalPageUrl)) {
+        detailHtml += '<span style="color:#dadce0;">·</span>';
+        detailHtml += renderLink(sub.drupalPageUrl, 'Demo Page');
+      }
+
+      detailHtml += '</div>';
+      detailHtml += '</div>';
+    }
+
+    // Link editing panel
+    if (hasLinks) {
       if (canEdit && !hasAction(sub)) {
         var _isYt = /(?:youtu\.be\/|youtube\.com)/.test(sub.creationLink || sub.productionLink || '');
         var _linkLabel = _isYt ? 'Video Demo Link' : 'Creation Demo Link';
@@ -1616,12 +1886,11 @@
           '</div>' +
         '</div>';
       }
-      detailHtml += '</div>';
     }
 
     // Metadata header with edit action
     detailHtml += '<div class="detail-header-row" id="detail-header-' + sub.requestNumber + '" style="grid-column: 1 / -1; display:flex; justify-content:space-between; align-items:center; margin-bottom:-12px;">' +
-      '<h4 style="font-size:0.7rem;text-transform:uppercase;letter-spacing:0.04em;color:#888;margin:0;">Details</h4>' +
+      '<h4 style="font-size:0.7rem;text-transform:uppercase;letter-spacing:0.04em;color:#80868b;margin:0;">Details</h4>' +
       '' +
       '</div>';
 
@@ -1676,7 +1945,7 @@
     var truncated = desc.length > 200;
     var shortDesc = truncated ? escapeHtml(desc.substring(0, 200) + '...').replace(/\n/g, '<br>') : '';
     detailHtml += '<div class="detail-section" style="grid-column: 1 / -1;">' +
-      '<h4 style="font-size:0.7rem;text-transform:uppercase;letter-spacing:0.04em;color:#888;margin:0 0 8px;">Description</h4>' +
+      '<h4 style="font-size:0.7rem;text-transform:uppercase;letter-spacing:0.04em;color:#80868b;margin:0 0 8px;">Description</h4>' +
       '<div class="desc-block" data-field="Demo Description" data-original="' + escapeHtml(desc) + '">' +
       (desc
         ? (truncated
@@ -1707,7 +1976,7 @@
 
     // Reference row
     var metaHtml = '<div class="detail-meta-row">' +
-      '<h4 style="font-size:0.7rem;text-transform:uppercase;letter-spacing:0.04em;color:#888;margin:0;width:100%;">Reference</h4>';
+      '<h4 style="font-size:0.7rem;text-transform:uppercase;letter-spacing:0.04em;color:#80868b;margin:0;width:100%;">Reference</h4>';
     if (sub.originType) metaHtml += '<span><span class="label">Origin:</span> ' + escapeHtml(sub.originType) + '</span>';
     if (sub.globalId) metaHtml += '<span><span class="label">Global ID:</span> ' + escapeHtml(sub.globalId) + '</span>';
     if (sub.creationBriefDocUrl && /^https?:\/\//i.test(sub.creationBriefDocUrl)) {
@@ -1715,7 +1984,7 @@
     }
     metaHtml += '</div>';
 
-    return buildActionBanner(sub) + '<div class="detail-sections" id="detail-grid-' + sub.requestNumber + '">' + detailHtml + '</div>' + descHtml + metaHtml;
+    return '<div class="detail-sections" id="detail-grid-' + sub.requestNumber + '">' + detailHtml + '</div>' + descHtml + metaHtml;
   }
 
   function kvRow(label, value, fieldKey) {
@@ -1755,6 +2024,140 @@
 
   // --- Action banner & response form ---
 
+  // Creator-facing display baselines (sourced from Hub PERF_THRESHOLDS for UI consistency)
+  var CREATOR_DISPLAY_BASELINES = {
+    COMPLETION_RATE: 40,  // matches Hub BASELINE_COMPLETION_RATE: 0.40
+    USAGE_PLAYERS_PER_MONTH: 15  // matches Hub BASELINE_PLAYERS_PER_MONTH: 15
+  };
+
+  function buildCompletionEvidence_(signalsStr, completionRate, playersPerMonth) {
+    // Build unified evidence sentence for Update needed
+    var parts = [];
+
+    // Try to use actual completionRate if available
+    var crValue = null;
+    if (completionRate != null && completionRate !== '') {
+      crValue = Math.round(parseFloat(completionRate) * 100);
+    } else {
+      // Fall back to parsing from signals
+      var crMatch = signalsStr ? signalsStr.match(/CR:\s*(\d+)%/i) : null;
+      if (crMatch) {
+        crValue = parseInt(crMatch[1]);
+      }
+    }
+
+    if (crValue != null && !isNaN(crValue)) {
+      parts.push('Completion rate is ' + crValue + '% (typical baseline: ' + CREATOR_DISPLAY_BASELINES.COMPLETION_RATE + '%)');
+    } else {
+      parts.push('Completion rate is below typical baseline of ' + CREATOR_DISPLAY_BASELINES.COMPLETION_RATE + '%');
+    }
+
+    // Try to use actual playersPerMonth if available
+    var playersValue = null;
+    if (playersPerMonth != null && playersPerMonth !== '') {
+      playersValue = Math.round(parseFloat(playersPerMonth));
+    } else {
+      // Fall back to parsing from signals
+      var usageMatch = signalsStr ? signalsStr.match(/Usage:\s*(\d+)ppm/i) : null;
+      if (usageMatch) {
+        playersValue = parseInt(usageMatch[1]);
+      }
+    }
+
+    if (playersValue != null && !isNaN(playersValue)) {
+      parts.push(playersValue + ' avg. monthly players');
+    }
+
+    return parts.join(', ') + '.';
+  }
+
+  function buildRetirementEvidence_(signalsStr, mtOpportunity, mtWon, actionReason, contentAge, playersPerMonth) {
+    // Build unified headline and evidence sentence for Retirement review
+    var headline = '';
+    var parts = [];
+
+    // Parse Content Age from actionReason for no-activity cases (e.g., "ContentAge: 4 mo. (recent)")
+    var contentAgeFromReason = actionReason ? actionReason.match(/ContentAge:\s*(\d+)\s*mo/i) : null;
+
+    if (contentAgeFromReason) {
+      // No-activity retirement scenario (Hub confirmed via actionReason)
+      headline = 'No recent activity';
+      var ageMonths = parseInt(contentAgeFromReason[1]);
+      if (!isNaN(ageMonths) && ageMonths > 0) {
+        parts.push('Content is ' + ageMonths + ' months old with no recorded activity');
+      } else {
+        parts.push('No recorded activity');
+      }
+    } else {
+      // Low usage retirement scenario
+      headline = 'Limited engagement';
+
+      // Try to use actual playersPerMonth if available
+      var playersValue = null;
+      if (playersPerMonth != null && playersPerMonth !== '') {
+        playersValue = Math.round(parseFloat(playersPerMonth));
+      } else {
+        // Fall back to parsing from signals
+        var usageMatch = signalsStr ? signalsStr.match(/Usage:\s*(\d+)ppm/i) : null;
+        if (usageMatch) {
+          playersValue = parseInt(usageMatch[1]);
+        }
+      }
+
+      if (playersValue != null && !isNaN(playersValue)) {
+        parts.push(playersValue + ' avg. monthly players (typical baseline: ' + CREATOR_DISPLAY_BASELINES.USAGE_PLAYERS_PER_MONTH + ' players/month)');
+      } else {
+        parts.push('Low monthly player count');
+      }
+
+      // Content age for low-usage case
+      var ageToDisplay = null;
+      if (contentAge !== undefined && contentAge !== null && contentAge !== '') {
+        ageToDisplay = parseInt(contentAge);
+      }
+      if (!isNaN(ageToDisplay) && ageToDisplay > 0) {
+        parts.push('content is ' + ageToDisplay + ' months old');
+      }
+    }
+
+    // MTPV evidence (both scenarios)
+    var oppVal = null;
+    var wonVal = null;
+
+    if (mtOpportunity !== undefined && mtOpportunity !== null && mtOpportunity !== '') {
+      var opp = parseFloat(mtOpportunity);
+      if (!isNaN(opp) && opp > 0) {
+        oppVal = formatCurrency_(opp);
+      }
+    }
+
+    if (mtWon !== undefined && mtWon !== null && mtWon !== '') {
+      var won = parseFloat(mtWon);
+      if (!isNaN(won) && won > 0) {
+        wonVal = formatCurrency_(won);
+      }
+    }
+
+    if (oppVal || wonVal) {
+      parts.push('attributed sales (MTPV): ' + (oppVal || '$0') + ' pipeline, ' + (wonVal || '$0') + ' won');
+    }
+
+    var sentence = parts.length > 0 ? parts.join(', ') + '.' : 'Limited engagement and attributed business activity.';
+
+    return { headline: headline || 'Limited engagement', sentence: sentence };
+  }
+
+  function formatCurrency_(value) {
+    if (value === 0) return '$0';
+    if (value >= 1000000) {
+      return '$' + (value / 1000000).toFixed(value % 1000000 === 0 ? 0 : 1) + 'M';
+    }
+    if (value >= 1000) {
+      return '$' + (value / 1000).toFixed(value % 1000 === 0 ? 0 : 1) + 'K';
+    }
+    return '$' + value.toFixed(0);
+  }
+
   function buildActionBanner(sub) {
     // Only show for creator-owned actions
     if (!hasAction(sub) || !isCreatorAction(sub.perfAction)) return '';
@@ -1763,121 +2166,446 @@
     var action = sub.perfAction;
     var reason = sub.perfActionReason || '';
     var status = getResponseStatus_(sub);
+    var demoStatus = (sub.status || '').trim();
+
+    // Hide entire recommendation panel when Complete OR Retired
+    if (status === 'Complete' || demoStatus === 'Retired') return '';
 
     // "Update needed" = Improve completion
     if (action === 'Improve completion') {
-      var bannerClass = 'action-needed';
-      var bannerTitle = 'UPDATE NEEDED';
-      var bannerDetail = 'This demo needs content improvements to increase completion rate.';
+      var statusMessage = '';
 
       if (status === 'Pending review') {
-        bannerClass = 'response-pending';
-        bannerTitle = 'RESPONSE SUBMITTED';
-        bannerDetail = 'Your response is pending admin review. You cannot submit another response until admin provides feedback.';
+        statusMessage = 'Your response has been submitted and is awaiting review.';
       } else if (status === 'Complete') {
-        bannerClass = 'action-complete';
-        bannerTitle = 'COMPLETED';
-        bannerDetail = 'Update completed and approved.';
-      } else if (status === 'Resubmit required') {
-        bannerClass = 'action-needed';
-        bannerTitle = 'MORE INFORMATION NEEDED';
-        bannerDetail = 'Admin has requested additional information. Please review feedback and resubmit.';
+        statusMessage = 'Update completed and approved.';
+      } else if (status === 'Follow-up needed') {
+        statusMessage = 'Review the feedback below and take the next step.';
+      } else {
+        statusMessage = 'This demo may need updates to help more viewers complete the experience.';
       }
 
-      var html = '<div class="action-banner ' + bannerClass + '">' +
-        '<div class="banner-title">' + bannerTitle + '</div>' +
-        '<div class="banner-detail">' + escapeHtml(bannerDetail) + '</div>';
+      var html = '<div class="recommendation-layer" style="border-left:3px solid #f9ab00;">';
 
-      if (reason) {
-        html += '<div class="banner-reason">Reason: ' + escapeHtml(reason) + '</div>';
+      // Recommendation heading
+      html += '<h3 style="margin:0 0 12px 0;font-size:1rem;font-weight:600;color:#202124;">Update needed</h3>';
+
+      // Status message
+      html += '<div style="font-size:0.9rem;color:#3c4043;line-height:1.5;margin-bottom:6px;">' + escapeHtml(statusMessage) + '</div>';
+
+      // Reason and evidence (unified presentation)
+      if (status !== 'Complete' && status !== 'Pending review') {
+        html += '<div style="margin-top:16px;">';
+        html += '<div style="font-size:0.88rem;font-weight:600;color:#202124;margin-bottom:4px;">Low completion rate</div>';
+
+        // Build evidence sentence from actual metrics
+        var evidenceSentence = buildCompletionEvidence_(sub.perfSignals || '', sub.completionRate, sub.playersPerMonth);
+        html += '<div style="font-size:0.85rem;color:#5f6368;line-height:1.5;">' + evidenceSentence + '</div>';
+        html += '</div>';
       }
 
-      // Show response form only if action needed or resubmit required
-      if (status === 'Action needed' || status === 'Resubmit required') {
-        html += '<div class="response-form" id="response-form-' + num + '">' +
+      // Reviewer guidance for follow-up needed
+      if (status === 'Follow-up needed') {
+        html += '<div id="admin-feedback-' + num + '" style="background:#fef7e0;border:1px solid #f9d67a;border-radius:6px;padding:12px;margin:16px 0 0 0;">' +
+          '<div style="font-size:0.75rem;font-weight:600;text-transform:uppercase;color:#b06000;margin-bottom:6px;">Guidance from Reviewer</div>' +
+          '<div style="color:#5f6368;font-size:0.85rem;">Loading...</div>' +
+        '</div>';
+        setTimeout(function() { loadAdminFeedback(num); }, 100);
+      }
+
+      // Show response form only if action needed or follow-up needed
+      if (status === 'Action needed' || status === 'Follow-up needed') {
+        html += '<div class="response-form" id="response-form-' + num + '" style="margin-top:20px;padding-top:20px;border-top:1px solid #e8eaed;">' +
+          '<h4 style="margin:0 0 16px 0;font-size:0.9rem;font-weight:600;color:#202124;">What\'s your next step?</h4>' +
           '<div class="form-row">' +
             '<label>Your response *</label>' +
-            '<select id="resp-sel-' + num + '" onclick="event.stopPropagation();">' +
+            '<select id="resp-sel-' + num + '" onchange="handleUpdateNeededSelection(this, \'' + num + '\')" onclick="event.stopPropagation();">' +
               '<option value="">Select...</option>' +
               '<option value="Updated">I\'ve updated it</option>' +
               '<option value="Need help">I need help</option>' +
             '</select>' +
           '</div>' +
-          '<div class="form-row">' +
-            '<label>New Creation / Version Link</label>' +
+          '<div id="helper-text-' + num + '" style="font-size:0.8rem;color:#5f6368;margin-top:8px;display:none;"></div>' +
+          '<div class="form-row" id="resp-link-row-' + num + '">' +
+            '<label>Updated demo link</label>' +
             '<input type="url" id="resp-link-' + num + '" placeholder="https://app.arcade.software/share/..." onclick="event.stopPropagation();">' +
           '</div>' +
           '<div class="form-row">' +
             '<label>Notes</label>' +
-            '<textarea id="resp-notes-' + num + '" placeholder="Describe what you changed..." onclick="event.stopPropagation();"></textarea>' +
+            '<textarea id="resp-notes-' + num + '" placeholder="Add any context for the review team..." onclick="event.stopPropagation();"></textarea>' +
           '</div>' +
           '<div class="form-actions">' +
-            '<button class="btn-primary" id="resp-btn-' + num + '" onclick="event.stopPropagation(); submitLifecycleResponse(\'' + num + '\', \'Improve completion\');">Submit Response</button>' +
+            '<button class="btn-primary" id="resp-btn-' + num + '" onclick="event.stopPropagation(); submitLifecycleResponse(\'' + num + '\', \'Improve completion\');">Submit</button>' +
           '</div>' +
         '</div>';
       }
 
-      html += '</div>';
+      html += buildAdminReviewPanel(sub);  // Add admin review panel if applicable
+      html += '</div>';  // Close recommendation-layer
       return html;
     }
 
     // "Retirement review" = Consider retirement
     if (action === 'Consider retirement') {
-      var bannerClass = 'action-needed';
-      var bannerTitle = 'RETIREMENT REVIEW';
-      var bannerDetail = 'This demo may need lifecycle confirmation. Please review and decide whether to keep it active or retire it.';
+      var statusMessage = '';
 
       if (status === 'Pending review') {
-        bannerClass = 'response-pending';
-        bannerTitle = 'RESPONSE SUBMITTED';
-        bannerDetail = 'Your response is pending admin review. You cannot submit another response until admin provides feedback.';
+        statusMessage = 'Your response has been submitted and is awaiting review.';
       } else if (status === 'Complete') {
-        bannerClass = 'action-complete';
-        bannerTitle = 'COMPLETED';
-        bannerDetail = 'Lifecycle decision completed and approved.';
-      } else if (status === 'Resubmit required') {
-        bannerClass = 'action-needed';
-        bannerTitle = 'MORE INFORMATION NEEDED';
-        bannerDetail = 'Admin has requested additional information. Please review feedback and resubmit.';
+        statusMessage = 'Lifecycle decision completed and approved.';
+      } else if (status === 'Follow-up needed') {
+        statusMessage = 'Review the feedback below and take the next step.';
+      } else {
+        statusMessage = 'Please review whether this demo should remain active or be retired.';
       }
 
-      var html = '<div class="action-banner ' + bannerClass + '">' +
-        '<div class="banner-title">' + bannerTitle + '</div>' +
-        '<div class="banner-detail">' + escapeHtml(bannerDetail) + '</div>';
+      var html = '<div class="recommendation-layer" style="border-left:3px solid #d93025;">';
 
-      if (reason) {
-        html += '<div class="banner-reason">Reason: ' + escapeHtml(reason) + '</div>';
+      // Recommendation heading
+      html += '<h3 style="margin:0 0 12px 0;font-size:1rem;font-weight:600;color:#202124;">Retirement review</h3>';
+
+      // Status message
+      html += '<div style="font-size:0.9rem;color:#3c4043;line-height:1.5;margin-bottom:6px;">' + escapeHtml(statusMessage) + '</div>';
+
+      // Reason and evidence (unified presentation)
+      if (status !== 'Complete' && status !== 'Pending review') {
+        html += '<div style="margin-top:16px;">';
+
+        // Build reason headline and evidence sentence
+        var retirementEvidence = buildRetirementEvidence_(sub.perfSignals || '', sub.mtOpportunity, sub.mtWon, sub.perfActionReason || '', sub.contentAge, sub.playersPerMonth);
+        html += '<div style="font-size:0.88rem;font-weight:600;color:#202124;margin-bottom:4px;">' + retirementEvidence.headline + '</div>';
+        html += '<div style="font-size:0.85rem;color:#5f6368;line-height:1.5;">' + retirementEvidence.sentence + '</div>';
+        html += '</div>';
       }
 
-      // Show response form only if action needed or resubmit required
-      if (status === 'Action needed' || status === 'Resubmit required') {
-        html += '<div class="response-form" id="response-form-' + num + '">' +
+      // Reviewer guidance for follow-up needed
+      if (status === 'Follow-up needed') {
+        html += '<div id="admin-feedback-' + num + '" style="background:#fef7e0;border:1px solid #f9d67a;border-radius:6px;padding:12px;margin:16px 0 0 0;">' +
+          '<div style="font-size:0.75rem;font-weight:600;text-transform:uppercase;color:#b06000;margin-bottom:6px;">Guidance from Reviewer</div>' +
+          '<div style="color:#5f6368;font-size:0.85rem;">Loading...</div>' +
+        '</div>';
+        setTimeout(function() { loadAdminFeedback(num); }, 100);
+      }
+
+      // Show response form only if action needed or follow-up needed
+      if (status === 'Action needed' || status === 'Follow-up needed') {
+        html += '<div class="response-form" id="response-form-' + num + '" style="margin-top:20px;padding-top:20px;border-top:1px solid #e8eaed;">' +
+          '<h4 style="margin:0 0 16px 0;font-size:0.9rem;font-weight:600;color:#202124;">What\'s your next step?</h4>' +
           '<div class="form-row">' +
             '<label>Your decision *</label>' +
-            '<select id="resp-sel-' + num + '" onclick="event.stopPropagation();">' +
+            '<select id="resp-sel-' + num + '" onchange="showHelperText(this, \'helper-text-retire-' + num + '\', {\'Keep active\': \'The review team will confirm your decision.\', \'Retire\': \'This sends a retirement request for review. It will not retire or unpublish the demo.\', \'Need help\': \'Add any context or questions below and the review team will follow up.\'})" onclick="event.stopPropagation();">' +
               '<option value="">Select...</option>' +
               '<option value="Keep active">Keep active</option>' +
               '<option value="Retire">Retire</option>' +
               '<option value="Need help">I need help</option>' +
             '</select>' +
           '</div>' +
-          '<div style="font-size:0.75rem;color:#5f6368;margin-top:-6px;margin-bottom:12px;">Note: "Retire" is a recommendation. Admin approval is required before the demo is actually retired.</div>' +
+          '<div id="helper-text-retire-' + num + '" style="font-size:0.8rem;color:#5f6368;margin-top:8px;display:none;"></div>' +
           '<div class="form-row">' +
             '<label>Notes</label>' +
-            '<textarea id="resp-notes-' + num + '" placeholder="Why you made this decision..." onclick="event.stopPropagation();"></textarea>' +
+            '<textarea id="resp-notes-' + num + '" placeholder="Add any context for the review team..." onclick="event.stopPropagation();"></textarea>' +
           '</div>' +
           '<div class="form-actions">' +
-            '<button class="btn-primary" id="resp-btn-' + num + '" onclick="event.stopPropagation(); submitLifecycleResponse(\'' + num + '\', \'Consider retirement\');">Submit Decision</button>' +
+            '<button class="btn-primary" id="resp-btn-' + num + '" onclick="event.stopPropagation(); submitLifecycleResponse(\'' + num + '\', \'Consider retirement\');">Submit</button>' +
           '</div>' +
         '</div>';
       }
 
-      html += '</div>';
+      html += buildAdminReviewPanel(sub);  // Add admin review panel if applicable
+      html += '</div>';  // Close recommendation-layer
       return html;
     }
 
     // No other action types for creators (Boost sales impact is admin-owned)
     return '';
+  }
+
+  function buildAdminReviewPanel(sub) {
+    if (!isAdmin) return '';
+
+    var action = sub.perfAction || '';
+    var actionStatus = (sub.perfActionStatus || '').trim();
+
+    // Only show for Pending review
+    if (actionStatus !== 'Pending review') return '';
+
+    // Only for creator-actionable recommendations
+    if (action !== 'Improve completion' && action !== 'Consider retirement') return '';
+
+    var num = sub.requestNumber;
+
+    var html = '<div class="admin-review-panel" id="admin-review-' + num + '" style="background:#f8f9fa;border:1px solid #dadce0;border-radius:8px;padding:16px;margin-top:16px;grid-column:1/-1;">' +
+      '<div style="margin-bottom:12px;">' +
+        '<h4 style="font-size:0.85rem;font-weight:600;color:#3c4043;margin:0;">Admin Review</h4>' +
+      '</div>';
+
+    html += '<div id="admin-review-content-' + num + '" style="font-size:0.85rem;color:#5f6368;">Loading creator response...</div>' +
+      '</div>';
+
+    // Fetch pending queue entry and populate
+    setTimeout(function() { loadAdminReviewData(num); }, 100);
+
+    return html;
+  }
+
+  function loadAdminReviewData(demoNumber) {
+    google.script.run
+      .withSuccessHandler(function(result) {
+        if (!result.success) {
+          document.getElementById('admin-review-content-' + demoNumber).innerHTML =
+            '<div style="color:#c5221f;">Error loading review data: ' + escapeHtml(result.error || 'Unknown error') + '</div>';
+          return;
+        }
+
+        if (!result.entry) {
+          document.getElementById('admin-review-content-' + demoNumber).innerHTML =
+            '<div style="color:#5f6368;">No pending queue entry found. Workflow data may be inconsistent.</div>';
+          return;
+        }
+
+        var entry = result.entry;
+        var html = '<div style="display:grid;grid-template-columns:1fr;gap:12px;">' +
+          '<div><strong style="font-size:0.75rem;text-transform:uppercase;color:#888;">Creator Response:</strong><div style="margin-top:4px;color:#3c4043;">' + escapeHtml(entry.actionTaken || '—') + '</div></div>';
+
+        if (entry.newCreationLink) {
+          html += '<div><strong style="font-size:0.75rem;text-transform:uppercase;color:#888;">New Link:</strong><div style="margin-top:4px;"><a href="' + escapeHtml(entry.newCreationLink) + '" target="_blank" style="color:#1a73e8;">' + escapeHtml(entry.newCreationLink) + '</a></div></div>';
+        }
+
+        if (entry.additionalComments) {
+          html += '<div><strong style="font-size:0.75rem;text-transform:uppercase;color:#888;">Creator Notes:</strong><div style="margin-top:4px;color:#3c4043;">' + escapeHtml(entry.additionalComments) + '</div></div>';
+        }
+
+        if (entry.timestamp) {
+          html += '<div><strong style="font-size:0.75rem;text-transform:uppercase;color:#888;">Submitted:</strong><div style="margin-top:4px;color:#5f6368;font-size:0.8rem;">' + formatDate(entry.timestamp) + '</div></div>';
+        }
+
+        html += '</div>';
+
+        // Admin action form - varies by action type and creator response
+        var isNeedHelp = (entry.actionTaken || '').toLowerCase().indexOf('need help') !== -1 ||
+                         (entry.actionTaken || '').toLowerCase().indexOf('help') !== -1;
+
+        // Determine button text and actions
+        var primaryBtnText, secondaryBtnText, primaryAction, secondaryAction, adminNotesLabel;
+        var actionType = result.action || '';  // 'Improve completion' or 'Consider retirement'
+
+        if (isNeedHelp) {
+          // I need help → Send guidance
+          primaryBtnText = 'Send guidance';
+          primaryAction = 'adminRequestChanges';
+          secondaryBtnText = 'Cancel';
+          secondaryAction = 'adminCancel';
+          adminNotesLabel = 'Admin Notes *';
+        } else if (actionType === 'Consider retirement') {
+          // Retirement review - check creator choice
+          var creatorChoice = (entry.actionTaken || '').trim();
+          if (creatorChoice === 'Keep active') {
+            primaryBtnText = 'Confirm keep active';
+            primaryAction = 'adminApprove';
+          } else if (creatorChoice === 'Retire') {
+            primaryBtnText = 'Mark retirement complete';
+            primaryAction = 'adminApproveRetirement';  // Special handler
+          } else {
+            primaryBtnText = 'Approve';
+            primaryAction = 'adminApprove';
+          }
+          secondaryBtnText = 'Request follow-up';
+          secondaryAction = 'adminRequestChanges';
+          adminNotesLabel = 'Admin Notes (optional)';
+        } else {
+          // Update needed → Approve or Request follow-up
+          primaryBtnText = 'Approve';
+          primaryAction = 'adminApprove';
+          secondaryBtnText = 'Request follow-up';
+          secondaryAction = 'adminRequestChanges';
+          adminNotesLabel = 'Admin Notes (optional)';
+        }
+
+        html += '<div style="margin-top:16px;padding-top:16px;border-top:1px solid #e8eaed;">' +
+          '<div class="form-row">' +
+            '<label>' + adminNotesLabel + '</label>' +
+            '<textarea id="admin-notes-' + demoNumber + '" placeholder="' + (isNeedHelp ? 'Provide guidance...' : 'Feedback for creator (required if requesting follow-up)') + '" rows="3" onclick="event.stopPropagation();"></textarea>' +
+          '</div>' +
+          '<div style="display:flex;gap:8px;margin-top:12px;">' +
+            '<button class="btn-primary" onclick="event.stopPropagation(); ' + primaryAction + '(' + entry.rowIndex + ', \'' + demoNumber + '\', \'' + primaryBtnText + '\');">' + primaryBtnText + '</button>' +
+            '<button class="btn-secondary" onclick="event.stopPropagation(); ' + secondaryAction + '(' + entry.rowIndex + ', \'' + demoNumber + '\', \'' + secondaryBtnText + '\');">' + secondaryBtnText + '</button>' +
+          '</div>' +
+        '</div>';
+
+        document.getElementById('admin-review-content-' + demoNumber).innerHTML = html;
+      })
+      .withFailureHandler(function(error) {
+        document.getElementById('admin-review-content-' + demoNumber).innerHTML =
+          '<div style="color:#c5221f;">Error: ' + escapeHtml(error.message || String(error)) + '</div>';
+      })
+      .getLatestPendingQueueEntry(demoNumber);
+  }
+
+  function refreshSubmissions() {
+    // Close all detail rows to prevent stale state
+    document.querySelectorAll('.detail-row').forEach(function(r) { r.remove(); });
+    document.querySelectorAll('.data-row.expanded').forEach(function(r) { r.classList.remove('expanded'); });
+
+    // Reload submission data
+    reloadSubmissions();
+  }
+
+  function adminApprove(queueRowIndex, demoNumber, actionLabel) {
+    var notes = document.getElementById('admin-notes-' + demoNumber).value.trim();
+
+    if (!confirm('Approve this response? The creator will see the workflow as resolved.')) return;
+
+    google.script.run
+      .withSuccessHandler(function(result) {
+        if (result.success) {
+          alert('Response approved successfully.');
+          refreshSubmissions();
+        } else {
+          alert('Error: ' + (result.error || 'Unknown error'));
+        }
+      })
+      .withFailureHandler(function(error) {
+        alert('Error: ' + (error.message || String(error)));
+      })
+      .approveResponse(queueRowIndex, notes);
+  }
+
+  function adminRequestChanges(queueRowIndex, demoNumber, actionLabel) {
+    var notes = document.getElementById('admin-notes-' + demoNumber).value.trim();
+
+    if (!notes) {
+      alert('Guidance is required.');
+      return;
+    }
+
+    // Context-aware messages based on action label
+    var confirmMsg = actionLabel === 'Send guidance' ? 'Send guidance?' : 'Request follow-up?';
+    var successMsg = actionLabel === 'Send guidance' ? 'Guidance sent.' : 'Follow-up requested.';
+
+    if (!confirm(confirmMsg)) return;
+
+    // Disable buttons and show loading
+    var buttons = document.querySelectorAll('#admin-review-' + demoNumber + ' button');
+    buttons.forEach(function(btn) {
+      btn.disabled = true;
+      if (btn.classList.contains('btn-primary')) {
+        btn.textContent = 'Sending...';
+      }
+    });
+
+    google.script.run
+      .withSuccessHandler(function(result) {
+        if (result.success) {
+          alert(successMsg);
+          refreshSubmissions();
+        } else {
+          alert('Error: ' + (result.error || 'Unknown error'));
+          // Re-enable buttons on error
+          buttons.forEach(function(btn) {
+            btn.disabled = false;
+            if (btn.classList.contains('btn-primary')) {
+              btn.textContent = actionLabel;
+            }
+          });
+        }
+      })
+      .withFailureHandler(function(error) {
+        alert('Error: ' + (error.message || String(error)));
+        // Re-enable buttons on error
+        buttons.forEach(function(btn) {
+          btn.disabled = false;
+          if (btn.classList.contains('btn-primary')) {
+            btn.textContent = actionLabel;
+          }
+        });
+      })
+      .requestChanges(queueRowIndex, notes);
+  }
+
+  function adminCancel(queueRowIndex, demoNumber) {
+    // Close the admin review panel without making changes
+    var detailRow = document.querySelector('.detail-row');
+    if (detailRow) {
+      detailRow.remove();
+    }
+    var expandedRow = document.querySelector('.data-row.expanded');
+    if (expandedRow) {
+      expandedRow.classList.remove('expanded');
+    }
+  }
+
+  function adminApproveRetirement(queueRowIndex, demoNumber, actionLabel) {
+    var notes = document.getElementById('admin-notes-' + demoNumber).value.trim();
+
+    // Get submission data to show Drupal link if available
+    var sub = allSubmissions.find(function(s) { return s.requestNumber === demoNumber; });
+    if (!sub) {
+      alert('Error: Could not find submission data.');
+      return;
+    }
+
+    // Build confirmation message with Drupal link
+    var drupalUrl = sub.drupalPageUrl || '';
+    var confirmMsg = 'Complete retirement workflow?\n\n' +
+      '⚠ IMPORTANT: You must unpublish this demo in Drupal BEFORE confirming.\n\n' +
+      'This action will:\n' +
+      '- Mark the demo Status as "Retired"\n' +
+      '- Close the lifecycle workflow\n' +
+      '- Record completion timestamp\n\n';
+
+    if (drupalUrl) {
+      confirmMsg += 'Drupal page: ' + drupalUrl + '\n\n';
+    }
+
+    confirmMsg += 'Have you unpublished this demo in Drupal?';
+
+    if (!confirm(confirmMsg)) return;
+
+    google.script.run
+      .withSuccessHandler(function(result) {
+        if (result.success) {
+          alert('Retirement marked complete successfully.');
+          refreshSubmissions();
+        } else {
+          alert('Error: ' + (result.error || 'Unknown error'));
+        }
+      })
+      .withFailureHandler(function(error) {
+        alert('Error: ' + (error.message || String(error)));
+      })
+      .approveResponse(queueRowIndex, notes);
+  }
+
+  function loadAdminFeedback(demoNumber) {
+    google.script.run
+      .withSuccessHandler(function(result) {
+        var container = document.getElementById('admin-feedback-' + demoNumber);
+        if (!container) return;
+
+        if (!result.success) {
+          container.innerHTML = '<div style="font-size:0.75rem;font-weight:600;text-transform:uppercase;color:#b06000;margin-bottom:6px;">Guidance from Reviewer</div>' +
+            '<div style="color:#c5221f;font-size:0.85rem;">Error: ' + escapeHtml(result.error || 'Unknown error') + '</div>';
+          return;
+        }
+
+        if (!result.feedback || !result.feedback.adminNotes) {
+          container.innerHTML = '<div style="font-size:0.75rem;font-weight:600;text-transform:uppercase;color:#b06000;margin-bottom:6px;">Guidance from Reviewer</div>' +
+            '<div style="color:#5f6368;font-size:0.85rem;">No guidance found.</div>';
+          return;
+        }
+
+        var fb = result.feedback;
+        container.innerHTML = '<div style="font-size:0.75rem;font-weight:600;text-transform:uppercase;color:#b06000;margin-bottom:6px;">Guidance from Reviewer</div>' +
+          '<div style="color:#3c4043;font-size:0.85rem;white-space:pre-wrap;">' + escapeHtml(fb.adminNotes) + '</div>' +
+          (fb.timestamp ? '<div style="font-size:0.75rem;color:#888;margin-top:6px;">' + formatDate(fb.timestamp) + '</div>' : '');
+      })
+      .withFailureHandler(function(error) {
+        var container = document.getElementById('admin-feedback-' + demoNumber);
+        if (!container) return;
+        container.innerHTML = '<div style="font-size:0.75rem;font-weight:600;text-transform:uppercase;color:#b06000;margin-bottom:6px;">Guidance from Reviewer</div>' +
+          '<div style="color:#c5221f;font-size:0.85rem;">Error: ' + escapeHtml(error.message || String(error)) + '</div>';
+      })
+      .getLatestAdminFeedback(demoNumber);
   }
 
   function buildResponseFormFields(sub) {
@@ -1907,6 +2635,48 @@
   function showResponseForm(num) {
     var form = document.getElementById('response-form-' + num);
     if (form) form.style.display = form.style.display === 'none' ? 'block' : 'none';
+  }
+
+  function showHelperText(selectElement, helperId, messages) {
+    var helper = document.getElementById(helperId);
+    if (!helper) return;
+    var selectedValue = selectElement.value;
+    if (messages[selectedValue]) {
+      helper.textContent = messages[selectedValue];
+      helper.style.display = 'block';
+    } else {
+      helper.style.display = 'none';
+    }
+  }
+
+  function handleUpdateNeededSelection(selectElement, num) {
+    var selectedValue = selectElement.value;
+    var helper = document.getElementById('helper-text-' + num);
+    var linkRow = document.getElementById('resp-link-row-' + num);
+    var notesField = document.getElementById('resp-notes-' + num);
+
+    if (selectedValue === 'Updated') {
+      // Show helper, link field, and update Notes placeholder
+      if (helper) {
+        helper.textContent = 'Submit your updated demo for review.';
+        helper.style.display = 'block';
+      }
+      if (linkRow) linkRow.style.display = 'block';
+      if (notesField) notesField.placeholder = 'Add any context for the review team...';
+    } else if (selectedValue === 'Need help') {
+      // Show helper, hide link field, and update Notes placeholder
+      if (helper) {
+        helper.textContent = 'Tell us what you need help with below. The review team will follow up.';
+        helper.style.display = 'block';
+      }
+      if (linkRow) linkRow.style.display = 'none';
+      if (notesField) notesField.placeholder = 'Tell us what you need help with...';
+    } else {
+      // No selection - hide helper and reset
+      if (helper) helper.style.display = 'none';
+      if (linkRow) linkRow.style.display = 'block';
+      if (notesField) notesField.placeholder = 'Add any context for the review team...';
+    }
   }
 
   function submitLifecycleResponse(num, action) {
@@ -2532,6 +3302,8 @@
     currentStatusFilter = '';
     document.getElementById('searchInput').value = '';
     currentSearch = '';
+    currentNeedsReviewFilter = false;
+    updateNeedsReviewButton();
     renderTable();
   }
 
@@ -2542,6 +3314,34 @@
       currentSearch = document.getElementById('searchInput').value.trim();
       renderTable();
     }, 300);
+  }
+
+  var currentNeedsReviewFilter = false;
+  function toggleNeedsReviewFilter() {
+    currentNeedsReviewFilter = !currentNeedsReviewFilter;
+    updateNeedsReviewButton();
+    renderTable();
+  }
+
+  function updateNeedsReviewButton() {
+    var btn = document.getElementById('needsReviewFilter');
+    if (!btn) return;
+
+    var count = allSubmissions.filter(function(s) {
+      return (s.perfActionStatus || '').trim() === 'Pending review';
+    }).length;
+
+    document.getElementById('needsReviewCount').textContent = count;
+
+    if (currentNeedsReviewFilter) {
+      btn.style.background = '#e8f0fe';
+      btn.style.borderColor = '#1a73e8';
+      btn.style.color = '#1a73e8';
+    } else {
+      btn.style.background = '#fff';
+      btn.style.borderColor = '#dadce0';
+      btn.style.color = '#5f6368';
+    }
   }
 
   // --- Dashboard ---

@@ -109,6 +109,15 @@ function buildSubmissionFromRow_(row, headerMap) {
     return idx != null ? String(row[idx] || '') : '';
   };
 
+  // Numeric getter: preserves 0 as "0", only returns empty string for null/undefined/blank
+  const getNumeric = (name) => {
+    const idx = headerMap[name];
+    if (idx == null) return '';
+    const val = row[idx];
+    if (val === null || val === undefined || val === '') return '';
+    return String(val);
+  };
+
   var meta = {};
   for (var fi = 0; fi < EDITABLE_METADATA_FIELDS_.length; fi++) {
     meta[EDITABLE_METADATA_FIELDS_[fi].key] = get(EDITABLE_METADATA_FIELDS_[fi].key);
@@ -171,6 +180,12 @@ function buildSubmissionFromRow_(row, headerMap) {
     perfTrend: get(col.PERF_TREND),
     perfSignals: get(col.PERF_SIGNALS),
     perfFlags: get(col.PERF_FLAGS),
+    playersPerMonth: getNumeric(col.PLAYERS_PER_MONTH),
+    completionRate: getNumeric(col.COMPLETION_RATE),
+    mtOpportunity: getNumeric(col.MT_OPPORTUNITY),
+    mtWon: getNumeric(col.MT_WON),
+    contentAge: getNumeric(col.CONTENT_AGE),
+    metricsLastSync: get(col.METRICS_LAST_SYNC),
     priority: get(col.PRIORITY),
     deadline: get(col.DEADLINE),
     contactedBu: get(col.CONTACTED_BU),
@@ -277,7 +292,14 @@ function getMySubmissions(searchName) {
       submissions[s].isMine = (ce === lowerEmail || re === lowerEmail);
     }
 
-    return { success: true, submissions, userEmail: lowerEmail, isAdmin: admin, editableFields: EDITABLE_METADATA_FIELDS_, fieldOptions: FIELD_OPTIONS };
+    return {
+      success: true,
+      submissions,
+      userEmail: lowerEmail,
+      isAdmin: admin,
+      editableFields: EDITABLE_METADATA_FIELDS_,
+      fieldOptions: FIELD_OPTIONS
+    };
   } catch (e) {
     return { success: false, error: e.message || String(e) };
   }
@@ -534,12 +556,14 @@ function submitCreatorResponse(payload) {
     const creatorEmailIdx = headerMap[STATUS_TRACKER_COLUMNS.CREATOR_EMAIL];
     const requestorEmailIdx = headerMap[STATUS_TRACKER_COLUMNS.REQUESTOR_EMAIL];
     const actionStatusIdx = headerMap[STATUS_TRACKER_COLUMNS.ACTION_STATUS];
+    const statusIdx = headerMap[STATUS_TRACKER_COLUMNS.STATUS];
 
     if (numIdx == null) return { success: false, error: 'Configuration error.' };
 
     const isUserAdmin = isAdmin_(email);
     let authorized = isUserAdmin;
     let currentActionStatus = '';
+    let currentStatus = '';
     let creatorEmail = '';
     let requestorEmail = '';
 
@@ -567,9 +591,12 @@ function submitCreatorResponse(payload) {
             }
           }
 
-          // Also read current Action Status for lock check
+          // Also read current Action Status and Status for validation
           if (actionStatusIdx != null) {
             currentActionStatus = normalizeActionStatus_(String(rows[i][actionStatusIdx] || '').trim());
+          }
+          if (statusIdx != null) {
+            currentStatus = String(rows[i][statusIdx] || '').trim();
           }
 
           break;
@@ -583,6 +610,9 @@ function submitCreatorResponse(payload) {
           if (actionStatusIdx != null) {
             currentActionStatus = normalizeActionStatus_(String(rows[i][actionStatusIdx] || '').trim());
           }
+          if (statusIdx != null) {
+            currentStatus = String(rows[i][statusIdx] || '').trim();
+          }
           break;
         }
       }
@@ -590,6 +620,11 @@ function submitCreatorResponse(payload) {
 
     if (!authorized) {
       return { success: false, error: 'Not authorized to respond to this submission.' };
+    }
+
+    // RETIRED GUARD: Lifecycle responses not allowed for retired demos
+    if (isLifecycleResponse && currentStatus === 'Retired') {
+      return { success: false, error: 'This demo is retired and no longer accepts lifecycle responses.' };
     }
 
     // PENDING LOCK: If Action Status is "Pending Review", only admin can submit/overwrite
@@ -638,51 +673,78 @@ function submitCreatorResponse(payload) {
     lock.waitLock(10000);
 
     try {
-      const sheet = getResponseQueueSheet_();
-      const lastRow = sheet.getLastRow();
+      // Fetch Master data first to copy Assigned, Creator Name, Creator Email
+      const masterData = getRequestMasterData_();
+      const masterNumIdx = masterData.headerMap[STATUS_TRACKER_COLUMNS.NUMBER];
+      const masterAssignedIdx = masterData.headerMap[STATUS_TRACKER_COLUMNS.ASSIGNED];
+      const masterCreatorNameIdx = masterData.headerMap[STATUS_TRACKER_COLUMNS.CREATOR_NAME];
+      const masterCreatorEmailIdx = masterData.headerMap[STATUS_TRACKER_COLUMNS.CREATOR_EMAIL];
 
-      let existingRow = -1;
-      if (lastRow > 1) {
-        const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0]
-          .map(h => String(h || '').trim());
-        const numCol = headers.indexOf('Number');
-        const processedCol = headers.indexOf('Processed');
-        if (numCol >= 0 && processedCol >= 0) {
-          const data = sheet.getRange(2, 1, lastRow - 1, headers.length).getValues();
-          for (let i = data.length - 1; i >= 0; i--) {
-            if (String(data[i][numCol] || '').trim() === String(payload.number).trim()
-                && !String(data[i][processedCol] || '').trim()) {
-              existingRow = i + 2;
-              break;
+      let masterAssigned = '';
+      let masterCreatorName = '';
+      let masterCreatorEmail = '';
+
+      if (masterNumIdx != null) {
+        for (let i = 0; i < masterData.rows.length; i++) {
+          if (String(masterData.rows[i][masterNumIdx] || '').trim() === String(payload.number)) {
+            if (masterAssignedIdx != null) {
+              masterAssigned = String(masterData.rows[i][masterAssignedIdx] || '').trim();
             }
+            if (masterCreatorNameIdx != null) {
+              masterCreatorName = String(masterData.rows[i][masterCreatorNameIdx] || '').trim();
+            }
+            if (masterCreatorEmailIdx != null) {
+              masterCreatorEmail = String(masterData.rows[i][masterCreatorEmailIdx] || '').trim();
+            }
+            break;
           }
         }
       }
 
-      const rowData = [
-        new Date().toISOString(),
-        email,
-        String(payload.number),
-        payload.title || '',
-        type,
-        payload.action || '',
-        payload.response || '',
-        payload.newLink || '',
-        payload.notes || '',
-        metadataJson,
-        '',
-        ''
-      ];
+      const sheet = getResponseQueueSheet_();
 
-      if (existingRow > 0) {
-        sheet.getRange(existingRow, 1, 1, rowData.length).setValues([rowData]);
-      } else {
-        sheet.appendRow(rowData);
+      // Always append a new row (history-preserving model)
+      // Each creator submission is a new review attempt
+      const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0]
+        .map(h => String(h || '').trim());
+
+      // Build row data matching actual Response Queue schema
+      const col = (name) => headers.indexOf(name);
+      const rowData = new Array(headers.length).fill('');
+
+      function set(name, value) {
+        const idx = col(name);
+        if (idx >= 0) rowData[idx] = value;
       }
 
+      // Migration-compatible: Response Queue uses "Review Status" (target name)
+      // but physical sheet may still have "Action Status" (pre-rename)
+      const reviewStatusHeader = col('Review Status') >= 0 ? 'Review Status' : 'Action Status';
+
+      set('Demo Number', String(payload.number));
+      set('Number', String(payload.number));
+      set('Assigned', masterAssigned);  // Copy from Master
+      set('email', email);  // Actual submitting user email (current user)
+      set('Creator Email', masterCreatorEmail);  // Copy from Master
+      set('Creator Name', masterCreatorName);  // Copy from Master
+      set('Demo Title', payload.title || '');
+      set(reviewStatusHeader, 'Pending review');  // Initial state for new submission
+      set('Timestamp', new Date().toISOString());
+      set('Action Taken', payload.response || '');
+      set('New Creation Link', payload.newLink || '');
+      set('Additional Comments', payload.notes || '');
+      set('Recommended Action', payload.action || '');
+
+      // Metadata snapshot - store if present
+      if (metadataJson && metadataJson !== '{}') {
+        // Store in a suitable text column if available
+        const metaCol = col('Target Update Date');  // Repurpose for metadata JSON
+        if (metaCol >= 0) rowData[metaCol] = metadataJson;
+      }
+
+      sheet.appendRow(rowData);
+
       try {
-        var masterData = getRequestMasterData_();
-        var masterNumIdx = masterData.headerMap[STATUS_TRACKER_COLUMNS.NUMBER];
         var masterActionStatusIdx = masterData.headerMap[STATUS_TRACKER_COLUMNS.ACTION_STATUS];
         if (masterNumIdx != null && masterActionStatusIdx != null) {
           var masterSheet = getTargetSpreadsheet_().getSheetByName('Request_Master');
@@ -707,7 +769,138 @@ function submitCreatorResponse(payload) {
   }
 }
 
-function approveResponse(queueRowIndex, adminNotes, metadataOverrides) {
+function getLatestPendingQueueEntry(demoNumber) {
+  try {
+    const email = Session.getActiveUser().getEmail();
+    if (!email || !isAdmin_(email)) {
+      return { success: false, error: 'Admin access required.' };
+    }
+
+    const sheet = getResponseQueueSheet_();
+    const lastRow = sheet.getLastRow();
+    if (lastRow < 2) return { success: true, entry: null };
+
+    const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0]
+      .map(h => String(h || '').trim());
+    const data = sheet.getRange(2, 1, lastRow - 1, headers.length).getValues();
+
+    const col = (name) => headers.indexOf(name);
+    const numCol = col('Number');
+
+    // Migration-compatible: look for "Review Status" first, fall back to "Action Status"
+    const reviewStatusCol = col('Review Status') >= 0 ? col('Review Status') : col('Action Status');
+
+    if (numCol < 0) return { success: false, error: 'Number column not found.' };
+    if (reviewStatusCol < 0) return { success: false, error: 'Review Status or Action Status column not found.' };
+
+    // Find latest matching row with Review Status = 'Pending review'
+    for (let i = data.length - 1; i >= 0; i--) {
+      const rowNumber = String(data[i][numCol] || '').trim();
+      const reviewStatus = String(data[i][reviewStatusCol] || '').trim();
+
+      if (rowNumber === String(demoNumber).trim() && reviewStatus === 'Pending review') {
+        const rowIndex = i + 2;  // 1-indexed + header row
+        const entry = {
+          rowIndex: rowIndex,
+          demoNumber: rowNumber,
+          actionTaken: String(data[i][col('Action Taken')] || ''),
+          newCreationLink: String(data[i][col('New Creation Link')] || ''),
+          additionalComments: String(data[i][col('Additional Comments')] || ''),
+          timestamp: String(data[i][col('Timestamp')] || ''),
+          recommendedAction: String(data[i][col('Recommended Action')] || '')
+        };
+        return { success: true, entry: entry, action: entry.recommendedAction };
+      }
+    }
+
+    return { success: true, entry: null };
+  } catch (e) {
+    return { success: false, error: e.message || String(e) };
+  }
+}
+
+function getLatestAdminFeedback(demoNumber) {
+  try {
+    const email = Session.getActiveUser().getEmail();
+    if (!email) {
+      return { success: false, error: 'Authentication required.' };
+    }
+
+    const isUserAdmin = isAdmin_(email);
+
+    // Authorization: must be admin OR creator of this specific demo
+    if (!isUserAdmin) {
+      const masterData = getRequestMasterData_();
+      const numIdx = masterData.headerMap[STATUS_TRACKER_COLUMNS.NUMBER];
+      const creatorEmailIdx = masterData.headerMap[STATUS_TRACKER_COLUMNS.CREATOR_EMAIL];
+
+      if (numIdx == null || creatorEmailIdx == null) {
+        return { success: false, error: 'Required columns not found.' };
+      }
+
+      let authorized = false;
+      const targetNumber = String(demoNumber).trim();
+      const userEmailLower = email.toLowerCase().trim();
+
+      for (let i = 0; i < masterData.rows.length; i++) {
+        if (String(masterData.rows[i][numIdx] || '').trim() === targetNumber) {
+          const creatorEmail = String(masterData.rows[i][creatorEmailIdx] || '').toLowerCase().trim();
+          if (creatorEmail === userEmailLower) {
+            authorized = true;
+          }
+          break;
+        }
+      }
+
+      if (!authorized) {
+        return { success: false, error: 'Not authorized to access feedback for this submission.' };
+      }
+    }
+
+    const sheet = getResponseQueueSheet_();
+    const lastRow = sheet.getLastRow();
+    if (lastRow < 2) return { success: true, feedback: null };
+
+    const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0]
+      .map(h => String(h || '').trim());
+    const data = sheet.getRange(2, 1, lastRow - 1, headers.length).getValues();
+
+    const col = (name) => headers.indexOf(name);
+    const numCol = col('Number');
+
+    // Migration-compatible: look for "Review Status" first, fall back to "Action Status"
+    const reviewStatusCol = col('Review Status') >= 0 ? col('Review Status') : col('Action Status');
+    const adminNotesCol = col('Admin Notes');
+
+    if (numCol < 0) return { success: false, error: 'Number column not found.' };
+    if (reviewStatusCol < 0) return { success: false, error: 'Review Status or Action Status column not found.' };
+
+    // Find latest matching row with Review Status = 'Follow-up needed' (or legacy 'Resubmit required')
+    for (let i = data.length - 1; i >= 0; i--) {
+      const rowNumber = String(data[i][numCol] || '').trim();
+      const reviewStatus = String(data[i][reviewStatusCol] || '').trim();
+
+      if (rowNumber === String(demoNumber).trim() && (reviewStatus === 'Follow-up needed' || reviewStatus === 'Resubmit required')) {
+        const adminNotes = String(data[i][adminNotesCol] || '').trim();
+        const timestamp = String(data[i][col('Timestamp')] || '');
+
+        return {
+          success: true,
+          feedback: {
+            adminNotes: adminNotes,
+            timestamp: timestamp
+          }
+        };
+      }
+    }
+
+    return { success: true, feedback: null };
+  } catch (e) {
+    return { success: false, error: e.message || String(e) };
+  }
+}
+
+function approveResponse(queueRowIndex, adminNotes) {
   try {
     const email = Session.getActiveUser().getEmail();
     if (!email || !isAdmin_(email)) {
@@ -718,158 +911,134 @@ function approveResponse(queueRowIndex, adminNotes, metadataOverrides) {
     lock.waitLock(15000);
 
     try {
+      // ===== PREFLIGHT: Validate all preconditions before any writes =====
+
       const sheet = getResponseQueueSheet_();
       const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0]
         .map(h => String(h || '').trim());
-      const queueRow = sheet.getRange(queueRowIndex, 1, 1, headers.length).getValues()[0];
 
+      // Validate required Queue headers
       const col = (name) => headers.indexOf(name);
-      const get = (name) => {
-        const idx = col(name);
-        return idx >= 0 ? String(queueRow[idx] || '') : '';
-      };
 
-      if (get('Processed')) {
-        return { success: false, error: 'This response has already been processed.' };
+      // Migration-compatible: look for "Review Status" first, fall back to "Action Status"
+      const reviewStatusIdx = col('Review Status') >= 0 ? col('Review Status') : col('Action Status');
+      const numberIdx = col('Number');
+      const adminNotesIdx = col('Admin Notes');
+      const queueCompletedIdx = col('Action Completed Date');
+      const newLinkIdx = col('New Creation Link');
+
+      if (reviewStatusIdx < 0 || numberIdx < 0) {
+        return { success: false, error: 'Required Queue columns not found.' };
       }
 
-      const number = get('Number').trim();
-      if (!number) return { success: false, error: 'No demo number found.' };
+      // Validate target Queue row exists and matches expected state
+      const queueRow = sheet.getRange(queueRowIndex, 1, 1, headers.length).getValues()[0];
 
+      const queueReviewStatus = String(queueRow[reviewStatusIdx] || '').trim();
+      const number = String(queueRow[numberIdx] || '').trim();
+      const queueDemoNumber = String(queueRow[col('Demo Number')] || '').trim();
+
+      // Verify Queue row is in expected Pending review state
+      if (queueReviewStatus !== 'Pending review') {
+        return { success: false, error: 'Queue row is not Pending review (current: ' + queueReviewStatus + '). Refresh and retry.' };
+      }
+
+      if (!number) {
+        return { success: false, error: 'No demo number found in Queue row.' };
+      }
+
+      // Validate Request_Master row exists and matches expected state
       const { rows, headerMap } = getRequestMasterData_();
       const numIdx = headerMap[STATUS_TRACKER_COLUMNS.NUMBER];
+      const actionStatusIdx = headerMap[STATUS_TRACKER_COLUMNS.ACTION_STATUS];
+      const completedDateIdx = headerMap[STATUS_TRACKER_COLUMNS.ACTION_COMPLETED_DATE];
+      const creationLinkIdx = headerMap[STATUS_TRACKER_COLUMNS.CREATION_LINK];
+
+      if (numIdx == null || actionStatusIdx == null) {
+        return { success: false, error: 'Required Master columns not found.' };
+      }
+
       let masterRowIdx = -1;
+      let masterActionStatus = '';
       for (let i = 0; i < rows.length; i++) {
         if (String(rows[i][numIdx] || '').trim() === number) {
           masterRowIdx = i;
+          masterActionStatus = String(rows[i][actionStatusIdx] || '').trim();
           break;
         }
       }
+
       if (masterRowIdx < 0) {
         return { success: false, error: 'Demo #' + number + ' not found on Request_Master.' };
       }
 
+      // Verify Master is in expected Pending review state
+      if (masterActionStatus !== 'Pending review') {
+        return { success: false, error: 'Master Action Status is not Pending review (current: ' + masterActionStatus + '). Workflow out of sync. Refresh and retry.' };
+      }
+
+      // Check if this is a retirement completion
+      const actionTakenIdx = col('Action Taken');
+      const actionTaken = actionTakenIdx >= 0 ? String(queueRow[actionTakenIdx] || '').trim() : '';
+      const isRetirement = (actionTaken === 'Retire');
+
+      // ===== PREFLIGHT PASSED: Perform writes =====
+
       const masterSheet = getTargetSpreadsheet_().getSheetByName('Request_Master');
       const masterRow = masterRowIdx + 2;
+      const timestamp = new Date().toISOString();
 
-      const actionStatusIdx = headerMap[STATUS_TRACKER_COLUMNS.ACTION_STATUS];
-      if (actionStatusIdx != null) {
+      try {
+        // Write Master updates
         masterSheet.getRange(masterRow, actionStatusIdx + 1).setValue('Complete');
-      }
 
-      var completedDateIdx = headerMap[STATUS_TRACKER_COLUMNS.ACTION_COMPLETED_DATE];
-      if (completedDateIdx != null) {
-        masterSheet.getRange(masterRow, completedDateIdx + 1).setValue(new Date().toISOString());
-      }
+        if (completedDateIdx != null) {
+          masterSheet.getRange(masterRow, completedDateIdx + 1).setValue(timestamp);
+        }
 
-      const response = get('Response');
-      const responseColIdx = headerMap['Response'];
-      if (response && responseColIdx != null) {
-        masterSheet.getRange(masterRow, responseColIdx + 1).setValue(response);
-      }
+        // If this is a retirement, update Status and Status Retired Timestamp
+        if (isRetirement) {
+          const statusIdx = headerMap[STATUS_TRACKER_COLUMNS.STATUS];
+          const retiredTsIdx = headerMap[STATUS_TRACKER_COLUMNS.STATUS_RETIRED_TS];
 
-      const notes = get('Notes');
-      if (notes && responseColIdx != null) {
-        const existing = String(masterSheet.getRange(masterRow, responseColIdx + 1).getValue() || '');
-        const combined = existing ? existing + ' | ' + notes : notes;
-        masterSheet.getRange(masterRow, responseColIdx + 1).setValue(combined);
-      }
+          if (statusIdx != null) {
+            masterSheet.getRange(masterRow, statusIdx + 1).setValue('Retired');
+          }
 
-      const newLink = get('New Link').trim();
-      const creationLinkIdx = headerMap[STATUS_TRACKER_COLUMNS.CREATION_LINK];
-      if (newLink && creationLinkIdx != null) {
-        masterSheet.getRange(masterRow, creationLinkIdx + 1).setValue(newLink);
-      }
-
-      var skipped = [];
-      var changes = metadataOverrides || null;
-      if (!changes) {
-        var metaJson = get('Metadata Changes');
-        if (metaJson) {
-          try { changes = JSON.parse(metaJson); } catch (parseErr) {
-            console.error('Failed to parse metadata changes: ' + parseErr.message);
+          if (retiredTsIdx != null) {
+            masterSheet.getRange(masterRow, retiredTsIdx + 1).setValue(timestamp);
           }
         }
-      }
-      if (changes) {
-        var keys = Object.keys(changes);
-        for (var m = 0; m < keys.length; m++) {
-          var optionsKey = FIELD_TO_OPTIONS_[keys[m]];
-          if (optionsKey && FIELD_OPTIONS[optionsKey]) {
-            if (FIELD_OPTIONS[optionsKey].indexOf(changes[keys[m]]) === -1) {
-              skipped.push(keys[m] + ': "' + changes[keys[m]] + '" is not an allowed value');
-              continue;
-            }
-          }
-          var cIdx = headerMap[keys[m]];
-          if (cIdx != null) {
-            masterSheet.getRange(masterRow, cIdx + 1).setValue(changes[keys[m]]);
-          }
+
+        const newLinkColIdx = col('New Creation Link');
+        const newLink = newLinkColIdx >= 0 ? String(queueRow[newLinkColIdx] || '').trim() : '';
+        if (newLink && creationLinkIdx != null) {
+          masterSheet.getRange(masterRow, creationLinkIdx + 1).setValue(newLink);
         }
-      }
 
-      const approvalIdx = col('Approval');
-      const processedIdx = col('Processed');
-      if (approvalIdx >= 0) sheet.getRange(queueRowIndex, approvalIdx + 1).setValue('Approved');
-      if (processedIdx >= 0) sheet.getRange(queueRowIndex, processedIdx + 1).setValue(new Date().toISOString());
+        // Write Queue updates
+        sheet.getRange(queueRowIndex, reviewStatusIdx + 1).setValue('Complete');
 
-      var adminNotesIdx = col('Admin Notes');
-      if (adminNotesIdx >= 0 && adminNotes) {
-        sheet.getRange(queueRowIndex, adminNotesIdx + 1).setValue(adminNotes);
-      }
-
-      invalidateStatusTrackerCache_();
-      return { success: true, skipped: skipped.length > 0 ? skipped : undefined };
-    } finally {
-      lock.releaseLock();
-    }
-  } catch (e) {
-    return { success: false, error: e.message || String(e) };
-  }
-}
-
-function rejectResponse(queueRowIndex, adminNotes) {
-  try {
-    const email = Session.getActiveUser().getEmail();
-    if (!email || !isAdmin_(email)) {
-      return { success: false, error: 'Admin access required.' };
-    }
-
-    const lock = LockService.getScriptLock();
-    lock.waitLock(10000);
-
-    try {
-      const sheet = getResponseQueueSheet_();
-      const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0]
-        .map(h => String(h || '').trim());
-
-      const col = (name) => headers.indexOf(name);
-      const queueRow = sheet.getRange(queueRowIndex, 1, 1, headers.length).getValues()[0];
-      const number = String(queueRow[col('Number')] || '').trim();
-
-      const approvalIdx = col('Approval');
-      const processedIdx = col('Processed');
-      if (approvalIdx >= 0) sheet.getRange(queueRowIndex, approvalIdx + 1).setValue('Rejected');
-      if (processedIdx >= 0) sheet.getRange(queueRowIndex, processedIdx + 1).setValue(new Date().toISOString());
-
-      var adminNotesIdx = col('Admin Notes');
-      if (adminNotesIdx >= 0 && adminNotes) {
-        sheet.getRange(queueRowIndex, adminNotesIdx + 1).setValue(adminNotes);
-      }
-
-      if (number) {
-        const { rows, headerMap } = getRequestMasterData_();
-        const numIdx = headerMap[STATUS_TRACKER_COLUMNS.NUMBER];
-        const actionStatusIdx = headerMap[STATUS_TRACKER_COLUMNS.ACTION_STATUS];
-        if (numIdx != null && actionStatusIdx != null) {
-          const masterSheet = getTargetSpreadsheet_().getSheetByName('Request_Master');
-          for (let i = 0; i < rows.length; i++) {
-            if (String(rows[i][numIdx] || '').trim() === number) {
-              masterSheet.getRange(i + 2, actionStatusIdx + 1).setValue('Resubmit required');
-              break;
-            }
-          }
+        if (adminNotesIdx >= 0 && adminNotes) {
+          sheet.getRange(queueRowIndex, adminNotesIdx + 1).setValue(adminNotes);
         }
+
+        if (queueCompletedIdx >= 0) {
+          sheet.getRange(queueRowIndex, queueCompletedIdx + 1).setValue(timestamp);
+        }
+
+      } catch (writeErr) {
+        // Rollback: attempt to restore Master to Pending review if Queue write failed
+        try {
+          masterSheet.getRange(masterRow, actionStatusIdx + 1).setValue('Pending review');
+          if (completedDateIdx != null) {
+            masterSheet.getRange(masterRow, completedDateIdx + 1).setValue('');
+          }
+        } catch (rollbackErr) {
+          Logger.log('Rollback failed after partial write: ' + rollbackErr.message);
+        }
+
+        return { success: false, error: 'Write failed: ' + writeErr.message + '. Attempted rollback. Refresh and retry.' };
       }
 
       invalidateStatusTrackerCache_();
@@ -880,6 +1049,126 @@ function rejectResponse(queueRowIndex, adminNotes) {
   } catch (e) {
     return { success: false, error: e.message || String(e) };
   }
+}
+
+function requestChanges(queueRowIndex, adminNotes) {
+  try {
+    const email = Session.getActiveUser().getEmail();
+    if (!email || !isAdmin_(email)) {
+      return { success: false, error: 'Admin access required.' };
+    }
+
+    if (!adminNotes || !adminNotes.trim()) {
+      return { success: false, error: 'Admin Notes required when requesting changes.' };
+    }
+
+    const lock = LockService.getScriptLock();
+    lock.waitLock(10000);
+
+    try {
+      // ===== PREFLIGHT: Validate all preconditions before any writes =====
+
+      const sheet = getResponseQueueSheet_();
+      const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0]
+        .map(h => String(h || '').trim());
+
+      // Validate required Queue headers
+      const col = (name) => headers.indexOf(name);
+
+      // Migration-compatible: look for "Review Status" first, fall back to "Action Status"
+      const reviewStatusIdx = col('Review Status') >= 0 ? col('Review Status') : col('Action Status');
+      const numberIdx = col('Number');
+      const adminNotesIdx = col('Admin Notes');
+
+      if (reviewStatusIdx < 0 || numberIdx < 0) {
+        return { success: false, error: 'Required Queue columns not found.' };
+      }
+
+      // Validate target Queue row exists and matches expected state
+      const queueRow = sheet.getRange(queueRowIndex, 1, 1, headers.length).getValues()[0];
+      const number = String(queueRow[numberIdx] || '').trim();
+      const queueReviewStatus = String(queueRow[reviewStatusIdx] || '').trim();
+
+      // Verify Queue row is in expected Pending review state
+      if (queueReviewStatus !== 'Pending review') {
+        return { success: false, error: 'Queue row is not Pending review (current: ' + queueReviewStatus + '). Refresh and retry.' };
+      }
+
+      if (!number) {
+        return { success: false, error: 'No demo number found in Queue row.' };
+      }
+
+      // Validate Request_Master row exists and matches expected state
+      const { rows, headerMap } = getRequestMasterData_();
+      const numIdx = headerMap[STATUS_TRACKER_COLUMNS.NUMBER];
+      const actionStatusIdx = headerMap[STATUS_TRACKER_COLUMNS.ACTION_STATUS];
+
+      if (numIdx == null || actionStatusIdx == null) {
+        return { success: false, error: 'Required Master columns not found.' };
+      }
+
+      let masterRowIdx = -1;
+      let masterActionStatus = '';
+      for (let i = 0; i < rows.length; i++) {
+        if (String(rows[i][numIdx] || '').trim() === number) {
+          masterRowIdx = i;
+          masterActionStatus = String(rows[i][actionStatusIdx] || '').trim();
+          break;
+        }
+      }
+
+      if (masterRowIdx < 0) {
+        return { success: false, error: 'Demo #' + number + ' not found on Request_Master.' };
+      }
+
+      // Verify Master is in expected Pending review state
+      if (masterActionStatus !== 'Pending review') {
+        return { success: false, error: 'Master Action Status is not Pending review (current: ' + masterActionStatus + '). Workflow out of sync. Refresh and retry.' };
+      }
+
+      // ===== PREFLIGHT PASSED: Perform writes =====
+
+      const masterSheet = getTargetSpreadsheet_().getSheetByName('Request_Master');
+      const masterRow = masterRowIdx + 2;
+
+      try {
+        // Write Queue updates first
+        sheet.getRange(queueRowIndex, reviewStatusIdx + 1).setValue('Follow-up needed');
+
+        if (adminNotesIdx >= 0) {
+          sheet.getRange(queueRowIndex, adminNotesIdx + 1).setValue(adminNotes.trim());
+        }
+
+        // Write Master update
+        masterSheet.getRange(masterRow, actionStatusIdx + 1).setValue('Follow-up needed');
+
+      } catch (writeErr) {
+        // Rollback: attempt to restore Queue to Pending review if Master write failed
+        try {
+          sheet.getRange(queueRowIndex, reviewStatusIdx + 1).setValue('Pending review');
+          if (adminNotesIdx >= 0) {
+            sheet.getRange(queueRowIndex, adminNotesIdx + 1).setValue('');
+          }
+        } catch (rollbackErr) {
+          Logger.log('Rollback failed after partial write: ' + rollbackErr.message);
+        }
+
+        return { success: false, error: 'Write failed: ' + writeErr.message + '. Attempted rollback. Refresh and retry.' };
+      }
+
+      invalidateStatusTrackerCache_();
+      return { success: true };
+    } finally {
+      lock.releaseLock();
+    }
+  } catch (e) {
+    return { success: false, error: e.message || String(e) };
+  }
+}
+
+// Alias for backward compatibility
+function rejectResponse(queueRowIndex, adminNotes) {
+  return requestChanges(queueRowIndex, adminNotes);
 }
 
 function getReviewQueue() {
