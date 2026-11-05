@@ -92,10 +92,70 @@ function testGetAllSubmissionsAdminOnly() {
   console.log('✓ getAllSubmissions admin-only enforcement test passed\n');
 }
 
+function testNumericZeroPreservation() {
+  console.log('Test: Numeric zero values preserved in submission data');
+
+  // Simulate buildSubmissionFromRow_ behavior for numeric fields
+  function buildSubmission(row, headerMap) {
+    const get = (name) => {
+      const idx = headerMap[name];
+      return idx != null ? String(row[idx] || '') : '';
+    };
+
+    const getNumeric = (name) => {
+      const idx = headerMap[name];
+      if (idx == null) return '';
+      const val = row[idx];
+      if (val === null || val === undefined || val === '') return '';
+      return String(val);
+    };
+
+    return {
+      title: get('Title'),
+      mtOpportunity: getNumeric('MT_Opportunity'),
+      mtWon: getNumeric('MT_Won')
+    };
+  }
+
+  const headerMap = { 'Title': 0, 'MT_Opportunity': 1, 'MT_Won': 2 };
+
+  // Test 1: Zero values preserved
+  const rowWithZeros = ['Demo 1', 0, 0];
+  const result1 = buildSubmission(rowWithZeros, headerMap);
+  assert.strictEqual(result1.mtOpportunity, '0', 'mtOpportunity = 0 should be preserved as "0"');
+  assert.strictEqual(result1.mtWon, '0', 'mtWon = 0 should be preserved as "0"');
+
+  // Test 2: Blank values remain empty
+  const rowWithBlanks = ['Demo 2', '', ''];
+  const result2 = buildSubmission(rowWithBlanks, headerMap);
+  assert.strictEqual(result2.mtOpportunity, '', 'Blank mtOpportunity should remain empty');
+  assert.strictEqual(result2.mtWon, '', 'Blank mtWon should remain empty');
+
+  // Test 3: Null values remain empty
+  const rowWithNulls = ['Demo 3', null, null];
+  const result3 = buildSubmission(rowWithNulls, headerMap);
+  assert.strictEqual(result3.mtOpportunity, '', 'Null mtOpportunity should remain empty');
+  assert.strictEqual(result3.mtWon, '', 'Null mtWon should remain empty');
+
+  // Test 4: Non-zero numeric values preserved
+  const rowWithValues = ['Demo 4', 50000, 10000];
+  const result4 = buildSubmission(rowWithValues, headerMap);
+  assert.strictEqual(result4.mtOpportunity, '50000', 'mtOpportunity = 50000 should be preserved');
+  assert.strictEqual(result4.mtWon, '10000', 'mtWon = 10000 should be preserved');
+
+  // Test 5: String fields still use standard get() - zero becomes empty
+  const rowWithStringZero = ['Demo 5', 0, 0];
+  const result5 = buildSubmission(rowWithStringZero, headerMap);
+  assert.strictEqual(result5.title, 'Demo 5', 'String fields use standard get()');
+
+  console.log('✓ Numeric zero preservation test passed\n');
+}
+
 // Run all tests
 try {
   testGetMySubmissionsDataScope();
   testGetAllSubmissionsAdminOnly();
+  testNumericZeroPreservation();
 
   console.log('✅ All data scope tests passed');
 } catch (error) {

@@ -8,3 +8,4 @@ docs/**
 CLAUDE.md
 .claude/**
 tests/**
+playwright-report/**
