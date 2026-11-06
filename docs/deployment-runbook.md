@@ -27,8 +27,8 @@ Claude Code implements the smallest necessary change and runs the smallest relev
 Run targeted tests based on the change:
 
 ```bash
-npm test -- <specific-test-file>    # for targeted test files
-npm test                             # full suite when justified by risk or scope
+node tests/<specific-test-file>.test.js    # for targeted test files
+npm test                                   # full configured test suite
 ```
 
 Choose tests based on change risk and scope. Documentation-only changes generally require no application tests. Use the full `npm test` suite when justified by the change's risk or scope.
