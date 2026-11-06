@@ -69,6 +69,7 @@ Intake-specific documentation:
 
 - [User Guide](docs/user-guide.md) — Creator-facing Intake workflow, submission, review, and status tracking
 - [Guide Extraction JSON](docs/guide-extraction-json-usage.md) — Technical reference for guide extraction JSON structure and behavior
+- [Status Tracker Lifecycle](docs/status-tracker-lifecycle.md) — Internal workflow documentation for Status Tracker lifecycle response system
 
 Broader system documentation is maintained in the Interactive Experience Hub repository:
 
