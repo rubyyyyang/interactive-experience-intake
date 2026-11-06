@@ -786,7 +786,15 @@ function submitCreatorResponse(payload) {
       sheet.appendRow(rowData);
 
       // Update Master Action Status - use validated index from preflight
-      masterSheet.getRange(masterRowIndex + 2, masterActionStatusIdx + 1).setValue('Pending review');
+      // CRITICAL: If this fails, Queue entry is already written (partial-write state)
+      try {
+        masterSheet.getRange(masterRowIndex + 2, masterActionStatusIdx + 1).setValue('Pending review');
+      } catch (masterWriteError) {
+        // Queue entry succeeded, Master write failed - partial state
+        // Do NOT return success - user must know Master update failed
+        // Queue entry will remain with Review Status "Pending review" for admin to handle
+        throw new Error('Response queued but Master status update failed: ' + masterWriteError.message + '. Admin review required.');
+      }
 
       invalidateStatusTrackerCache_();
 
