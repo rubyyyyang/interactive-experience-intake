@@ -34,8 +34,25 @@ function getRequestMasterData_() {
   if (lastRow <= 1) return { headers: [], rows: [], headerMap: {} };
 
   const lastCol = sheet.getLastColumn();
-  const headers = sheet.getRange(1, 1, 1, lastCol).getValues()[0].map(h => String(h || '').trim());
-  const rows = sheet.getRange(2, 1, lastRow - 1, lastCol).getValues();
+  const allHeaders = sheet.getRange(1, 1, 1, lastCol).getValues()[0].map(h => String(h || '').trim());
+
+  // Find Guide Extraction JSON column to exclude from cache (large read-only field)
+  const guideJsonColIdx = allHeaders.indexOf('Guide Extraction JSON');
+
+  let headers, rows;
+
+  if (guideJsonColIdx === -1) {
+    // No Guide JSON column - read all columns normally
+    headers = allHeaders;
+    rows = sheet.getRange(2, 1, lastRow - 1, lastCol).getValues();
+  } else {
+    // Exclude Guide JSON column from cache to stay under 100KB limit
+    // Read all other columns and reconstruct rows without Guide JSON
+    headers = allHeaders.filter((_, idx) => idx !== guideJsonColIdx);
+
+    const allRows = sheet.getRange(2, 1, lastRow - 1, lastCol).getValues();
+    rows = allRows.map(row => row.filter((_, idx) => idx !== guideJsonColIdx));
+  }
 
   const headerMap = {};
   headers.forEach((h, i) => { if (h) headerMap[h] = i; });
