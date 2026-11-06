@@ -721,6 +721,27 @@ function submitCreatorResponse(payload) {
         }
       }
 
+      // PREFLIGHT: Validate Master row and columns BEFORE appending to Queue
+      // This prevents duplicate Queue entries if Master update fails on retry
+      var masterActionStatusIdx = masterData.headerMap[STATUS_TRACKER_COLUMNS.ACTION_STATUS];
+      if (masterNumIdx == null || masterActionStatusIdx == null) {
+        throw new Error('Required Master columns not found for status update.');
+      }
+
+      var masterSheet = getTargetSpreadsheet_().getSheetByName('Request_Master');
+      var masterRowIndex = -1;
+      for (var mi = 0; mi < masterData.rows.length; mi++) {
+        if (String(masterData.rows[mi][masterNumIdx] || '').trim() === String(payload.number)) {
+          masterRowIndex = mi;
+          break;
+        }
+      }
+
+      if (masterRowIndex < 0) {
+        throw new Error('Demo #' + payload.number + ' not found on Master. Cannot submit response.');
+      }
+
+      // Preflight passed - now safe to append to Queue
       const sheet = getResponseQueueSheet_();
 
       // Always append a new row (history-preserving model)
@@ -764,25 +785,8 @@ function submitCreatorResponse(payload) {
 
       sheet.appendRow(rowData);
 
-      // Update Master Action Status - critical for workflow state
-      var masterActionStatusIdx = masterData.headerMap[STATUS_TRACKER_COLUMNS.ACTION_STATUS];
-      if (masterNumIdx == null || masterActionStatusIdx == null) {
-        throw new Error('Required Master columns not found for status update.');
-      }
-
-      var masterSheet = getTargetSpreadsheet_().getSheetByName('Request_Master');
-      var masterRowFound = false;
-      for (var mi = 0; mi < masterData.rows.length; mi++) {
-        if (String(masterData.rows[mi][masterNumIdx] || '').trim() === String(payload.number)) {
-          masterSheet.getRange(mi + 2, masterActionStatusIdx + 1).setValue('Pending review');
-          masterRowFound = true;
-          break;
-        }
-      }
-
-      if (!masterRowFound) {
-        throw new Error('Demo #' + payload.number + ' not found on Master for status update.');
-      }
+      // Update Master Action Status - use validated index from preflight
+      masterSheet.getRange(masterRowIndex + 2, masterActionStatusIdx + 1).setValue('Pending review');
 
       invalidateStatusTrackerCache_();
 
