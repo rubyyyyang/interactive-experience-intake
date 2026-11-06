@@ -1137,12 +1137,9 @@
   <div class="controls-bar">
     <div class="tabs">
       <button class="tab active" data-tab="my" onclick="switchTab('my')">My Submissions</button>
-      <button class="tab admin-only" data-tab="all" onclick="switchTab('all')" style="display:none;">All Submissions</button>
-      <button class="tab admin-only" data-tab="reports" onclick="switchTab('reports')" style="display:none;">Reports</button>
+      <button class="tab" data-tab="all" onclick="switchTab('all')">All Submissions</button>
+      <button class="tab" data-tab="reports" onclick="switchTab('reports')">Reports</button>
     </div>
-    <button id="needsReviewFilter" class="admin-only" onclick="toggleNeedsReviewFilter()" style="display:none;margin-left:10px;padding:6px 12px;border:1px solid #dadce0;border-radius:16px;background:#fff;cursor:pointer;font-size:0.85rem;font-weight:500;color:#5f6368;">
-      Needs review (<span id="needsReviewCount">0</span>)
-    </button>
     <div class="controls-right">
       <select id="statusFilter" onchange="onStatusFilterChange()">
         <option value="" data-status="">All Statuses</option>
@@ -1475,12 +1472,6 @@
       pool = pool.filter(function(s) { return s.status === currentStatusFilter; });
     }
 
-    if (currentNeedsReviewFilter) {
-      pool = pool.filter(function(s) {
-        return (s.perfActionStatus || '').trim() === 'Pending review';
-      });
-    }
-
     if (currentSearch) {
       var term = currentSearch.toLowerCase();
       pool = pool.filter(function(s) {
@@ -1532,18 +1523,17 @@
       ? allSubmissions.filter(function(s) { return s.isMine; })
       : allSubmissions;
     updateStatusFilterCounts(applyFilters_(basePool, 'status'), filtered.length);
-    updateNeedsReviewButton();
-    var anyFilter = currentStatusFilter || currentSearch || currentNeedsReviewFilter;
+    var anyFilter = currentStatusFilter || currentSearch;
     var resetAllBtn = document.getElementById('resetAllFiltersBtn');
     if (resetAllBtn) resetAllBtn.style.display = anyFilter ? '' : 'none';
 
     if (filtered.length === 0) {
       document.getElementById('tableWrapper').style.display = 'none';
       var emptyEl = document.getElementById('emptyState');
-      if (activeTab === 'my' && !currentStatusFilter && !currentSearch && !currentNeedsReviewFilter) {
+      if (activeTab === 'my' && !currentStatusFilter && !currentSearch) {
         emptyEl.innerHTML = '<p>No submissions found.</p>' +
           '<p style="font-size:0.85rem;color:#5f6368;">This tab matches by the creator email used during submission. Try the <a href="#" onclick="switchTab(\'all\'); return false;" style="color:#1a73e8;">All Submissions</a> tab to browse everything.</p>';
-      } else if (currentStatusFilter || currentSearch || currentNeedsReviewFilter) {
+      } else if (currentStatusFilter || currentSearch) {
         emptyEl.innerHTML = '<p>No submissions match your filters.</p>' +
           '<p style="font-size:0.85rem;color:#5f6368;">Try adjusting your search or filters.</p>';
       } else {
@@ -1834,7 +1824,9 @@
   }
 
   function buildDetailSectionsContent(sub) {
-    var canEdit = sub.isMine || isAdmin;
+    // Metadata editing is not supported in Status Tracker
+    // Users can only submit lifecycle action responses
+    var canEdit = false;
     var _isYtLink = /(?:youtu\.be|youtube\.com)/.test(sub.creationLink || sub.productionLink || '');
 
     var descHtml = '';
@@ -2176,7 +2168,7 @@
       var statusMessage = '';
 
       if (status === 'Pending review') {
-        statusMessage = 'Your response has been submitted and is awaiting review.';
+        statusMessage = 'A response has been submitted and is awaiting review.';
       } else if (status === 'Complete') {
         statusMessage = 'Update completed and approved.';
       } else if (status === 'Follow-up needed') {
@@ -2204,6 +2196,15 @@
         html += '</div>';
       }
 
+      // Submitted Response display for Pending review
+      if (status === 'Pending review') {
+        html += '<div id="submitted-response-' + num + '" style="background:#e8f0fe;border:1px solid #c2d7f2;border-radius:6px;padding:12px;margin:16px 0 0 0;">' +
+          '<div style="font-size:0.75rem;font-weight:600;text-transform:uppercase;color:#1a73e8;margin-bottom:6px;">Submitted Response</div>' +
+          '<div style="color:#5f6368;font-size:0.85rem;">Loading...</div>' +
+        '</div>';
+        setTimeout(function() { loadSubmittedResponse(num); }, 100);
+      }
+
       // Reviewer guidance for follow-up needed
       if (status === 'Follow-up needed') {
         html += '<div id="admin-feedback-' + num + '" style="background:#fef7e0;border:1px solid #f9d67a;border-radius:6px;padding:12px;margin:16px 0 0 0;">' +
@@ -2213,7 +2214,8 @@
         setTimeout(function() { loadAdminFeedback(num); }, 100);
       }
 
-      // Show response form only if action needed or follow-up needed
+      // Show response form for Action needed or Follow-up needed (open collaboration)
+      // Hide when Pending review (response already submitted)
       if (status === 'Action needed' || status === 'Follow-up needed') {
         html += '<div class="response-form" id="response-form-' + num + '" style="margin-top:20px;padding-top:20px;border-top:1px solid #e8eaed;">' +
           '<h4 style="margin:0 0 16px 0;font-size:0.9rem;font-weight:600;color:#202124;">What\'s your next step?</h4>' +
@@ -2250,7 +2252,7 @@
       var statusMessage = '';
 
       if (status === 'Pending review') {
-        statusMessage = 'Your response has been submitted and is awaiting review.';
+        statusMessage = 'A response has been submitted and is awaiting review.';
       } else if (status === 'Complete') {
         statusMessage = 'Lifecycle decision completed and approved.';
       } else if (status === 'Follow-up needed') {
@@ -2278,6 +2280,15 @@
         html += '</div>';
       }
 
+      // Submitted Response display for Pending review
+      if (status === 'Pending review') {
+        html += '<div id="submitted-response-' + num + '" style="background:#e8f0fe;border:1px solid #c2d7f2;border-radius:6px;padding:12px;margin:16px 0 0 0;">' +
+          '<div style="font-size:0.75rem;font-weight:600;text-transform:uppercase;color:#1a73e8;margin-bottom:6px;">Submitted Response</div>' +
+          '<div style="color:#5f6368;font-size:0.85rem;">Loading...</div>' +
+        '</div>';
+        setTimeout(function() { loadSubmittedResponse(num); }, 100);
+      }
+
       // Reviewer guidance for follow-up needed
       if (status === 'Follow-up needed') {
         html += '<div id="admin-feedback-' + num + '" style="background:#fef7e0;border:1px solid #f9d67a;border-radius:6px;padding:12px;margin:16px 0 0 0;">' +
@@ -2287,7 +2298,8 @@
         setTimeout(function() { loadAdminFeedback(num); }, 100);
       }
 
-      // Show response form only if action needed or follow-up needed
+      // Show response form for Action needed or Follow-up needed (open collaboration)
+      // Hide when Pending review (response already submitted)
       if (status === 'Action needed' || status === 'Follow-up needed') {
         html += '<div class="response-form" id="response-form-' + num + '" style="margin-top:20px;padding-top:20px;border-top:1px solid #e8eaed;">' +
           '<h4 style="margin:0 0 16px 0;font-size:0.9rem;font-weight:600;color:#202124;">What\'s your next step?</h4>' +
@@ -2574,6 +2586,67 @@
         alert('Error: ' + (error.message || String(error)));
       })
       .approveResponse(queueRowIndex, notes);
+  }
+
+  function loadSubmittedResponse(demoNumber) {
+    google.script.run
+      .withSuccessHandler(function(result) {
+        var container = document.getElementById('submitted-response-' + demoNumber);
+        if (!container) return;
+
+        if (!result.success) {
+          container.innerHTML = '<div style="font-size:0.75rem;font-weight:600;text-transform:uppercase;color:#1a73e8;margin-bottom:6px;">Submitted Response</div>' +
+            '<div style="color:#c5221f;font-size:0.85rem;">Error: ' + escapeHtml(result.error || 'Unknown error') + '</div>';
+          return;
+        }
+
+        if (!result.response) {
+          container.innerHTML = '<div style="font-size:0.75rem;font-weight:600;text-transform:uppercase;color:#1a73e8;margin-bottom:6px;">Submitted Response</div>' +
+            '<div style="color:#5f6368;font-size:0.85rem;">No pending response found.</div>';
+          return;
+        }
+
+        var resp = result.response;
+        var html = '<div style="font-size:0.75rem;font-weight:600;text-transform:uppercase;color:#1a73e8;margin-bottom:8px;">Submitted Response</div>';
+
+        html += '<div style="color:#3c4043;font-size:0.85rem;line-height:1.6;">';
+
+        // Action Taken
+        if (resp.actionTaken) {
+          html += '<div style="margin-bottom:8px;"><strong>Action:</strong> ' + escapeHtml(resp.actionTaken) + '</div>';
+        }
+
+        // New Link
+        if (resp.newLink) {
+          html += '<div style="margin-bottom:8px;"><strong>Updated link:</strong> <a href="' + escapeHtml(resp.newLink) + '" target="_blank" onclick="event.stopPropagation();">' + escapeHtml(resp.newLink) + '</a></div>';
+        }
+
+        // Notes
+        if (resp.notes) {
+          html += '<div style="margin-bottom:8px;"><strong>Notes:</strong><br><span style="white-space:pre-wrap;">' + escapeHtml(resp.notes) + '</span></div>';
+        }
+
+        // Metadata - submitter and timestamp
+        html += '<div style="font-size:0.75rem;color:#888;margin-top:8px;padding-top:8px;border-top:1px solid #c2d7f2;">';
+        if (resp.submitterEmail) {
+          html += 'Submitted by ' + escapeHtml(resp.submitterEmail);
+        }
+        if (resp.timestamp) {
+          html += (resp.submitterEmail ? ' • ' : '') + formatDate(resp.timestamp);
+        }
+        html += '</div>';
+
+        html += '</div>';
+
+        container.innerHTML = html;
+      })
+      .withFailureHandler(function(error) {
+        var container = document.getElementById('submitted-response-' + demoNumber);
+        if (!container) return;
+        container.innerHTML = '<div style="font-size:0.75rem;font-weight:600;text-transform:uppercase;color:#1a73e8;margin-bottom:6px;">Submitted Response</div>' +
+          '<div style="color:#c5221f;font-size:0.85rem;">Error: ' + escapeHtml(error.message || String(error)) + '</div>';
+      })
+      .getSubmittedResponse(demoNumber);
   }
 
   function loadAdminFeedback(demoNumber) {
@@ -2927,13 +3000,6 @@
           userEmail = result.userEmail || '';
           isAdmin = result.isAdmin || false;
 
-          // Show admin-only tabs
-          if (isAdmin) {
-            document.querySelectorAll('.tab.admin-only').forEach(function(tab) {
-              tab.style.display = '';
-            });
-          }
-
           EDITABLE_FIELDS = result.editableFields || [];
           FIELD_OPTIONS_MAP = result.fieldOptions || {};
           document.querySelectorAll('.detail-row').forEach(function(r) { r.remove(); });
@@ -2942,7 +3008,7 @@
         }
       })
       .withFailureHandler(function() {})
-      .getMySubmissions();
+      .getAllSubmissions();
   }
 
   function promptFeedback() {
@@ -3245,12 +3311,6 @@
   // --- Controls ---
 
   function switchTab(tab) {
-    // Prevent non-admins from accessing admin tabs
-    if (!isAdmin && (tab === 'all' || tab === 'reports')) {
-      alert('Admin access required for this tab.');
-      return;
-    }
-
     trackEvent('status_tab_switch', { tab: tab });
     activeTab = tab;
     document.querySelectorAll('.tab').forEach(function(btn) {
@@ -3320,8 +3380,6 @@
     currentStatusFilter = '';
     document.getElementById('searchInput').value = '';
     currentSearch = '';
-    currentNeedsReviewFilter = false;
-    updateNeedsReviewButton();
     renderTable();
   }
 
@@ -3332,34 +3390,6 @@
       currentSearch = document.getElementById('searchInput').value.trim();
       renderTable();
     }, 300);
-  }
-
-  var currentNeedsReviewFilter = false;
-  function toggleNeedsReviewFilter() {
-    currentNeedsReviewFilter = !currentNeedsReviewFilter;
-    updateNeedsReviewButton();
-    renderTable();
-  }
-
-  function updateNeedsReviewButton() {
-    var btn = document.getElementById('needsReviewFilter');
-    if (!btn) return;
-
-    var count = allSubmissions.filter(function(s) {
-      return (s.perfActionStatus || '').trim() === 'Pending review';
-    }).length;
-
-    document.getElementById('needsReviewCount').textContent = count;
-
-    if (currentNeedsReviewFilter) {
-      btn.style.background = '#e8f0fe';
-      btn.style.borderColor = '#1a73e8';
-      btn.style.color = '#1a73e8';
-    } else {
-      btn.style.background = '#fff';
-      btn.style.borderColor = '#dadce0';
-      btn.style.color = '#5f6368';
-    }
   }
 
   // --- Dashboard ---
@@ -3845,13 +3875,6 @@
           userEmail = result.userEmail || '';
           isAdmin = result.isAdmin || false;
 
-          // Show admin-only tabs
-          if (isAdmin) {
-            document.querySelectorAll('.tab.admin-only').forEach(function(tab) {
-              tab.style.display = '';
-            });
-          }
-
           EDITABLE_FIELDS = result.editableFields || [];
           FIELD_OPTIONS_MAP = result.fieldOptions || {};
 
@@ -3865,7 +3888,7 @@
       .withFailureHandler(function(err) {
         showError(err && err.message ? err.message : String(err));
       })
-      .getMySubmissions();
+      .getAllSubmissions();
   }
 </script>
 </body>
