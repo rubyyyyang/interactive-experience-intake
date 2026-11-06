@@ -580,9 +580,10 @@ function submitCreatorResponse(payload) {
     let currentActionStatus = '';
     let currentStatus = '';
 
-    // Determine if this is a lifecycle response
-    const isLifecycleResponse = payload.type === 'lifecycle_response' ||
-                               (payload.action && ['Improve completion', 'Consider retirement'].indexOf(payload.action) !== -1);
+    // Require explicit lifecycle_response type from frontend
+    if (payload.type !== 'lifecycle_response') {
+      return { success: false, error: 'Only lifecycle responses are supported. Please select an action and response.' };
+    }
 
     // Read current status for validation
     const targetNumber = String(payload.number).trim();
@@ -599,21 +600,14 @@ function submitCreatorResponse(payload) {
     }
 
     // RETIRED GUARD: Lifecycle responses not allowed for retired demos
-    if (isLifecycleResponse && currentStatus === 'Retired') {
+    if (currentStatus === 'Retired') {
       return { success: false, error: 'This demo is retired and no longer accepts lifecycle responses.' };
     }
 
     // PENDING LOCK: If Action Status is "Pending Review", only admin can submit/overwrite
     // Creator must wait until admin moves it to "Resubmit" state
-
-    if (isLifecycleResponse && currentActionStatus === 'Pending review' && !isUserAdmin) {
+    if (currentActionStatus === 'Pending review' && !isUserAdmin) {
       return { success: false, error: 'Response is pending admin review. You can resubmit after admin feedback.' };
-    }
-
-    // Enforce lifecycle-only submissions
-    // Status Tracker only accepts lifecycle_response with valid action and response
-    if (!isLifecycleResponse) {
-      return { success: false, error: 'Only lifecycle responses are supported. Please select an action and response.' };
     }
 
     if (payload.type === 'metadata_edit') {
@@ -659,47 +653,75 @@ function submitCreatorResponse(payload) {
         throw new Error('Request_Master sheet not found.');
       }
 
-      const headers = masterSheet.getRange(1, 1, 1, masterSheet.getLastColumn()).getValues()[0]
+      const allHeaders = masterSheet.getRange(1, 1, 1, masterSheet.getLastColumn()).getValues()[0]
         .map(h => String(h || '').trim());
 
-      const masterNumIdx = headers.indexOf(STATUS_TRACKER_COLUMNS.NUMBER);
-      const masterAssignedIdx = headers.indexOf(STATUS_TRACKER_COLUMNS.ASSIGNED);
-      const masterCreatorNameIdx = headers.indexOf(STATUS_TRACKER_COLUMNS.CREATOR_NAME);
-      const masterCreatorEmailIdx = headers.indexOf(STATUS_TRACKER_COLUMNS.CREATOR_EMAIL);
-      const masterActionStatusIdx = headers.indexOf(STATUS_TRACKER_COLUMNS.ACTION_STATUS);
-      const masterStatusIdx = headers.indexOf(STATUS_TRACKER_COLUMNS.STATUS);
+      const masterNumIdx = allHeaders.indexOf(STATUS_TRACKER_COLUMNS.NUMBER);
+      const masterAssignedIdx = allHeaders.indexOf(STATUS_TRACKER_COLUMNS.ASSIGNED);
+      const masterCreatorNameIdx = allHeaders.indexOf(STATUS_TRACKER_COLUMNS.CREATOR_NAME);
+      const masterCreatorEmailIdx = allHeaders.indexOf(STATUS_TRACKER_COLUMNS.CREATOR_EMAIL);
+      const masterActionStatusIdx = allHeaders.indexOf(STATUS_TRACKER_COLUMNS.ACTION_STATUS);
+      const masterStatusIdx = allHeaders.indexOf(STATUS_TRACKER_COLUMNS.STATUS);
+      const masterRecommendedActionIdx = allHeaders.indexOf(STATUS_TRACKER_COLUMNS.RECOMMENDED_ACTION);
+      const guideJsonColIdx = allHeaders.indexOf('Guide Extraction JSON');
 
       // PREFLIGHT: Validate required columns exist before any write
       if (masterNumIdx === -1 || masterActionStatusIdx === -1) {
         throw new Error('Required Master columns not found for status update.');
       }
 
+      // Optimize: Exclude Guide Extraction JSON column from post-lock read
+      // Build column subset for efficient read (exclude large read-only field)
+      const columnsToRead = allHeaders
+        .map((h, idx) => ({ header: h, idx: idx }))
+        .filter(col => col.idx !== guideJsonColIdx);
+
+      const headers = columnsToRead.map(col => col.header);
+      const columnIndices = columnsToRead.map(col => col.idx);
+
+      // Read all rows but only required columns (exclude Guide JSON)
+      const lastRow = masterSheet.getLastRow();
+      const allData = masterSheet.getRange(2, 1, lastRow - 1, masterSheet.getLastColumn()).getValues()
+        .map(row => columnIndices.map(colIdx => row[colIdx]));
+
+      // Rebuild column index mapping for the filtered data
+      const filteredNumIdx = headers.indexOf(STATUS_TRACKER_COLUMNS.NUMBER);
+      const filteredAssignedIdx = headers.indexOf(STATUS_TRACKER_COLUMNS.ASSIGNED);
+      const filteredCreatorNameIdx = headers.indexOf(STATUS_TRACKER_COLUMNS.CREATOR_NAME);
+      const filteredCreatorEmailIdx = headers.indexOf(STATUS_TRACKER_COLUMNS.CREATOR_EMAIL);
+      const filteredActionStatusIdx = headers.indexOf(STATUS_TRACKER_COLUMNS.ACTION_STATUS);
+      const filteredStatusIdx = headers.indexOf(STATUS_TRACKER_COLUMNS.STATUS);
+      const filteredRecommendedActionIdx = headers.indexOf(STATUS_TRACKER_COLUMNS.RECOMMENDED_ACTION);
+
       // Find the target row by Number (direct sheet lookup - no cache)
-      const allData = masterSheet.getRange(2, 1, masterSheet.getLastRow() - 1, masterSheet.getLastColumn()).getValues();
       let masterRowIndex = -1;
       let masterAssigned = '';
       let masterCreatorName = '';
       let masterCreatorEmail = '';
       let masterActionStatus = '';
       let masterStatus = '';
+      let masterRecommendedAction = '';
 
       for (let i = 0; i < allData.length; i++) {
-        if (String(allData[i][masterNumIdx] || '').trim() === String(payload.number)) {
+        if (String(allData[i][filteredNumIdx] || '').trim() === String(payload.number)) {
           masterRowIndex = i;
-          if (masterAssignedIdx !== -1) {
-            masterAssigned = String(allData[i][masterAssignedIdx] || '').trim();
+          if (filteredAssignedIdx !== -1) {
+            masterAssigned = String(allData[i][filteredAssignedIdx] || '').trim();
           }
-          if (masterCreatorNameIdx !== -1) {
-            masterCreatorName = String(allData[i][masterCreatorNameIdx] || '').trim();
+          if (filteredCreatorNameIdx !== -1) {
+            masterCreatorName = String(allData[i][filteredCreatorNameIdx] || '').trim();
           }
-          if (masterCreatorEmailIdx !== -1) {
-            masterCreatorEmail = String(allData[i][masterCreatorEmailIdx] || '').trim();
+          if (filteredCreatorEmailIdx !== -1) {
+            masterCreatorEmail = String(allData[i][filteredCreatorEmailIdx] || '').trim();
           }
-          if (masterActionStatusIdx !== -1) {
-            masterActionStatus = normalizeActionStatus_(String(allData[i][masterActionStatusIdx] || '').trim());
+          if (filteredActionStatusIdx !== -1) {
+            masterActionStatus = normalizeActionStatus_(String(allData[i][filteredActionStatusIdx] || '').trim());
           }
-          if (masterStatusIdx !== -1) {
-            masterStatus = String(allData[i][masterStatusIdx] || '').trim();
+          if (filteredStatusIdx !== -1) {
+            masterStatus = String(allData[i][filteredStatusIdx] || '').trim();
+          }
+          if (filteredRecommendedActionIdx !== -1) {
+            masterRecommendedAction = String(allData[i][filteredRecommendedActionIdx] || '').trim();
           }
           break;
         }
@@ -716,8 +738,32 @@ function submitCreatorResponse(payload) {
         return { success: false, error: 'Response is pending admin review. You can resubmit after admin feedback.' };
       }
 
+      if (masterActionStatus === 'Complete') {
+        return { success: false, error: 'This action is already complete. No further responses accepted.' };
+      }
+
       if (masterStatus === 'Retired') {
         return { success: false, error: 'This demo is retired and no longer accepts lifecycle responses.' };
+      }
+
+      // CRITICAL: Validate requested action matches authoritative Recommended action
+      // Prevents submitting retirement request for demo whose actual recommendation is different
+      if (payload.action && masterRecommendedAction) {
+        const normalizedPayloadAction = payload.action.trim();
+        const normalizedMasterAction = masterRecommendedAction.trim();
+
+        // Only supported actions: "Improve completion", "Consider retirement"
+        const supportedActions = ['Improve completion', 'Consider retirement'];
+        if (supportedActions.indexOf(normalizedPayloadAction) === -1) {
+          return { success: false, error: 'Unsupported lifecycle action. Please use an action from the recommendation.' };
+        }
+
+        if (normalizedPayloadAction !== normalizedMasterAction) {
+          return {
+            success: false,
+            error: 'Your selected action ("' + normalizedPayloadAction + '") does not match the current recommendation ("' + normalizedMasterAction + '"). Please refresh and respond to the current recommendation.'
+          };
+        }
       }
 
       // Preflight passed - now safe to append to Queue

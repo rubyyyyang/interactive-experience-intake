@@ -13,16 +13,9 @@ function testLifecycleOnlyValidation() {
 
   // Simulate submitCreatorResponse validation logic
   function validateSubmission(payload) {
-    const isLifecycleResponse = payload.type === 'lifecycle_response' ||
-      (payload.action && ['Improve completion', 'Consider retirement'].indexOf(payload.action) !== -1);
-
-    // Enforce lifecycle-only submissions
-    if (!isLifecycleResponse) {
+    // Require explicit lifecycle_response type from frontend
+    if (payload.type !== 'lifecycle_response') {
       return { success: false, error: 'Only lifecycle responses are supported. Please select an action and response.' };
-    }
-
-    if (payload.type === 'metadata_edit') {
-      return { success: false, error: 'Metadata editing is not supported. Please use lifecycle action responses only.' };
     }
 
     const hasMetadata = payload.metadataChanges && typeof payload.metadataChanges === 'object'
