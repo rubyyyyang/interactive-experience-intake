@@ -764,23 +764,36 @@ function submitCreatorResponse(payload) {
 
       sheet.appendRow(rowData);
 
-      try {
-        var masterActionStatusIdx = masterData.headerMap[STATUS_TRACKER_COLUMNS.ACTION_STATUS];
-        if (masterNumIdx != null && masterActionStatusIdx != null) {
-          var masterSheet = getTargetSpreadsheet_().getSheetByName('Request_Master');
-          for (var mi = 0; mi < masterData.rows.length; mi++) {
-            if (String(masterData.rows[mi][masterNumIdx] || '').trim() === String(payload.number)) {
-              masterSheet.getRange(mi + 2, masterActionStatusIdx + 1).setValue('Pending review');
-              break;
-            }
-          }
+      // Update Master Action Status - critical for workflow state
+      var masterActionStatusIdx = masterData.headerMap[STATUS_TRACKER_COLUMNS.ACTION_STATUS];
+      if (masterNumIdx == null || masterActionStatusIdx == null) {
+        throw new Error('Required Master columns not found for status update.');
+      }
+
+      var masterSheet = getTargetSpreadsheet_().getSheetByName('Request_Master');
+      var masterRowFound = false;
+      for (var mi = 0; mi < masterData.rows.length; mi++) {
+        if (String(masterData.rows[mi][masterNumIdx] || '').trim() === String(payload.number)) {
+          masterSheet.getRange(mi + 2, masterActionStatusIdx + 1).setValue('Pending review');
+          masterRowFound = true;
+          break;
         }
-      } catch (e) {
-        Logger.log('Failed to update Action Status on Master: ' + e.message);
+      }
+
+      if (!masterRowFound) {
+        throw new Error('Demo #' + payload.number + ' not found on Master for status update.');
       }
 
       invalidateStatusTrackerCache_();
-      return { success: true };
+
+      // Return minimal authoritative update for client-side state merge
+      return {
+        success: true,
+        statusUpdate: {
+          number: String(payload.number),
+          perfActionStatus: 'Pending review'
+        }
+      };
     } finally {
       lock.releaseLock();
     }

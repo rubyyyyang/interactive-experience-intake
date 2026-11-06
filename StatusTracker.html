@@ -2707,7 +2707,25 @@
       .withSuccessHandler(function(result) {
         if (result.success) {
           showToast('Response submitted for #' + num);
-          reloadSubmissions();
+
+          // Fast path: merge server-confirmed status update without full reload
+          if (result.statusUpdate && result.statusUpdate.number === String(num)) {
+            var idx = allSubmissions.findIndex(function(s) {
+              return String(s.requestNumber) === String(result.statusUpdate.number);
+            });
+            if (idx >= 0) {
+              // Merge only the confirmed Action Status change
+              allSubmissions[idx].perfActionStatus = result.statusUpdate.perfActionStatus;
+              // Re-render table to show updated status
+              renderTable();
+            } else {
+              // Submission not found in current view - fallback to full reload
+              reloadSubmissions();
+            }
+          } else {
+            // No status update in response - fallback to full reload for safety
+            reloadSubmissions();
+          }
         } else {
           alert('Error: ' + result.error);
           if (btn) { btn.disabled = false; btn.textContent = 'Submit Response'; }
