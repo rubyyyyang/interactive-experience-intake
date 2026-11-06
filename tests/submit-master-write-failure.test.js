@@ -90,17 +90,24 @@ function testMasterWriteFailureAfterQueueAppend() {
   console.log('');
 
   console.log('Final state:');
-  console.log('  Queue entries:', queueEntries.length, '(TWO entries - history preserved)');
+  console.log('  Queue entries:', queueEntries.length, '(TWO entries)');
   console.log('  Master status:', masterStatus, '(updated on second attempt)');
-  console.log('  Is this correct behavior: YES - Queue preserves history');
-  console.log('  Admin sees: Two pending entries (can handle appropriately)');
+  console.log('  Is this desirable: NO');
+  console.log('  Reason: Two simultaneous pending entries complicate admin review');
+  console.log('  User should contact admin, not retry');
+  console.log('');
+
+  console.log('IMPORTANT:');
+  console.log('  This test shows what happens if user IGNORES error and retries');
+  console.log('  Error message explicitly says "Do NOT retry"');
+  console.log('  Duplicate pending entries require manual admin reconciliation');
   console.log('');
 
   assert.strictEqual(result1.success, false, 'First attempt should fail');
-  assert.strictEqual(queueEntries.length, 2, 'Two Queue entries expected');
-  assert.strictEqual(masterStatus, 'Pending review', 'Master should be updated on second attempt');
+  assert.strictEqual(queueEntries.length, 2, 'Two Queue entries if user ignores warning');
+  assert.strictEqual(masterStatus, 'Pending review', 'Master updated on second attempt');
 
-  console.log('✓ Partial state handled explicitly with clear error\n');
+  console.log('✓ Error explicitly warns against retry\n');
   console.log('========================================\n');
 }
 
@@ -114,7 +121,8 @@ function testErrorMessageClarity() {
     const masterWriteError = new Error('Permission denied');
 
     if (queueSuccess && masterWriteError) {
-      throw new Error('Response queued but Master status update failed: ' + masterWriteError.message + '. Admin review required.');
+      throw new Error('Your response was recorded in Response_Queue but Request_Master could not be updated (' +
+        masterWriteError.message + '). Contact an administrator to reconcile. Do NOT retry.');
     }
   }
 
@@ -130,15 +138,17 @@ function testErrorMessageClarity() {
   console.log('');
 
   console.log('Message clarity:');
-  console.log('  ✓ States response was queued');
-  console.log('  ✓ States Master update failed');
-  console.log('  ✓ Mentions admin review required');
-  console.log('  ✓ User knows partial state exists');
+  console.log('  ✓ States response was recorded in Response_Queue');
+  console.log('  ✓ States Request_Master could not be updated');
+  console.log('  ✓ Tells user to contact administrator');
+  console.log('  ✓ Explicitly says "Do NOT retry"');
+  console.log('  ✓ User knows partial state requires manual reconciliation');
   console.log('');
 
-  assert.strictEqual(errorMessage.includes('queued'), true, 'Should mention queued');
-  assert.strictEqual(errorMessage.includes('Master'), true, 'Should mention Master');
-  assert.strictEqual(errorMessage.includes('Admin review'), true, 'Should mention admin');
+  assert.strictEqual(errorMessage.includes('Response_Queue'), true, 'Should mention Response_Queue');
+  assert.strictEqual(errorMessage.includes('Request_Master'), true, 'Should mention Request_Master');
+  assert.strictEqual(errorMessage.includes('administrator'), true, 'Should mention administrator');
+  assert.strictEqual(errorMessage.includes('Do NOT retry'), true, 'Should warn against retry');
 
   console.log('✓ Error message is clear and actionable\n');
   console.log('========================================\n');

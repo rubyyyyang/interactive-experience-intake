@@ -792,8 +792,9 @@ function submitCreatorResponse(payload) {
       } catch (masterWriteError) {
         // Queue entry succeeded, Master write failed - partial state
         // Do NOT return success - user must know Master update failed
-        // Queue entry will remain with Review Status "Pending review" for admin to handle
-        throw new Error('Response queued but Master status update failed: ' + masterWriteError.message + '. Admin review required.');
+        // DO NOT retry - would create duplicate Queue entry
+        throw new Error('Your response was recorded in Response_Queue but Request_Master could not be updated (' +
+          masterWriteError.message + '). Contact an administrator to reconcile. Do NOT retry.');
       }
 
       invalidateStatusTrackerCache_();
