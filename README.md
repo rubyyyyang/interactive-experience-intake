@@ -48,24 +48,18 @@ npm run test:smoke
 
 Local authentication state is excluded from Git.
 
-## Apps Script
+## Deployment
 
-**GitHub `main` is the source of truth for Apps Script source.** Start work from the latest `main` branch, test changes in the DEV Apps Script project, then commit the tested source back to `main`. Avoid unreconciled source edits directly in Apps Script.
+**GitHub `main` is the source of truth.** All code changes go through reviewed PRs before merging to `main`.
 
-Google Apps Script is the runtime and deployment environment.
+Google Apps Script is the runtime and deployment environment. After changes are merged to `main`, approved commits are deployed to Apps Script using `clasp push`, and production releases are performed by updating the existing Team Testing and Production deployments to new immutable Apps Script versions.
 
-For normal development:
+See [Deployment Runbook](docs/deployment-runbook.md) for the complete release process, including:
 
-```text
-local changes
-→ tests
-→ clasp push to DEV
-→ validate in the DEV Apps Script deployment
-→ commit tested source to GitHub main
-→ manually update the production deployment
-```
-
-Production deployment is currently performed manually in Google Apps Script after development validation.
+- Development workflow and testing
+- Apps Script version creation
+- Team Testing validation (shares production data)
+- Production deployment approval and rollback procedures
 
 `.clasp.json` is kept local and maps the repository to the corresponding Apps Script project.
 
