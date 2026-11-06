@@ -630,26 +630,30 @@ function submitCreatorResponse(payload) {
     const hasMetadata = payload.metadataChanges && typeof payload.metadataChanges === 'object'
       && Object.keys(payload.metadataChanges).length > 0;
 
-    if (!hasResponse && !hasMetadata) {
-      return { success: false, error: 'Please select a response or make metadata changes.' };
+    // Metadata editing is not supported in Status Tracker
+    if (hasMetadata) {
+      return { success: false, error: 'Metadata editing is not supported. Please use lifecycle action responses only.' };
     }
 
+    if (!hasResponse) {
+      return { success: false, error: 'Please select a response.' };
+    }
+
+    // Only lifecycle responses are supported
     let type = 'response';
     if (payload.type === 'lifecycle_response') {
       type = 'lifecycle_response';
-    } else if (hasResponse && hasMetadata) {
-      type = 'response+metadata';
-    } else if (hasMetadata && !hasResponse) {
-      type = 'metadata_edit';
     }
 
-    const metadataJson = hasMetadata ? JSON.stringify(payload.metadataChanges) : '';
+    const metadataJson = '';
 
     const lock = LockService.getScriptLock();
     lock.waitLock(10000);
 
     try {
-      // Fetch Master data first to copy Assigned, Creator Name, Creator Email
+      // CRITICAL: Fetch fresh Master data after acquiring lock to prevent stale-cache race
+      // Invalidate runtime memo to force direct sheet read for authoritative status
+      ST_RUNTIME_MEMO_ = null;
       const masterData = getRequestMasterData_();
       const masterNumIdx = masterData.headerMap[STATUS_TRACKER_COLUMNS.NUMBER];
       const masterAssignedIdx = masterData.headerMap[STATUS_TRACKER_COLUMNS.ASSIGNED];
@@ -872,7 +876,8 @@ function getSubmittedResponse(demoNumber) {
 
       if (rowNumber === String(demoNumber).trim() && reviewStatus === 'Pending review') {
         const submitterEmail = String(data[i][col('email')] || data[i][col('Creator Email')] || '').trim();
-        const creatorName = String(data[i][col('Creator Name')] || '').trim();
+        // Note: submitterName is NOT in Response_Queue schema
+        // We only have submitterEmail to identify who submitted this response
         const timestamp = String(data[i][col('Timestamp')] || '');
         const actionTaken = String(data[i][col('Action Taken')] || '');
         const newLink = String(data[i][col('New Creation Link')] || '');
@@ -883,7 +888,6 @@ function getSubmittedResponse(demoNumber) {
           success: true,
           response: {
             submitterEmail: submitterEmail,
-            creatorName: creatorName,
             timestamp: timestamp,
             actionTaken: actionTaken,
             newLink: newLink,

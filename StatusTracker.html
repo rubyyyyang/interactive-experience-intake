@@ -1834,9 +1834,9 @@
   }
 
   function buildDetailSectionsContent(sub) {
-    // Open collaboration: All authenticated users can submit metadata changes
-    // Changes require admin approval (handled server-side in submitCreatorResponse)
-    var canEdit = true;
+    // Metadata editing is not supported in Status Tracker
+    // Users can only submit lifecycle action responses
+    var canEdit = false;
     var _isYtLink = /(?:youtu\.be|youtube\.com)/.test(sub.creationLink || sub.productionLink || '');
 
     var descHtml = '';
@@ -2638,11 +2638,11 @@
 
         // Metadata - submitter and timestamp
         html += '<div style="font-size:0.75rem;color:#888;margin-top:8px;padding-top:8px;border-top:1px solid #c2d7f2;">';
-        if (resp.creatorName || resp.submitterEmail) {
-          html += 'Submitted by ' + escapeHtml(resp.creatorName || resp.submitterEmail);
+        if (resp.submitterEmail) {
+          html += 'Submitted by ' + escapeHtml(resp.submitterEmail);
         }
         if (resp.timestamp) {
-          html += ' • ' + formatDate(resp.timestamp);
+          html += (resp.submitterEmail ? ' • ' : '') + formatDate(resp.timestamp);
         }
         html += '</div>';
 
