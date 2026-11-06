@@ -17,11 +17,17 @@ function getRequestMasterData_() {
     if (cached) {
       const parsed = JSON.parse(cached);
       if (parsed && parsed.headers && parsed.rows) {
+        console.log('[PERF] getRequestMasterData_: Cache HIT');
         ST_RUNTIME_MEMO_ = parsed;
         return parsed;
       }
     }
-  } catch (e) {}
+  } catch (e) {
+    console.log('[PERF] getRequestMasterData_: Cache read error:', e.message);
+  }
+
+  console.time('[PERF] getRequestMasterData_: Full Master read');
+  console.log('[PERF] getRequestMasterData_: Cache MISS - reading from sheet');
 
   const spreadsheetId = PropertiesService.getScriptProperties().getProperty(MASTER_SPREADSHEET_ID_PROP);
   if (!spreadsheetId) throw new Error('MASTER_SPREADSHEET_ID is not configured.');
@@ -41,18 +47,35 @@ function getRequestMasterData_() {
 
   let headers, rows;
 
+  console.time('[PERF] getRequestMasterData_: Sheet data fetch');
   if (guideJsonColIdx === -1) {
     // No Guide JSON column - read all columns normally
     headers = allHeaders;
     rows = sheet.getRange(2, 1, lastRow - 1, lastCol).getValues();
   } else {
     // Exclude Guide JSON column from cache to stay under 100KB limit
-    // Read all other columns and reconstruct rows without Guide JSON
+    // Use contiguous range reads to avoid fetching Guide JSON from Sheets API
     headers = allHeaders.filter((_, idx) => idx !== guideJsonColIdx);
 
-    const allRows = sheet.getRange(2, 1, lastRow - 1, lastCol).getValues();
-    rows = allRows.map(row => row.filter((_, idx) => idx !== guideJsonColIdx));
+    // Split into left and right ranges around Guide JSON column (1-indexed)
+    const guideJsonCol1Indexed = guideJsonColIdx + 1;
+
+    if (guideJsonCol1Indexed === 1) {
+      // Guide JSON is first column - read columns 2 to end
+      const rightData = sheet.getRange(2, 2, lastRow - 1, lastCol - 1).getValues();
+      rows = rightData;
+    } else if (guideJsonCol1Indexed === lastCol) {
+      // Guide JSON is last column - read columns 1 to lastCol-1
+      const leftData = sheet.getRange(2, 1, lastRow - 1, lastCol - 1).getValues();
+      rows = leftData;
+    } else {
+      // Guide JSON is in middle - read left and right ranges, then merge
+      const leftData = sheet.getRange(2, 1, lastRow - 1, guideJsonColIdx).getValues();
+      const rightData = sheet.getRange(2, guideJsonCol1Indexed + 1, lastRow - 1, lastCol - guideJsonCol1Indexed).getValues();
+      rows = leftData.map((leftRow, i) => leftRow.concat(rightData[i]));
+    }
   }
+  console.timeEnd('[PERF] getRequestMasterData_: Sheet data fetch');
 
   const headerMap = {};
   headers.forEach((h, i) => { if (h) headerMap[h] = i; });
@@ -60,10 +83,18 @@ function getRequestMasterData_() {
   const result = { headers, rows, headerMap };
   ST_RUNTIME_MEMO_ = result;
 
-  try {
-    CacheService.getScriptCache().put(ST_CACHE_KEY_, JSON.stringify(result), ST_CACHE_TTL_);
-  } catch (e) {}
+  const serialized = JSON.stringify(result);
+  const sizeKB = (serialized.length / 1024).toFixed(2);
+  console.log('[PERF] getRequestMasterData_: Cache payload size:', sizeKB, 'KB');
 
+  try {
+    CacheService.getScriptCache().put(ST_CACHE_KEY_, serialized, ST_CACHE_TTL_);
+    console.log('[PERF] getRequestMasterData_: Cache write SUCCESS');
+  } catch (e) {
+    console.log('[PERF] getRequestMasterData_: Cache write FAILED:', e.message);
+  }
+
+  console.timeEnd('[PERF] getRequestMasterData_: Full Master read');
   return result;
 }
 
@@ -645,6 +676,8 @@ function submitCreatorResponse(payload) {
     lock.waitLock(10000);
 
     try {
+      console.time('[PERF] submitCreatorResponse: Post-lock validation');
+
       // CRITICAL: Direct sheet read after acquiring lock bypasses both caches
       // Read only the target row's Action Status, Status, Number, and metadata fields
       // This prevents stale-cache race where both runtime memo AND CacheService are outdated
@@ -663,73 +696,41 @@ function submitCreatorResponse(payload) {
       const masterActionStatusIdx = allHeaders.indexOf(STATUS_TRACKER_COLUMNS.ACTION_STATUS);
       const masterStatusIdx = allHeaders.indexOf(STATUS_TRACKER_COLUMNS.STATUS);
       const masterRecommendedActionIdx = allHeaders.indexOf(STATUS_TRACKER_COLUMNS.RECOMMENDED_ACTION);
-      const guideJsonColIdx = allHeaders.indexOf('Guide Extraction JSON');
 
       // PREFLIGHT: Validate required columns exist before any write
       if (masterNumIdx === -1 || masterActionStatusIdx === -1) {
         throw new Error('Required Master columns not found for status update.');
       }
 
-      // Optimize: Exclude Guide Extraction JSON column from post-lock read
-      // Build column subset for efficient read (exclude large read-only field)
-      const columnsToRead = allHeaders
-        .map((h, idx) => ({ header: h, idx: idx }))
-        .filter(col => col.idx !== guideJsonColIdx);
-
-      const filteredHeaders = columnsToRead.map(col => col.header);
-      const columnIndices = columnsToRead.map(col => col.idx);
-
-      // Read all rows but only required columns (exclude Guide JSON)
+      // OPTIMIZE: Read only Number column to locate target row (1-indexed)
       const lastRow = masterSheet.getLastRow();
-      const allData = masterSheet.getRange(2, 1, lastRow - 1, masterSheet.getLastColumn()).getValues()
-        .map(row => columnIndices.map(colIdx => row[colIdx]));
+      const numberColData = masterSheet.getRange(2, masterNumIdx + 1, lastRow - 1, 1).getValues();
 
-      // Rebuild column index mapping for the filtered data
-      const filteredNumIdx = filteredHeaders.indexOf(STATUS_TRACKER_COLUMNS.NUMBER);
-      const filteredAssignedIdx = filteredHeaders.indexOf(STATUS_TRACKER_COLUMNS.ASSIGNED);
-      const filteredCreatorNameIdx = filteredHeaders.indexOf(STATUS_TRACKER_COLUMNS.CREATOR_NAME);
-      const filteredCreatorEmailIdx = filteredHeaders.indexOf(STATUS_TRACKER_COLUMNS.CREATOR_EMAIL);
-      const filteredActionStatusIdx = filteredHeaders.indexOf(STATUS_TRACKER_COLUMNS.ACTION_STATUS);
-      const filteredStatusIdx = filteredHeaders.indexOf(STATUS_TRACKER_COLUMNS.STATUS);
-      const filteredRecommendedActionIdx = filteredHeaders.indexOf(STATUS_TRACKER_COLUMNS.RECOMMENDED_ACTION);
-
-      // Find the target row by Number (direct sheet lookup - no cache)
-      let masterRowIndex = -1;
-      let masterAssigned = '';
-      let masterCreatorName = '';
-      let masterCreatorEmail = '';
-      let masterActionStatus = '';
-      let masterStatus = '';
-      let masterRecommendedAction = '';
-
-      for (let i = 0; i < allData.length; i++) {
-        if (String(allData[i][filteredNumIdx] || '').trim() === String(payload.number)) {
-          masterRowIndex = i;
-          if (filteredAssignedIdx !== -1) {
-            masterAssigned = String(allData[i][filteredAssignedIdx] || '').trim();
-          }
-          if (filteredCreatorNameIdx !== -1) {
-            masterCreatorName = String(allData[i][filteredCreatorNameIdx] || '').trim();
-          }
-          if (filteredCreatorEmailIdx !== -1) {
-            masterCreatorEmail = String(allData[i][filteredCreatorEmailIdx] || '').trim();
-          }
-          if (filteredActionStatusIdx !== -1) {
-            masterActionStatus = normalizeActionStatus_(String(allData[i][filteredActionStatusIdx] || '').trim());
-          }
-          if (filteredStatusIdx !== -1) {
-            masterStatus = String(allData[i][filteredStatusIdx] || '').trim();
-          }
-          if (filteredRecommendedActionIdx !== -1) {
-            masterRecommendedAction = String(allData[i][filteredRecommendedActionIdx] || '').trim();
-          }
+      let targetRowIndex1Based = -1;
+      for (let i = 0; i < numberColData.length; i++) {
+        if (String(numberColData[i][0] || '').trim() === String(payload.number)) {
+          targetRowIndex1Based = i + 2; // 1-indexed + header row
           break;
         }
       }
 
-      if (masterRowIndex < 0) {
+      if (targetRowIndex1Based < 0) {
         throw new Error('Demo #' + payload.number + ' not found on Master. Cannot submit response.');
       }
+
+      // Read only the target row (all columns)
+      const targetRowData = masterSheet.getRange(targetRowIndex1Based, 1, 1, allHeaders.length).getValues()[0];
+
+      // Extract required fields from target row
+      const masterAssigned = masterAssignedIdx !== -1 ? String(targetRowData[masterAssignedIdx] || '').trim() : '';
+      const masterCreatorName = masterCreatorNameIdx !== -1 ? String(targetRowData[masterCreatorNameIdx] || '').trim() : '';
+      const masterCreatorEmail = masterCreatorEmailIdx !== -1 ? String(targetRowData[masterCreatorEmailIdx] || '').trim() : '';
+      const masterActionStatus = masterActionStatusIdx !== -1 ? normalizeActionStatus_(String(targetRowData[masterActionStatusIdx] || '').trim()) : '';
+      const masterStatus = masterStatusIdx !== -1 ? String(targetRowData[masterStatusIdx] || '').trim() : '';
+      const masterRecommendedAction = masterRecommendedActionIdx !== -1 ? String(targetRowData[masterRecommendedActionIdx] || '').trim() : '';
+
+      // Use 0-indexed row for Master updates later
+      const masterRowIndex = targetRowIndex1Based - 2;
 
       // RE-CHECK after acquiring lock with fresh sheet data to prevent race condition
       // Ensures no user (including Admin) creates duplicate pending lifecycle responses via this endpoint
@@ -828,6 +829,8 @@ function submitCreatorResponse(payload) {
       }
 
       invalidateStatusTrackerCache_();
+
+      console.timeEnd('[PERF] submitCreatorResponse: Post-lock validation');
 
       // Return minimal authoritative update for client-side state merge
       return {
