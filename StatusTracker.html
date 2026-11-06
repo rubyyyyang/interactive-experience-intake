@@ -1817,8 +1817,12 @@
 
   function buildDetailSections(sub) {
     var html = '<div style="margin:28px 0 0 0;padding-top:28px;border-top:1px solid #e8eaed;">';
-    html += '<h4 style="margin:0 0 20px 0;font-size:0.9rem;font-weight:600;color:#3c4043;">Submission details</h4>';
+    html += '<button onclick="event.stopPropagation(); toggleSubmissionDetails(\'' + sub.requestNumber + '\');" style="background:none;border:none;color:#3c4043;cursor:pointer;font-size:0.9rem;font-weight:600;padding:0;margin:0 0 20px 0;display:flex;align-items:center;gap:6px;">' +
+      '<span id="submission-details-icon-' + sub.requestNumber + '">▸</span> Submission details' +
+      '</button>';
+    html += '<div id="submission-details-content-' + sub.requestNumber + '" style="display:none;">';
     html += buildDetailSectionsContent(sub);
+    html += '</div>';
     html += '</div>';
     return html;
   }
@@ -2014,6 +2018,20 @@
     }
   }
 
+  function toggleSubmissionDetails(num) {
+    var content = document.getElementById('submission-details-content-' + num);
+    var icon = document.getElementById('submission-details-icon-' + num);
+    if (content && icon) {
+      if (content.style.display === 'none') {
+        content.style.display = 'block';
+        icon.textContent = '▾';
+      } else {
+        content.style.display = 'none';
+        icon.textContent = '▸';
+      }
+    }
+  }
+
   // --- Action banner & response form ---
 
   // Creator-facing display baselines (sourced from Hub PERF_THRESHOLDS for UI consistency)
@@ -2198,7 +2216,7 @@
 
       // Submitted Response display for Pending review
       if (status === 'Pending review') {
-        html += '<div id="submitted-response-' + num + '" style="background:#e8f0fe;border:1px solid #c2d7f2;border-radius:6px;padding:12px;margin:16px 0 0 0;">' +
+        html += '<div id="submitted-response-' + num + '" style="background:#e8eaed;border:1px solid #cfd4da;border-radius:6px;padding:12px;margin:16px 0 0 0;">' +
           '<div style="font-size:0.75rem;font-weight:600;text-transform:uppercase;color:#1a73e8;margin-bottom:6px;">Submitted Response</div>' +
           '<div style="color:#5f6368;font-size:0.85rem;">Loading...</div>' +
         '</div>';
@@ -2282,7 +2300,7 @@
 
       // Submitted Response display for Pending review
       if (status === 'Pending review') {
-        html += '<div id="submitted-response-' + num + '" style="background:#e8f0fe;border:1px solid #c2d7f2;border-radius:6px;padding:12px;margin:16px 0 0 0;">' +
+        html += '<div id="submitted-response-' + num + '" style="background:#e8eaed;border:1px solid #cfd4da;border-radius:6px;padding:12px;margin:16px 0 0 0;">' +
           '<div style="font-size:0.75rem;font-weight:600;text-transform:uppercase;color:#1a73e8;margin-bottom:6px;">Submitted Response</div>' +
           '<div style="color:#5f6368;font-size:0.85rem;">Loading...</div>' +
         '</div>';
@@ -2627,7 +2645,7 @@
         }
 
         // Metadata - submitter and timestamp
-        html += '<div style="font-size:0.75rem;color:#888;margin-top:8px;padding-top:8px;border-top:1px solid #c2d7f2;">';
+        html += '<div style="font-size:0.75rem;color:#888;margin-top:8px;padding-top:8px;border-top:1px solid #cfd4da;">';
         if (resp.submitterEmail) {
           html += 'Submitted by ' + escapeHtml(resp.submitterEmail);
         }
