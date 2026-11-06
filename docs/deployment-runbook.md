@@ -22,13 +22,36 @@ git pull origin main
 git checkout -b feature/your-feature-name
 ```
 
-Implement the smallest necessary change and run relevant tests:
+Claude Code implements the smallest necessary change and runs relevant targeted tests:
 
 ```bash
 npm test
 ```
 
-For changes requiring runtime validation, push to the Apps Script development environment:
+Choose tests based on change risk. Full regression testing is not required for minor UI or documentation changes.
+
+Commit and push the branch to GitHub:
+
+```bash
+git commit -m "description of change"
+git push origin feature/your-feature-name
+```
+
+Open one PR against `main`.
+
+### 2. Code Review
+
+ChatGPT independently reviews the actual code and diff **before user acceptance testing**.
+
+Address any blocking review findings on the same PR. Update the existing PR rather than opening duplicate PRs.
+
+### 3. Runtime Validation (When Needed)
+
+For changes requiring runtime validation, use `clasp push` to update Apps Script HEAD and validate at the `/dev` deployment URL before asking the user to perform acceptance testing.
+
+**Note:** Feature-branch `clasp push` is allowed for deliberate `/dev` previews. It updates shared HEAD but does not affect existing versioned deployments (Team Testing and Production).
+
+Earlier `/dev` previews are allowed for UI prototyping.
 
 ```bash
 clasp push
@@ -36,19 +59,11 @@ clasp push
 
 Validate at the `/dev` deployment URL where appropriate.
 
-### 2. Code Review and Merge
+### 4. Merge
 
-Review the diff locally:
+After PR approval and testing, merge the PR into `main`.
 
-```bash
-git diff main
-```
-
-Open a PR against `main` and address review feedback.
-
-After approval, merge the PR into `main`.
-
-### 3. Pre-Deployment Verification
+### 5. Pre-Deployment Verification
 
 Synchronize local `main` with `origin/main`:
 
@@ -73,7 +88,7 @@ The `scriptId` should match the production Apps Script project: `13DEk6NBZ-BPZ9M
 
 Ensure no other Claude session or developer is concurrently pushing to the same Apps Script project. Coordinate with the team if unsure.
 
-### 4. Push to Apps Script
+### 6. Push to Apps Script
 
 Run `clasp push` from the approved main commit:
 
@@ -91,28 +106,21 @@ Record the Git commit SHA for the release:
 git rev-parse HEAD
 ```
 
-### 5. Create Immutable Apps Script Version
-
-In the Apps Script editor:
-
-1. Navigate to **Deployments** > **Manage deployments**
-2. Click **Create deployment**
-3. Select deployment type: **Web app**
-4. Add a description with the Git commit SHA and a brief summary of changes
-5. Set **Execute as**: Me
-6. Set **Who has access**: Anyone within Red Hat
-7. Click **Deploy**
-8. Record the new version number
-
-### 6. Update Team Testing Deployment
+### 7. Create New Version for Team Testing
 
 In the Apps Script editor:
 
 1. Navigate to **Deployments** > **Manage deployments**
 2. Find the existing **Team Testing** deployment
 3. Click the edit icon (pencil)
-4. Update **Version** to the newly created version
-5. Click **Deploy**
+4. Under **Version**, click **New version**
+5. Add a description with the Git commit SHA and a brief summary of changes
+6. Click **Deploy**
+7. Record the new version number
+
+**Important:** Use **Version → New version** on the existing Team Testing deployment. Do not create a separate deployment. This preserves the deployment URL.
+
+### 8. Team Testing Validation
 
 Perform relevant smoke tests against the Team Testing deployment URL.
 
@@ -125,7 +133,7 @@ Test carefully and verify:
 - Status Tracker displays correctly
 - No regressions in critical user paths
 
-### 7. Update Production Deployment (After Human Approval)
+### 9. Update Production Deployment (After Human Approval)
 
 After successful Team Testing validation and explicit human approval, update the Production deployment to the SAME tested version.
 
@@ -140,7 +148,7 @@ In the Apps Script editor:
 
 Perform a production smoke test to confirm the deployment succeeded.
 
-### 8. Release Record
+### 10. Release Record
 
 Document the release in a safe location (team wiki, release notes, or internal tracker):
 
@@ -210,14 +218,26 @@ Test carefully. Use read-only operations where possible during validation.
 
 Use this checklist when performing a release:
 
+**Development:**
+- [ ] Feature branch created from latest `origin/main`
+- [ ] Changes implemented by Claude Code
+- [ ] Relevant targeted tests run and passing
+- [ ] Changes committed and pushed to GitHub
+- [ ] PR opened against `main`
+- [ ] ChatGPT code review completed before acceptance testing
+- [ ] Blocking review findings addressed
+- [ ] Runtime validation via `clasp push` and `/dev` completed (if needed)
+- [ ] PR approved and merged into `main`
+
+**Release:**
 - [ ] Local `main` synchronized with `origin/main`
 - [ ] Working tree clean (`git status`)
 - [ ] `.clasp.json` points to correct Apps Script project
 - [ ] No concurrent `clasp push` from other sessions
 - [ ] Git commit SHA recorded
-- [ ] `clasp push` completed successfully
-- [ ] New Apps Script version created with descriptive label
-- [ ] Team Testing deployment updated to new version
+- [ ] `clasp push` from `main` completed successfully
+- [ ] Validated HEAD at `/dev` (if needed)
+- [ ] New version created via **Version → New version** on Team Testing deployment
 - [ ] Team Testing smoke tests passed
 - [ ] Previous production version recorded for rollback
 - [ ] Human approval obtained
