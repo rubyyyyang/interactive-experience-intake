@@ -1140,9 +1140,6 @@
       <button class="tab" data-tab="all" onclick="switchTab('all')">All Submissions</button>
       <button class="tab" data-tab="reports" onclick="switchTab('reports')">Reports</button>
     </div>
-    <button id="needsReviewFilter" class="admin-only" onclick="toggleNeedsReviewFilter()" style="display:none;margin-left:10px;padding:6px 12px;border:1px solid #dadce0;border-radius:16px;background:#fff;cursor:pointer;font-size:0.85rem;font-weight:500;color:#5f6368;">
-      Needs review (<span id="needsReviewCount">0</span>)
-    </button>
     <div class="controls-right">
       <select id="statusFilter" onchange="onStatusFilterChange()">
         <option value="" data-status="">All Statuses</option>
@@ -1475,12 +1472,6 @@
       pool = pool.filter(function(s) { return s.status === currentStatusFilter; });
     }
 
-    if (currentNeedsReviewFilter) {
-      pool = pool.filter(function(s) {
-        return (s.perfActionStatus || '').trim() === 'Pending review';
-      });
-    }
-
     if (currentSearch) {
       var term = currentSearch.toLowerCase();
       pool = pool.filter(function(s) {
@@ -1532,18 +1523,17 @@
       ? allSubmissions.filter(function(s) { return s.isMine; })
       : allSubmissions;
     updateStatusFilterCounts(applyFilters_(basePool, 'status'), filtered.length);
-    updateNeedsReviewButton();
-    var anyFilter = currentStatusFilter || currentSearch || currentNeedsReviewFilter;
+    var anyFilter = currentStatusFilter || currentSearch;
     var resetAllBtn = document.getElementById('resetAllFiltersBtn');
     if (resetAllBtn) resetAllBtn.style.display = anyFilter ? '' : 'none';
 
     if (filtered.length === 0) {
       document.getElementById('tableWrapper').style.display = 'none';
       var emptyEl = document.getElementById('emptyState');
-      if (activeTab === 'my' && !currentStatusFilter && !currentSearch && !currentNeedsReviewFilter) {
+      if (activeTab === 'my' && !currentStatusFilter && !currentSearch) {
         emptyEl.innerHTML = '<p>No submissions found.</p>' +
           '<p style="font-size:0.85rem;color:#5f6368;">This tab matches by the creator email used during submission. Try the <a href="#" onclick="switchTab(\'all\'); return false;" style="color:#1a73e8;">All Submissions</a> tab to browse everything.</p>';
-      } else if (currentStatusFilter || currentSearch || currentNeedsReviewFilter) {
+      } else if (currentStatusFilter || currentSearch) {
         emptyEl.innerHTML = '<p>No submissions match your filters.</p>' +
           '<p style="font-size:0.85rem;color:#5f6368;">Try adjusting your search or filters.</p>';
       } else {
@@ -3010,15 +3000,6 @@
           userEmail = result.userEmail || '';
           isAdmin = result.isAdmin || false;
 
-          // Show admin-only controls (e.g., Needs review filter)
-          if (isAdmin) {
-            document.querySelectorAll('.admin-only').forEach(function(el) {
-              if (el.id === 'needsReviewFilter') {
-                el.style.display = '';
-              }
-            });
-          }
-
           EDITABLE_FIELDS = result.editableFields || [];
           FIELD_OPTIONS_MAP = result.fieldOptions || {};
           document.querySelectorAll('.detail-row').forEach(function(r) { r.remove(); });
@@ -3399,8 +3380,6 @@
     currentStatusFilter = '';
     document.getElementById('searchInput').value = '';
     currentSearch = '';
-    currentNeedsReviewFilter = false;
-    updateNeedsReviewButton();
     renderTable();
   }
 
@@ -3411,34 +3390,6 @@
       currentSearch = document.getElementById('searchInput').value.trim();
       renderTable();
     }, 300);
-  }
-
-  var currentNeedsReviewFilter = false;
-  function toggleNeedsReviewFilter() {
-    currentNeedsReviewFilter = !currentNeedsReviewFilter;
-    updateNeedsReviewButton();
-    renderTable();
-  }
-
-  function updateNeedsReviewButton() {
-    var btn = document.getElementById('needsReviewFilter');
-    if (!btn) return;
-
-    var count = allSubmissions.filter(function(s) {
-      return (s.perfActionStatus || '').trim() === 'Pending review';
-    }).length;
-
-    document.getElementById('needsReviewCount').textContent = count;
-
-    if (currentNeedsReviewFilter) {
-      btn.style.background = '#e8f0fe';
-      btn.style.borderColor = '#1a73e8';
-      btn.style.color = '#1a73e8';
-    } else {
-      btn.style.background = '#fff';
-      btn.style.borderColor = '#dadce0';
-      btn.style.color = '#5f6368';
-    }
   }
 
   // --- Dashboard ---
@@ -3923,15 +3874,6 @@
           allSubmissions = result.submissions || [];
           userEmail = result.userEmail || '';
           isAdmin = result.isAdmin || false;
-
-          // Show admin-only controls (e.g., Needs review filter)
-          if (isAdmin) {
-            document.querySelectorAll('.admin-only').forEach(function(el) {
-              if (el.id === 'needsReviewFilter') {
-                el.style.display = '';
-              }
-            });
-          }
 
           EDITABLE_FIELDS = result.editableFields || [];
           FIELD_OPTIONS_MAP = result.fieldOptions || {};
