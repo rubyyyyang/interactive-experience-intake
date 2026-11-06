@@ -119,7 +119,7 @@ function getYouTubeResponsesData_() {
   }
 }
 
-function buildSubmissionFromRow_(row, headerMap) {
+function buildSubmissionFromRow_(row, headerMap, userEmail) {
   const col = STATUS_TRACKER_COLUMNS;
   const get = (name) => {
     const idx = headerMap[name];
@@ -141,6 +141,13 @@ function buildSubmissionFromRow_(row, headerMap) {
     if (EDITABLE_METADATA_FIELDS_[fi].key === 'Guide Extraction JSON') continue;
     meta[EDITABLE_METADATA_FIELDS_[fi].key] = get(EDITABLE_METADATA_FIELDS_[fi].key);
   }
+
+  // Calculate ownership using actual email values from source row
+  // Do not expose email fields to frontend - ownership is calculated server-side only
+  const creatorEmail = get(col.CREATOR_EMAIL).toLowerCase().trim();
+  const requestorEmail = get(col.REQUESTOR_EMAIL).toLowerCase().trim();
+  const lowerUserEmail = userEmail ? userEmail.toLowerCase().trim() : '';
+  const isMine = lowerUserEmail && (creatorEmail === lowerUserEmail || requestorEmail === lowerUserEmail);
 
   return {
     title: get(col.FINAL_DEMO_TITLE) || get(col.SUGGESTED_DEMO_TITLE) || get('Video Title'),
@@ -219,7 +226,8 @@ function buildSubmissionFromRow_(row, headerMap) {
     demoDescCreator: get(col.DEMO_DESC_CREATOR),
     seoWords: get(col.SEO_WORDS),
     // guideExtractionJson: REMOVED - large read-only field excluded from initial payload
-    metadata: meta
+    metadata: meta,
+    isMine: isMine  // Server-calculated ownership flag
   };
 }
 
@@ -265,13 +273,13 @@ function getMySubmissions(searchName) {
 
       if (lowerSearch) {
         if (creatorName.includes(lowerSearch)) {
-          submissions.push(buildSubmissionFromRow_(rows[i], headerMap));
+          submissions.push(buildSubmissionFromRow_(rows[i], headerMap, email));
         }
       } else if (admin) {
-        submissions.push(buildSubmissionFromRow_(rows[i], headerMap));
+        submissions.push(buildSubmissionFromRow_(rows[i], headerMap, email));
       } else {
         if (creatorEmail === lowerEmail || requestorEmail === lowerEmail) {
-          submissions.push(buildSubmissionFromRow_(rows[i], headerMap));
+          submissions.push(buildSubmissionFromRow_(rows[i], headerMap, email));
         }
       }
     }
@@ -286,13 +294,13 @@ function getMySubmissions(searchName) {
 
         if (lowerSearch) {
           if (ytCn.includes(lowerSearch)) {
-            submissions.push(buildSubmissionFromRow_(ytData.rows[yi], ytData.headerMap));
+            submissions.push(buildSubmissionFromRow_(ytData.rows[yi], ytData.headerMap, email));
           }
         } else if (admin) {
-          submissions.push(buildSubmissionFromRow_(ytData.rows[yi], ytData.headerMap));
+          submissions.push(buildSubmissionFromRow_(ytData.rows[yi], ytData.headerMap, email));
         } else {
           if (ytCe === lowerEmail) {
-            submissions.push(buildSubmissionFromRow_(ytData.rows[yi], ytData.headerMap));
+            submissions.push(buildSubmissionFromRow_(ytData.rows[yi], ytData.headerMap, email));
           }
         }
       }
@@ -304,12 +312,7 @@ function getMySubmissions(searchName) {
       return dateB - dateA;
     });
 
-    // Mark submissions as "mine" for frontend filtering
-    for (let s = 0; s < submissions.length; s++) {
-      const ce = submissions[s].creatorEmail ? submissions[s].creatorEmail.toLowerCase() : '';
-      const re = submissions[s].requestorEmail ? submissions[s].requestorEmail.toLowerCase() : '';
-      submissions[s].isMine = (ce === lowerEmail || re === lowerEmail);
-    }
+    // isMine is now calculated server-side in buildSubmissionFromRow_()
 
     return {
       success: true,
@@ -329,36 +332,27 @@ function getAllSubmissions() {
     const email = Session.getActiveUser().getEmail();
     if (!email) return { success: false, error: 'Could not determine your email. Please make sure you are logged in.' };
 
-    // Server-side authorization: only admin can access All Submissions
-    if (!isAdmin_(email)) {
-      return { success: false, error: 'Admin access required for All Submissions.' };
-    }
+    // All Submissions is now accessible to all authenticated users
+    // Admin-only pendingResponse data is conditionally included based on isAdmin check
 
     const { rows, headerMap } = getRequestMasterData_();
-    const creatorEmailIdx = headerMap[STATUS_TRACKER_COLUMNS.CREATOR_EMAIL];
-    const requestorEmailIdx = headerMap[STATUS_TRACKER_COLUMNS.REQUESTOR_EMAIL];
     const lowerEmail = email.toLowerCase();
+    const isUserAdmin = isAdmin_(email);
     const submissions = [];
     const seenGlobalIds = new Set();
 
     for (let i = 0; i < rows.length; i++) {
-      const ce = creatorEmailIdx != null ? String(rows[i][creatorEmailIdx] || '').toLowerCase().trim() : '';
-      const re = requestorEmailIdx != null ? String(rows[i][requestorEmailIdx] || '').toLowerCase().trim() : '';
-      const sub = buildSubmissionFromRow_(rows[i], headerMap);
+      const sub = buildSubmissionFromRow_(rows[i], headerMap, email);
       if (!sub.status) continue;
-      sub.isMine = (ce === lowerEmail || re === lowerEmail);
       if (sub.globalId) seenGlobalIds.add(sub.globalId);
       submissions.push(sub);
     }
 
     const ytData = getYouTubeResponsesData_();
     if (ytData.rows && ytData.rows.length) {
-      const ytCreatorEmailIdx = ytData.headerMap[STATUS_TRACKER_COLUMNS.CREATOR_EMAIL];
       for (let yi = 0; yi < ytData.rows.length; yi++) {
-        const ytSub = buildSubmissionFromRow_(ytData.rows[yi], ytData.headerMap);
+        const ytSub = buildSubmissionFromRow_(ytData.rows[yi], ytData.headerMap, email);
         if (!ytSub.status) continue;
-        const ytCe = ytCreatorEmailIdx != null ? String(ytData.rows[yi][ytCreatorEmailIdx] || '').toLowerCase().trim() : '';
-        ytSub.isMine = (ytCe === lowerEmail);
         if (ytSub.globalId) seenGlobalIds.add(ytSub.globalId);
         submissions.push(ytSub);
       }
@@ -369,23 +363,26 @@ function getAllSubmissions() {
       submissions.push(pending[i]);
     }
 
-    const queueEntries = getResponseQueueData_();
-    const pendingByNumber = {};
-    for (let q = 0; q < queueEntries.length; q++) {
-      const entry = queueEntries[q];
-      if (entry.processed) continue;
-      pendingByNumber[entry.number] = entry;
-    }
-    for (let q2 = queueEntries.length - 1; q2 >= 0; q2--) {
-      var rej = queueEntries[q2];
-      if (rej.processed && rej.approval === 'Rejected' && !pendingByNumber[rej.number]) {
-        pendingByNumber[rej.number] = rej;
+    // Admin-only: attach pending review queue data
+    if (isUserAdmin) {
+      const queueEntries = getResponseQueueData_();
+      const pendingByNumber = {};
+      for (let q = 0; q < queueEntries.length; q++) {
+        const entry = queueEntries[q];
+        if (entry.processed) continue;
+        pendingByNumber[entry.number] = entry;
       }
-    }
-    for (let s = 0; s < submissions.length; s++) {
-      const num = submissions[s].requestNumber;
-      if (num && pendingByNumber[num]) {
-        submissions[s].pendingResponse = pendingByNumber[num];
+      for (let q2 = queueEntries.length - 1; q2 >= 0; q2--) {
+        var rej = queueEntries[q2];
+        if (rej.processed && rej.approval === 'Rejected' && !pendingByNumber[rej.number]) {
+          pendingByNumber[rej.number] = rej;
+        }
+      }
+      for (let s = 0; s < submissions.length; s++) {
+        const num = submissions[s].requestNumber;
+        if (num && pendingByNumber[num]) {
+          submissions[s].pendingResponse = pendingByNumber[num];
+        }
       }
     }
 
@@ -395,7 +392,7 @@ function getAllSubmissions() {
       return db - da;
     });
 
-    return { success: true, submissions, userEmail: lowerEmail, isAdmin: isAdmin_(email), editableFields: EDITABLE_METADATA_FIELDS_, fieldOptions: FIELD_OPTIONS };
+    return { success: true, submissions, userEmail: lowerEmail, isAdmin: isUserAdmin, editableFields: EDITABLE_METADATA_FIELDS_, fieldOptions: FIELD_OPTIONS };
   } catch (e) {
     return { success: false, error: e.message || String(e) };
   }
@@ -570,76 +567,35 @@ function submitCreatorResponse(payload) {
       return { success: false, error: 'Missing required fields.' };
     }
 
-    // Authorization and pending lock checks
+    // Open collaboration model: All authenticated Red Hat users can submit responses
+    // Authorization is at the admin approval layer, not at the submission layer
     const { rows, headerMap } = getRequestMasterData_();
     const numIdx = headerMap[STATUS_TRACKER_COLUMNS.NUMBER];
-    const creatorEmailIdx = headerMap[STATUS_TRACKER_COLUMNS.CREATOR_EMAIL];
-    const requestorEmailIdx = headerMap[STATUS_TRACKER_COLUMNS.REQUESTOR_EMAIL];
     const actionStatusIdx = headerMap[STATUS_TRACKER_COLUMNS.ACTION_STATUS];
     const statusIdx = headerMap[STATUS_TRACKER_COLUMNS.STATUS];
 
     if (numIdx == null) return { success: false, error: 'Configuration error.' };
 
     const isUserAdmin = isAdmin_(email);
-    let authorized = isUserAdmin;
     let currentActionStatus = '';
     let currentStatus = '';
-    let creatorEmail = '';
-    let requestorEmail = '';
 
-    // Determine if this is a lifecycle response (needs stricter authorization)
+    // Determine if this is a lifecycle response
     const isLifecycleResponse = payload.type === 'lifecycle_response' ||
                                (payload.action && ['Improve completion', 'Consider retirement'].indexOf(payload.action) !== -1);
 
-    if (!authorized) {
-      const targetNumber = String(payload.number).trim();
-      for (let i = 0; i < rows.length; i++) {
-        if (String(rows[i][numIdx] || '').trim() === targetNumber) {
-          creatorEmail = creatorEmailIdx != null ? String(rows[i][creatorEmailIdx] || '').toLowerCase().trim() : '';
-          requestorEmail = requestorEmailIdx != null ? String(rows[i][requestorEmailIdx] || '').toLowerCase().trim() : '';
-          const userEmailLower = email.toLowerCase().trim();
-
-          // Lifecycle responses: only creator (lifecycle owner) can respond
-          // Metadata edits: creator OR requestor (broader access for collaboration)
-          if (isLifecycleResponse) {
-            if (creatorEmail === userEmailLower) {
-              authorized = true;
-            }
-          } else {
-            if (creatorEmail === userEmailLower || requestorEmail === userEmailLower) {
-              authorized = true;
-            }
-          }
-
-          // Also read current Action Status and Status for validation
-          if (actionStatusIdx != null) {
-            currentActionStatus = normalizeActionStatus_(String(rows[i][actionStatusIdx] || '').trim());
-          }
-          if (statusIdx != null) {
-            currentStatus = String(rows[i][statusIdx] || '').trim();
-          }
-
-          break;
+    // Read current status for validation
+    const targetNumber = String(payload.number).trim();
+    for (let i = 0; i < rows.length; i++) {
+      if (String(rows[i][numIdx] || '').trim() === targetNumber) {
+        if (actionStatusIdx != null) {
+          currentActionStatus = normalizeActionStatus_(String(rows[i][actionStatusIdx] || '').trim());
         }
-      }
-    } else {
-      // Admin is authorized, but still need to read current status for context
-      const targetNumber = String(payload.number).trim();
-      for (let i = 0; i < rows.length; i++) {
-        if (String(rows[i][numIdx] || '').trim() === targetNumber) {
-          if (actionStatusIdx != null) {
-            currentActionStatus = normalizeActionStatus_(String(rows[i][actionStatusIdx] || '').trim());
-          }
-          if (statusIdx != null) {
-            currentStatus = String(rows[i][statusIdx] || '').trim();
-          }
-          break;
+        if (statusIdx != null) {
+          currentStatus = String(rows[i][statusIdx] || '').trim();
         }
+        break;
       }
-    }
-
-    if (!authorized) {
-      return { success: false, error: 'Not authorized to respond to this submission.' };
     }
 
     // RETIRED GUARD: Lifecycle responses not allowed for retired demos
@@ -699,10 +655,14 @@ function submitCreatorResponse(payload) {
       const masterAssignedIdx = masterData.headerMap[STATUS_TRACKER_COLUMNS.ASSIGNED];
       const masterCreatorNameIdx = masterData.headerMap[STATUS_TRACKER_COLUMNS.CREATOR_NAME];
       const masterCreatorEmailIdx = masterData.headerMap[STATUS_TRACKER_COLUMNS.CREATOR_EMAIL];
+      const masterActionStatusIdx = masterData.headerMap[STATUS_TRACKER_COLUMNS.ACTION_STATUS];
+      const masterStatusIdx = masterData.headerMap[STATUS_TRACKER_COLUMNS.STATUS];
 
       let masterAssigned = '';
       let masterCreatorName = '';
       let masterCreatorEmail = '';
+      let masterActionStatus = '';
+      let masterStatus = '';
 
       if (masterNumIdx != null) {
         for (let i = 0; i < masterData.rows.length; i++) {
@@ -716,14 +676,29 @@ function submitCreatorResponse(payload) {
             if (masterCreatorEmailIdx != null) {
               masterCreatorEmail = String(masterData.rows[i][masterCreatorEmailIdx] || '').trim();
             }
+            if (masterActionStatusIdx != null) {
+              masterActionStatus = normalizeActionStatus_(String(masterData.rows[i][masterActionStatusIdx] || '').trim());
+            }
+            if (masterStatusIdx != null) {
+              masterStatus = String(masterData.rows[i][masterStatusIdx] || '').trim();
+            }
             break;
           }
         }
       }
 
+      // RE-CHECK after acquiring lock to prevent race condition
+      // Two users submitting simultaneously must not create duplicate pending responses
+      if (isLifecycleResponse && masterActionStatus === 'Pending review' && !isUserAdmin) {
+        return { success: false, error: 'Response is pending admin review. You can resubmit after admin feedback.' };
+      }
+
+      if (isLifecycleResponse && masterStatus === 'Retired') {
+        return { success: false, error: 'This demo is retired and no longer accepts lifecycle responses.' };
+      }
+
       // PREFLIGHT: Validate Master row and columns BEFORE appending to Queue
       // This prevents duplicate Queue entries if Master update fails on retry
-      var masterActionStatusIdx = masterData.headerMap[STATUS_TRACKER_COLUMNS.ACTION_STATUS];
       if (masterNumIdx == null || masterActionStatusIdx == null) {
         throw new Error('Required Master columns not found for status update.');
       }
@@ -865,6 +840,66 @@ function getLatestPendingQueueEntry(demoNumber) {
   }
 }
 
+function getSubmittedResponse(demoNumber) {
+  try {
+    const email = Session.getActiveUser().getEmail();
+    if (!email) {
+      return { success: false, error: 'Authentication required.' };
+    }
+
+    // Open collaboration model: All authenticated users can view submitted responses
+    const sheet = getResponseQueueSheet_();
+    const lastRow = sheet.getLastRow();
+    if (lastRow < 2) return { success: true, response: null };
+
+    const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0]
+      .map(h => String(h || '').trim());
+    const data = sheet.getRange(2, 1, lastRow - 1, headers.length).getValues();
+
+    const col = (name) => headers.indexOf(name);
+    const numCol = col('Number');
+
+    // Migration-compatible: look for "Review Status" first, fall back to "Action Status"
+    const reviewStatusCol = col('Review Status') >= 0 ? col('Review Status') : col('Action Status');
+
+    if (numCol < 0) return { success: false, error: 'Number column not found.' };
+    if (reviewStatusCol < 0) return { success: false, error: 'Review Status or Action Status column not found.' };
+
+    // Find latest matching row with Review Status = 'Pending review'
+    for (let i = data.length - 1; i >= 0; i--) {
+      const rowNumber = String(data[i][numCol] || '').trim();
+      const reviewStatus = String(data[i][reviewStatusCol] || '').trim();
+
+      if (rowNumber === String(demoNumber).trim() && reviewStatus === 'Pending review') {
+        const submitterEmail = String(data[i][col('email')] || data[i][col('Creator Email')] || '').trim();
+        const creatorName = String(data[i][col('Creator Name')] || '').trim();
+        const timestamp = String(data[i][col('Timestamp')] || '');
+        const actionTaken = String(data[i][col('Action Taken')] || '');
+        const newLink = String(data[i][col('New Creation Link')] || '');
+        const notes = String(data[i][col('Additional Comments')] || '');
+        const recommendedAction = String(data[i][col('Recommended Action')] || '');
+
+        return {
+          success: true,
+          response: {
+            submitterEmail: submitterEmail,
+            creatorName: creatorName,
+            timestamp: timestamp,
+            actionTaken: actionTaken,
+            newLink: newLink,
+            notes: notes,
+            recommendedAction: recommendedAction
+          }
+        };
+      }
+    }
+
+    return { success: true, response: null };
+  } catch (e) {
+    return { success: false, error: e.message || String(e) };
+  }
+}
+
 function getLatestAdminFeedback(demoNumber) {
   try {
     const email = Session.getActiveUser().getEmail();
@@ -872,36 +907,8 @@ function getLatestAdminFeedback(demoNumber) {
       return { success: false, error: 'Authentication required.' };
     }
 
-    const isUserAdmin = isAdmin_(email);
-
-    // Authorization: must be admin OR creator of this specific demo
-    if (!isUserAdmin) {
-      const masterData = getRequestMasterData_();
-      const numIdx = masterData.headerMap[STATUS_TRACKER_COLUMNS.NUMBER];
-      const creatorEmailIdx = masterData.headerMap[STATUS_TRACKER_COLUMNS.CREATOR_EMAIL];
-
-      if (numIdx == null || creatorEmailIdx == null) {
-        return { success: false, error: 'Required columns not found.' };
-      }
-
-      let authorized = false;
-      const targetNumber = String(demoNumber).trim();
-      const userEmailLower = email.toLowerCase().trim();
-
-      for (let i = 0; i < masterData.rows.length; i++) {
-        if (String(masterData.rows[i][numIdx] || '').trim() === targetNumber) {
-          const creatorEmail = String(masterData.rows[i][creatorEmailIdx] || '').toLowerCase().trim();
-          if (creatorEmail === userEmailLower) {
-            authorized = true;
-          }
-          break;
-        }
-      }
-
-      if (!authorized) {
-        return { success: false, error: 'Not authorized to access feedback for this submission.' };
-      }
-    }
+    // Open collaboration model: All authenticated users can view feedback for any demo
+    // This allows collaborators who submitted responses to see admin guidance
 
     const sheet = getResponseQueueSheet_();
     const lastRow = sheet.getLastRow();
