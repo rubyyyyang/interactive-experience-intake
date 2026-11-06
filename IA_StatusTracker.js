@@ -610,21 +610,14 @@ function submitCreatorResponse(payload) {
       return { success: false, error: 'Response is pending admin review. You can resubmit after admin feedback.' };
     }
 
-    // Validate response based on type
-    let hasResponse = false;
-    if (payload.response) {
-      if (isLifecycleResponse) {
-        // Lifecycle responses: validate based on action
-        const lifecycleValues = payload.action === 'Improve completion'
-          ? ['Updated', 'Need help']
-          : payload.action === 'Consider retirement'
-            ? ['Keep active', 'Retire', 'Need help']
-            : [];
-        hasResponse = lifecycleValues.indexOf(payload.response) !== -1;
-      } else {
-        // Legacy non-lifecycle responses
-        hasResponse = ['Done', 'Declined', 'Need help'].indexOf(payload.response) !== -1;
-      }
+    // Enforce lifecycle-only submissions
+    // Status Tracker only accepts lifecycle_response with valid action and response
+    if (!isLifecycleResponse) {
+      return { success: false, error: 'Only lifecycle responses are supported. Please select an action and response.' };
+    }
+
+    if (payload.type === 'metadata_edit') {
+      return { success: false, error: 'Metadata editing is not supported. Please use lifecycle action responses only.' };
     }
 
     const hasMetadata = payload.metadataChanges && typeof payload.metadataChanges === 'object'
@@ -635,15 +628,22 @@ function submitCreatorResponse(payload) {
       return { success: false, error: 'Metadata editing is not supported. Please use lifecycle action responses only.' };
     }
 
+    // Validate lifecycle response based on action
+    let hasResponse = false;
+    if (payload.response) {
+      const lifecycleValues = payload.action === 'Improve completion'
+        ? ['Updated', 'Need help']
+        : payload.action === 'Consider retirement'
+          ? ['Keep active', 'Retire', 'Need help']
+          : [];
+      hasResponse = lifecycleValues.indexOf(payload.response) !== -1;
+    }
+
     if (!hasResponse) {
       return { success: false, error: 'Please select a response.' };
     }
 
-    // Only lifecycle responses are supported
-    let type = 'response';
-    if (payload.type === 'lifecycle_response') {
-      type = 'lifecycle_response';
-    }
+    const type = 'lifecycle_response';
 
     const metadataJson = '';
 
@@ -651,73 +651,73 @@ function submitCreatorResponse(payload) {
     lock.waitLock(10000);
 
     try {
-      // CRITICAL: Fetch fresh Master data after acquiring lock to prevent stale-cache race
-      // Invalidate runtime memo to force direct sheet read for authoritative status
-      ST_RUNTIME_MEMO_ = null;
-      const masterData = getRequestMasterData_();
-      const masterNumIdx = masterData.headerMap[STATUS_TRACKER_COLUMNS.NUMBER];
-      const masterAssignedIdx = masterData.headerMap[STATUS_TRACKER_COLUMNS.ASSIGNED];
-      const masterCreatorNameIdx = masterData.headerMap[STATUS_TRACKER_COLUMNS.CREATOR_NAME];
-      const masterCreatorEmailIdx = masterData.headerMap[STATUS_TRACKER_COLUMNS.CREATOR_EMAIL];
-      const masterActionStatusIdx = masterData.headerMap[STATUS_TRACKER_COLUMNS.ACTION_STATUS];
-      const masterStatusIdx = masterData.headerMap[STATUS_TRACKER_COLUMNS.STATUS];
+      // CRITICAL: Direct sheet read after acquiring lock bypasses both caches
+      // Read only the target row's Action Status, Status, Number, and metadata fields
+      // This prevents stale-cache race where both runtime memo AND CacheService are outdated
+      const masterSheet = getTargetSpreadsheet_().getSheetByName('Request_Master');
+      if (!masterSheet) {
+        throw new Error('Request_Master sheet not found.');
+      }
 
+      const headers = masterSheet.getRange(1, 1, 1, masterSheet.getLastColumn()).getValues()[0]
+        .map(h => String(h || '').trim());
+
+      const masterNumIdx = headers.indexOf(STATUS_TRACKER_COLUMNS.NUMBER);
+      const masterAssignedIdx = headers.indexOf(STATUS_TRACKER_COLUMNS.ASSIGNED);
+      const masterCreatorNameIdx = headers.indexOf(STATUS_TRACKER_COLUMNS.CREATOR_NAME);
+      const masterCreatorEmailIdx = headers.indexOf(STATUS_TRACKER_COLUMNS.CREATOR_EMAIL);
+      const masterActionStatusIdx = headers.indexOf(STATUS_TRACKER_COLUMNS.ACTION_STATUS);
+      const masterStatusIdx = headers.indexOf(STATUS_TRACKER_COLUMNS.STATUS);
+
+      // PREFLIGHT: Validate required columns exist before any write
+      if (masterNumIdx === -1 || masterActionStatusIdx === -1) {
+        throw new Error('Required Master columns not found for status update.');
+      }
+
+      // Find the target row by Number (direct sheet lookup - no cache)
+      const allData = masterSheet.getRange(2, 1, masterSheet.getLastRow() - 1, masterSheet.getLastColumn()).getValues();
+      let masterRowIndex = -1;
       let masterAssigned = '';
       let masterCreatorName = '';
       let masterCreatorEmail = '';
       let masterActionStatus = '';
       let masterStatus = '';
 
-      if (masterNumIdx != null) {
-        for (let i = 0; i < masterData.rows.length; i++) {
-          if (String(masterData.rows[i][masterNumIdx] || '').trim() === String(payload.number)) {
-            if (masterAssignedIdx != null) {
-              masterAssigned = String(masterData.rows[i][masterAssignedIdx] || '').trim();
-            }
-            if (masterCreatorNameIdx != null) {
-              masterCreatorName = String(masterData.rows[i][masterCreatorNameIdx] || '').trim();
-            }
-            if (masterCreatorEmailIdx != null) {
-              masterCreatorEmail = String(masterData.rows[i][masterCreatorEmailIdx] || '').trim();
-            }
-            if (masterActionStatusIdx != null) {
-              masterActionStatus = normalizeActionStatus_(String(masterData.rows[i][masterActionStatusIdx] || '').trim());
-            }
-            if (masterStatusIdx != null) {
-              masterStatus = String(masterData.rows[i][masterStatusIdx] || '').trim();
-            }
-            break;
+      for (let i = 0; i < allData.length; i++) {
+        if (String(allData[i][masterNumIdx] || '').trim() === String(payload.number)) {
+          masterRowIndex = i;
+          if (masterAssignedIdx !== -1) {
+            masterAssigned = String(allData[i][masterAssignedIdx] || '').trim();
           }
-        }
-      }
-
-      // RE-CHECK after acquiring lock to prevent race condition
-      // Two users submitting simultaneously must not create duplicate pending responses
-      if (isLifecycleResponse && masterActionStatus === 'Pending review' && !isUserAdmin) {
-        return { success: false, error: 'Response is pending admin review. You can resubmit after admin feedback.' };
-      }
-
-      if (isLifecycleResponse && masterStatus === 'Retired') {
-        return { success: false, error: 'This demo is retired and no longer accepts lifecycle responses.' };
-      }
-
-      // PREFLIGHT: Validate Master row and columns BEFORE appending to Queue
-      // This prevents duplicate Queue entries if Master update fails on retry
-      if (masterNumIdx == null || masterActionStatusIdx == null) {
-        throw new Error('Required Master columns not found for status update.');
-      }
-
-      var masterSheet = getTargetSpreadsheet_().getSheetByName('Request_Master');
-      var masterRowIndex = -1;
-      for (var mi = 0; mi < masterData.rows.length; mi++) {
-        if (String(masterData.rows[mi][masterNumIdx] || '').trim() === String(payload.number)) {
-          masterRowIndex = mi;
+          if (masterCreatorNameIdx !== -1) {
+            masterCreatorName = String(allData[i][masterCreatorNameIdx] || '').trim();
+          }
+          if (masterCreatorEmailIdx !== -1) {
+            masterCreatorEmail = String(allData[i][masterCreatorEmailIdx] || '').trim();
+          }
+          if (masterActionStatusIdx !== -1) {
+            masterActionStatus = normalizeActionStatus_(String(allData[i][masterActionStatusIdx] || '').trim());
+          }
+          if (masterStatusIdx !== -1) {
+            masterStatus = String(allData[i][masterStatusIdx] || '').trim();
+          }
           break;
         }
       }
 
       if (masterRowIndex < 0) {
         throw new Error('Demo #' + payload.number + ' not found on Master. Cannot submit response.');
+      }
+
+      // RE-CHECK after acquiring lock with fresh sheet data to prevent race condition
+      // Ensures no user (including Admin) creates duplicate pending lifecycle responses via this endpoint
+      // Admin review and approval are separate operations with their own authorization
+      if (masterActionStatus === 'Pending review') {
+        return { success: false, error: 'Response is pending admin review. You can resubmit after admin feedback.' };
+      }
+
+      if (masterStatus === 'Retired') {
+        return { success: false, error: 'This demo is retired and no longer accepts lifecycle responses.' };
       }
 
       // Preflight passed - now safe to append to Queue
