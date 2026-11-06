@@ -676,7 +676,7 @@ function submitCreatorResponse(payload) {
         .map((h, idx) => ({ header: h, idx: idx }))
         .filter(col => col.idx !== guideJsonColIdx);
 
-      const headers = columnsToRead.map(col => col.header);
+      const filteredHeaders = columnsToRead.map(col => col.header);
       const columnIndices = columnsToRead.map(col => col.idx);
 
       // Read all rows but only required columns (exclude Guide JSON)
@@ -685,13 +685,13 @@ function submitCreatorResponse(payload) {
         .map(row => columnIndices.map(colIdx => row[colIdx]));
 
       // Rebuild column index mapping for the filtered data
-      const filteredNumIdx = headers.indexOf(STATUS_TRACKER_COLUMNS.NUMBER);
-      const filteredAssignedIdx = headers.indexOf(STATUS_TRACKER_COLUMNS.ASSIGNED);
-      const filteredCreatorNameIdx = headers.indexOf(STATUS_TRACKER_COLUMNS.CREATOR_NAME);
-      const filteredCreatorEmailIdx = headers.indexOf(STATUS_TRACKER_COLUMNS.CREATOR_EMAIL);
-      const filteredActionStatusIdx = headers.indexOf(STATUS_TRACKER_COLUMNS.ACTION_STATUS);
-      const filteredStatusIdx = headers.indexOf(STATUS_TRACKER_COLUMNS.STATUS);
-      const filteredRecommendedActionIdx = headers.indexOf(STATUS_TRACKER_COLUMNS.RECOMMENDED_ACTION);
+      const filteredNumIdx = filteredHeaders.indexOf(STATUS_TRACKER_COLUMNS.NUMBER);
+      const filteredAssignedIdx = filteredHeaders.indexOf(STATUS_TRACKER_COLUMNS.ASSIGNED);
+      const filteredCreatorNameIdx = filteredHeaders.indexOf(STATUS_TRACKER_COLUMNS.CREATOR_NAME);
+      const filteredCreatorEmailIdx = filteredHeaders.indexOf(STATUS_TRACKER_COLUMNS.CREATOR_EMAIL);
+      const filteredActionStatusIdx = filteredHeaders.indexOf(STATUS_TRACKER_COLUMNS.ACTION_STATUS);
+      const filteredStatusIdx = filteredHeaders.indexOf(STATUS_TRACKER_COLUMNS.STATUS);
+      const filteredRecommendedActionIdx = filteredHeaders.indexOf(STATUS_TRACKER_COLUMNS.RECOMMENDED_ACTION);
 
       // Find the target row by Number (direct sheet lookup - no cache)
       let masterRowIndex = -1;
@@ -747,23 +747,28 @@ function submitCreatorResponse(payload) {
       }
 
       // CRITICAL: Validate requested action matches authoritative Recommended action
-      // Prevents submitting retirement request for demo whose actual recommendation is different
-      if (payload.action && masterRecommendedAction) {
-        const normalizedPayloadAction = payload.action.trim();
-        const normalizedMasterAction = masterRecommendedAction.trim();
+      // Fail-closed: Require supported, nonempty recommendation in Master
+      const normalizedMasterAction = masterRecommendedAction ? masterRecommendedAction.trim() : '';
+      const supportedActions = ['Improve completion', 'Consider retirement'];
 
-        // Only supported actions: "Improve completion", "Consider retirement"
-        const supportedActions = ['Improve completion', 'Consider retirement'];
-        if (supportedActions.indexOf(normalizedPayloadAction) === -1) {
-          return { success: false, error: 'Unsupported lifecycle action. Please use an action from the recommendation.' };
-        }
+      if (!normalizedMasterAction || supportedActions.indexOf(normalizedMasterAction) === -1) {
+        return {
+          success: false,
+          error: 'This demo does not have a valid lifecycle recommendation. Cannot accept responses.'
+        };
+      }
 
-        if (normalizedPayloadAction !== normalizedMasterAction) {
-          return {
-            success: false,
-            error: 'Your selected action ("' + normalizedPayloadAction + '") does not match the current recommendation ("' + normalizedMasterAction + '"). Please refresh and respond to the current recommendation.'
-          };
-        }
+      const normalizedPayloadAction = payload.action ? payload.action.trim() : '';
+
+      if (supportedActions.indexOf(normalizedPayloadAction) === -1) {
+        return { success: false, error: 'Unsupported lifecycle action. Please use an action from the recommendation.' };
+      }
+
+      if (normalizedPayloadAction !== normalizedMasterAction) {
+        return {
+          success: false,
+          error: 'Your selected action ("' + normalizedPayloadAction + '") does not match the current recommendation ("' + normalizedMasterAction + '"). Please refresh and respond to the current recommendation.'
+        };
       }
 
       // Preflight passed - now safe to append to Queue
@@ -771,12 +776,12 @@ function submitCreatorResponse(payload) {
 
       // Always append a new row (history-preserving model)
       // Each creator submission is a new review attempt
-      const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0]
+      const queueHeaders = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0]
         .map(h => String(h || '').trim());
 
       // Build row data matching actual Response Queue schema
-      const col = (name) => headers.indexOf(name);
-      const rowData = new Array(headers.length).fill('');
+      const col = (name) => queueHeaders.indexOf(name);
+      const rowData = new Array(queueHeaders.length).fill('');
 
       function set(name, value) {
         const idx = col(name);

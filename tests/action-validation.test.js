@@ -256,6 +256,132 @@ function testTypeRequirement() {
   console.log('✓ Type requirement test passed\n');
 }
 
+// Test: Missing recommendation rejected (fail-closed)
+function testMissingRecommendationRejected() {
+  console.log('Test: Missing recommendation rejected (fail-closed)');
+
+  function validateAction(payload, masterRecommendedAction) {
+    // Fail-closed: Require supported, nonempty recommendation
+    const normalizedMasterAction = masterRecommendedAction ? masterRecommendedAction.trim() : '';
+    const supportedActions = ['Improve completion', 'Consider retirement'];
+
+    if (!normalizedMasterAction || supportedActions.indexOf(normalizedMasterAction) === -1) {
+      return {
+        success: false,
+        error: 'This demo does not have a valid lifecycle recommendation. Cannot accept responses.'
+      };
+    }
+
+    const normalizedPayloadAction = payload.action ? payload.action.trim() : '';
+
+    if (supportedActions.indexOf(normalizedPayloadAction) === -1) {
+      return { success: false, error: 'Unsupported lifecycle action. Please use an action from the recommendation.' };
+    }
+
+    if (normalizedPayloadAction !== normalizedMasterAction) {
+      return { success: false, error: 'Action mismatch' };
+    }
+
+    return { success: true };
+  }
+
+  // Empty recommendation
+  const emptyPayload = {
+    number: '123',
+    type: 'lifecycle_response',
+    action: 'Improve completion',
+    response: 'Updated'
+  };
+  const emptyResult = validateAction(emptyPayload, '');
+  assert.strictEqual(emptyResult.success, false, 'Empty recommendation should be rejected');
+  assert.strictEqual(
+    emptyResult.error,
+    'This demo does not have a valid lifecycle recommendation. Cannot accept responses.',
+    'Should return missing recommendation error'
+  );
+
+  // Null recommendation
+  const nullResult = validateAction(emptyPayload, null);
+  assert.strictEqual(nullResult.success, false, 'Null recommendation should be rejected');
+
+  // Whitespace-only recommendation
+  const whitespaceResult = validateAction(emptyPayload, '   ');
+  assert.strictEqual(whitespaceResult.success, false, 'Whitespace recommendation should be rejected');
+
+  // Unsupported recommendation value
+  const unsupportedRec = {
+    number: '123',
+    type: 'lifecycle_response',
+    action: 'Fix bugs',
+    response: 'Done'
+  };
+  const unsupportedRecResult = validateAction(unsupportedRec, 'Fix bugs');
+  assert.strictEqual(unsupportedRecResult.success, false, 'Unsupported recommendation value should be rejected');
+
+  console.log('✓ Missing recommendation rejection test passed\n');
+}
+
+// Test: Action mismatch with valid recommendation
+function testActionMismatchWithValidRecommendation() {
+  console.log('Test: Action mismatch with valid recommendation');
+
+  function validateAction(payload, masterRecommendedAction) {
+    const normalizedMasterAction = masterRecommendedAction ? masterRecommendedAction.trim() : '';
+    const supportedActions = ['Improve completion', 'Consider retirement'];
+
+    if (!normalizedMasterAction || supportedActions.indexOf(normalizedMasterAction) === -1) {
+      return { success: false, error: 'This demo does not have a valid lifecycle recommendation. Cannot accept responses.' };
+    }
+
+    const normalizedPayloadAction = payload.action ? payload.action.trim() : '';
+
+    if (supportedActions.indexOf(normalizedPayloadAction) === -1) {
+      return { success: false, error: 'Unsupported lifecycle action. Please use an action from the recommendation.' };
+    }
+
+    if (normalizedPayloadAction !== normalizedMasterAction) {
+      return {
+        success: false,
+        error: 'Your selected action ("' + normalizedPayloadAction + '") does not match the current recommendation ("' + normalizedMasterAction + '"). Please refresh and respond to the current recommendation.'
+      };
+    }
+
+    return { success: true };
+  }
+
+  // Recommendation is "Improve completion", user tries to retire
+  const mismatchPayload = {
+    number: '123',
+    type: 'lifecycle_response',
+    action: 'Consider retirement',
+    response: 'Retire'
+  };
+  const result = validateAction(mismatchPayload, 'Improve completion');
+  assert.strictEqual(result.success, false, 'Mismatched action should be rejected');
+  assert.strictEqual(
+    result.error,
+    'Your selected action ("Consider retirement") does not match the current recommendation ("Improve completion"). Please refresh and respond to the current recommendation.',
+    'Should return detailed mismatch error'
+  );
+
+  // Recommendation is "Consider retirement", user tries to improve
+  const reverseMismatch = {
+    number: '123',
+    type: 'lifecycle_response',
+    action: 'Improve completion',
+    response: 'Updated'
+  };
+  const reverseResult = validateAction(reverseMismatch, 'Consider retirement');
+  assert.strictEqual(reverseResult.success, false, 'Reverse mismatch should be rejected');
+  assert.strictEqual(
+    reverseResult.error.includes('does not match the current recommendation'),
+    true,
+    'Should explain mismatch'
+  );
+
+  console.log('✓ Action mismatch test passed\n');
+}
+
 // Run all tests
 try {
   testActionMatchesRecommendation();
@@ -263,6 +389,8 @@ try {
   testUnsupportedActionRejected();
   testCompleteActionStatusBlocked();
   testTypeRequirement();
+  testMissingRecommendationRejected();
+  testActionMismatchWithValidRecommendation();
 
   console.log('✅ All action validation tests passed!');
 } catch (err) {
