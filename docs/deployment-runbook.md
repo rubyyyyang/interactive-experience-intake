@@ -22,13 +22,16 @@ git pull origin main
 git checkout -b feature/your-feature-name
 ```
 
-Claude Code implements the smallest necessary change and runs relevant targeted tests:
+Claude Code implements the smallest necessary change and runs the smallest relevant tests for the actual change.
+
+Run targeted tests based on the change:
 
 ```bash
-npm test
+npm test -- <specific-test-file>    # for targeted test files
+npm test                             # full suite when justified by risk or scope
 ```
 
-Choose tests based on change risk. Full regression testing is not required for minor UI or documentation changes.
+Choose tests based on change risk and scope. Documentation-only changes generally require no application tests. Use the full `npm test` suite when justified by the change's risk or scope.
 
 Commit and push the branch to GitHub:
 
@@ -52,6 +55,26 @@ For changes requiring runtime validation, use `clasp push` to update Apps Script
 **Note:** Feature-branch `clasp push` is allowed for deliberate `/dev` previews. It updates shared HEAD but does not affect existing versioned deployments (Team Testing and Production).
 
 Earlier `/dev` previews are allowed for UI prototyping.
+
+**Before a development-preview `clasp push`:**
+
+1. Verify the active branch and intended changes:
+   ```bash
+   git status
+   git diff main --name-only
+   ```
+
+2. Confirm `.clasp.json` targets the correct Apps Script project:
+   ```bash
+   cat .clasp.json
+   ```
+   The `scriptId` should match: `13DEk6NBZ-BPZ9MFPoKH_V-4is6EWKKSgJnoQf3JoIZZR0Epulo4UihCE`
+
+3. Ensure no other Claude session is concurrently pushing to HEAD. Coordinate with other developers if unsure.
+
+4. Do not create or update a versioned deployment during a development preview.
+
+Then push:
 
 ```bash
 clasp push
