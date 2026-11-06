@@ -120,6 +120,8 @@ function buildSubmissionFromRow_(row, headerMap) {
 
   var meta = {};
   for (var fi = 0; fi < EDITABLE_METADATA_FIELDS_.length; fi++) {
+    // Exclude Guide Extraction JSON from initial payload (read-only field, never edited)
+    if (EDITABLE_METADATA_FIELDS_[fi].key === 'Guide Extraction JSON') continue;
     meta[EDITABLE_METADATA_FIELDS_[fi].key] = get(EDITABLE_METADATA_FIELDS_[fi].key);
   }
 
@@ -199,7 +201,7 @@ function buildSubmissionFromRow_(row, headerMap) {
     requestAdvocacy: get(col.REQUEST_ADVOCACY),
     demoDescCreator: get(col.DEMO_DESC_CREATOR),
     seoWords: get(col.SEO_WORDS),
-    guideExtractionJson: get(col.GUIDE_EXTRACTION_JSON),
+    // guideExtractionJson: REMOVED - large read-only field excluded from initial payload
     metadata: meta
   };
 }
@@ -483,6 +485,7 @@ function getDemoMetadata(requestNumber) {
     return { success: false, error: e.message || String(e) };
   }
 }
+
 
 function getResponseQueueSheet_() {
   const ss = getTargetSpreadsheet_();
