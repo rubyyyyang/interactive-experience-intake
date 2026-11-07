@@ -40,26 +40,32 @@ flowchart TD
     AdminDecision -->|Request changes| RejectQueue[1. Update Queue<br/>Review Status = Follow-up needed]
     ApproveMaster -->|Success| ApproveQueue[2. Update Queue<br/>Review Status = Complete]
     RejectQueue -->|Success| RejectMaster[2. Update Master<br/>Action Status = Follow-up needed]
-    ApproveMaster -->|Failure| ApprovePartial[PARTIAL WRITE<br/>Master updated, Queue not<br/>Best-effort rollback attempted]
-    RejectQueue -->|Failure| RejectPartial[PARTIAL WRITE<br/>Queue updated, Master not<br/>Best-effort rollback attempted]
+    ApproveMaster -->|Master write fails| ApproveMasterFail[Error: Master write failed<br/>No partial write<br/>No Queue update attempted]
+    ApproveQueue -->|Queue write fails| ApprovePartial[PARTIAL WRITE<br/>Master updated, Queue not<br/>Best-effort rollback attempted]
+    RejectQueue -->|Queue write fails| RejectQueueFail[Error: Queue write failed<br/>No partial write<br/>No Master update attempted]
+    RejectMaster -->|Master write fails| RejectPartial[PARTIAL WRITE<br/>Queue updated, Master not<br/>Best-effort rollback attempted]
     ApproveQueue --> Done[Complete]
     RejectMaster --> Resubmit[Creator: Resubmit after feedback]
     Resubmit --> Submit
     ErrorPartial --> ManualFix[Admin: Manual reconciliation]
     ApprovePartial --> ManualFix
     RejectPartial --> ManualFix
+    ApproveMasterFail --> ManualFix
+    RejectQueueFail --> ManualFix
 
     style ErrorPartial fill:#ffcccc
     style ApprovePartial fill:#ffcccc
     style RejectPartial fill:#ffcccc
+    style ApproveMasterFail fill:#ffffcc
+    style RejectQueueFail fill:#ffffcc
     style ErrorValidation fill:#ffffcc
     style ErrorQueue fill:#ffffcc
     style ManualFix fill:#ffcccc
 ```
 
 **Non-atomic writes**: Write order differs by operation:
-- **Approval** (`approveResponse`): Master first, then Queue. Best-effort rollback if Queue write fails.
-- **Request changes** (`requestChanges`): Queue first, then Master. Best-effort rollback if Master write fails.
+- **Approval** (`approveResponse`): Master first, then Queue. If Master write fails, no Queue update attempted. If Queue write fails after Master succeeds, best-effort rollback attempted (partial write).
+- **Request changes** (`requestChanges`): Queue first, then Master. If Queue write fails, no Master update attempted. If Master write fails after Queue succeeds, best-effort rollback attempted (partial write).
 - **Creator submission** (`submitCreatorResponse`): Queue first, then Master. No rollback (partial write documented).
 
 See [Partial-Write Recovery](#partial-write-recovery) for manual reconciliation procedures.
@@ -99,6 +105,7 @@ The Status Tracker provides creators with visibility into the performance and li
 - Displays submissions where the user's email matches Creator Email or Requestor Email
 - **Request_Master**: Matches both Creator Email and Requestor Email (see `getMySubmissions()` lines 301-314)
 - **YouTube_Responses**: Matches Creator Email only (line 333, no Requestor Email check)
+- **Creator name search exception**: When a nonempty `searchName` is supplied to `getMySubmissions()`, the backend matches creator names without restricting results to the current user's email (lines 305-308). This bypasses the normal My Submissions email filter and returns any demo with a matching creator name. This behavior differs from the normal UI's use of `getAllSubmissions()` and warrants separate permission review.
 - Server-side ownership calculation (`buildSubmissionFromRow_`) computes `isMine` flag without exposing raw email fields in top-level response properties
 
 **All Submissions**:
@@ -237,7 +244,6 @@ Only lifecycle responses are supported. Metadata editing is not available in Sta
 
 **Client-side validation** (see [`../StatusTracker.html`](../StatusTracker.html)):
 - Response value must be selected from valid options for the action
-- Recommended action in payload must match current `Recommended action` in Master (prevents stale submissions)
 
 **Server-side validation** (`submitCreatorResponse()` in [`../IA_StatusTracker.js`](../IA_StatusTracker.js)):
 1. User must be authenticated (`Session.getActiveUser().getEmail()`)
@@ -592,7 +598,7 @@ When admin approves a retirement response (`Action Taken = 'Retire'`) via `appro
 - `lifecycle-response-validation.test.js`: Lifecycle response validation rules
 - `lifecycle-ui-display.test.js`: UI display logic for lifecycle panels
 - `retirement-status-value.test.js`: Retirement status handling
-- `retirement-workflow.test.js`: Retirement workflow end-to-end
+- `retirement-workflow.test.js`: Retirement workflow (source inspection)
 - `workflow-consistency.test.js`: Workflow state consistency checks
 - `need-help-workflow.test.js`: "Need help" response workflow
 - `lifecycle-only-enforcement.test.js`: Lifecycle-only enforcement (no metadata editing)
