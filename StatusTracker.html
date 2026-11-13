@@ -2794,10 +2794,22 @@
       return;
     }
 
-    // For Consider retirement, check retirement-specific link field if present
-    var linkFieldId = action === 'Consider retirement' && document.getElementById('resp-link-retire-' + num)
-      ? 'resp-link-retire-' + num
-      : 'resp-link-' + num;
+    // For Consider retirement with Updated response, use retirement-specific link field
+    // For other responses (Keep active, Retire, Need help), do not send retirement link
+    var linkFieldId = 'resp-link-' + num; // Default for Improve completion
+    var newLink = '';
+
+    if (action === 'Consider retirement') {
+      // Only send retirement link if response is Updated
+      if (response === 'Updated') {
+        var retireLinkField = document.getElementById('resp-link-retire-' + num);
+        newLink = retireLinkField ? (retireLinkField.value || '') : '';
+      }
+      // For Keep active, Retire, Need help: newLink remains empty
+    } else {
+      // Improve completion uses standard link field
+      newLink = (document.getElementById(linkFieldId) || {}).value || '';
+    }
 
     var payload = {
       number: num,
@@ -2805,7 +2817,7 @@
       type: 'lifecycle_response',
       action: action,
       response: response,
-      newLink: (document.getElementById(linkFieldId) || {}).value || '',
+      newLink: newLink,
       notes: (document.getElementById('resp-notes-' + num) || {}).value || '',
       metadataChanges: {}
     };
@@ -3029,6 +3041,14 @@
       .rejectResponse(queueRowIndex, adminNotes);
   }
 
+  function updateReportsTabVisibility() {
+    // Show Reports tab for admin users, hide for non-admin
+    var reportsTab = document.getElementById('reportsTab');
+    if (reportsTab) {
+      reportsTab.style.display = isAdmin ? '' : 'none';
+    }
+  }
+
   function reloadSubmissions() {
     google.script.run
       .withSuccessHandler(function(result) {
@@ -3037,11 +3057,7 @@
           userEmail = result.userEmail || '';
           isAdmin = result.isAdmin || false;
 
-          // Show Reports tab for admin users
-          if (isAdmin) {
-            var reportsTab = document.getElementById('reportsTab');
-            if (reportsTab) reportsTab.style.display = '';
-          }
+          updateReportsTabVisibility();
 
           EDITABLE_FIELDS = result.editableFields || [];
           FIELD_OPTIONS_MAP = result.fieldOptions || {};
@@ -3923,6 +3939,8 @@
           allSubmissions = result.submissions || [];
           userEmail = result.userEmail || '';
           isAdmin = result.isAdmin || false;
+
+          updateReportsTabVisibility();
 
           EDITABLE_FIELDS = result.editableFields || [];
           FIELD_OPTIONS_MAP = result.fieldOptions || {};

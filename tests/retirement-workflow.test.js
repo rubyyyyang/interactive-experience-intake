@@ -169,6 +169,24 @@ function testMarksQueueComplete() {
   console.log('  ✓ Marks queue entry Complete\n');
 }
 
+function testRetirementLinkOnlySentForUpdated() {
+  console.log('Test: Retirement link only sent when response is Updated');
+
+  // Should check if response === 'Updated' before using retirement link field
+  const checksUpdated = /if \(response === 'Updated'\)/.test(html);
+  assert.ok(checksUpdated, 'Should check if response is Updated');
+
+  // Should use retirement link field only for Updated
+  const usesRetireLink = /resp-link-retire/.test(html);
+  assert.ok(usesRetireLink, 'Should have retirement-specific link field');
+
+  // For other responses (Keep active, Retire, Need help), newLink should remain empty
+  const hasEmptyLinkComment = /Keep active, Retire, Need help.*newLink remains empty/.test(html);
+  assert.ok(hasEmptyLinkComment, 'Should document that other responses do not send link');
+
+  console.log('  ✓ Retirement link only sent for Updated response\n');
+}
+
 // Run all tests
 try {
   testRetirementGuardRemoved();
@@ -182,6 +200,7 @@ try {
   testAdminWarningUpdated();
   testKeepActivePreserved();
   testUpdatedDoesNotTriggerRetirement();
+  testRetirementLinkOnlySentForUpdated();
   testNoDrupalApiCalls();
   testAuthorizationRequired();
   testPendingReviewValidation();

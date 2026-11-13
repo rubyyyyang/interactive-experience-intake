@@ -5,10 +5,11 @@
 
 const assert = require('assert');
 const fs = require('fs');
+const path = require('path');
 
 console.log('Running Reports admin access tests...\n');
 
-const html = fs.readFileSync('/Users/rubyyang/arcade-intake-app/StatusTracker.html', 'utf8');
+const html = fs.readFileSync(path.join(__dirname, '..', 'StatusTracker.html'), 'utf8');
 
 function testReportsTabHidden() {
   console.log('Test: Reports tab hidden for non-admin users');
@@ -49,11 +50,19 @@ function testSwitchTabPreventsNonAdminAccess() {
 function testAdminShowsReportsTab() {
   console.log('Test: Admin users can see Reports tab');
 
-  // Should have logic to show Reports tab for admins in initStatusTracker
-  const showsForAdmin = /if \(isAdmin\)[\s\S]{0,200}reportsTab[\s\S]{0,100}display/.test(html);
-  assert.ok(showsForAdmin, 'Should show Reports tab for admin users');
+  // Should have helper function to update Reports tab visibility
+  const hasHelper = /function updateReportsTabVisibility/.test(html);
+  assert.ok(hasHelper, 'Should have updateReportsTabVisibility helper');
 
-  console.log('  ✓ Admin users can see Reports tab\n');
+  // Helper should show for admin, hide for non-admin
+  const helperLogic = /reportsTab\.style\.display = isAdmin \? '' : 'none'/.test(html);
+  assert.ok(helperLogic, 'Helper should conditionally show/hide based on isAdmin');
+
+  // Should call helper on initial load
+  const calledOnInit = html.match(/withSuccessHandler[\s\S]{0,500}updateReportsTabVisibility/g);
+  assert.ok(calledOnInit && calledOnInit.length >= 2, 'Should call helper on both initial load and reload');
+
+  console.log('  ✓ Admin users can see Reports tab on initial load and reload\n');
 }
 
 // Run all tests
