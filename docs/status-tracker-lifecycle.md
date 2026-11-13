@@ -151,6 +151,7 @@ The Status Tracker provides creators with visibility into the performance and li
 
 ### Reports
 
+- **Admin-only**: Reports tab is visible only to users in `STATUS_TRACKER_ADMINS` Script Property
 - Analytics dashboard with KPI cards, charts, and submission trends
 - Read-only performance reporting
 - No lifecycle action controls
