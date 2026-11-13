@@ -114,6 +114,22 @@ function testKeepActivePreserved() {
   console.log('  ✓ "Keep active" workflow preserved\n');
 }
 
+function testUpdatedDoesNotTriggerRetirement() {
+  console.log('Test: "Updated" response does not trigger retirement');
+
+  // isRetirement check should ONLY be for 'Retire', not 'Updated'
+  const retirementCheck = serverJs.match(/const isRetirement = \(actionTaken === '([^']+)'\)/);
+
+  assert.ok(retirementCheck, 'Should have isRetirement check');
+  assert.strictEqual(retirementCheck[1], 'Retire', 'isRetirement should only be true for "Retire"');
+
+  // Retirement logic (Status = Retired) should be scoped to isRetirement
+  const retirementBlock = /if \(isRetirement\) \{[\s\S]+?setValue\('Retired'\)/.test(serverJs);
+  assert.ok(retirementBlock, 'Retirement status change should be inside isRetirement block');
+
+  console.log('  ✓ "Updated" does not trigger retirement\n');
+}
+
 function testNoDrupalApiCalls() {
   console.log('Test: No automatic Drupal API calls');
 
@@ -153,6 +169,24 @@ function testMarksQueueComplete() {
   console.log('  ✓ Marks queue entry Complete\n');
 }
 
+function testRetirementLinkOnlySentForUpdated() {
+  console.log('Test: Retirement link only sent when response is Updated');
+
+  // Should check if response === 'Updated' before using retirement link field
+  const checksUpdated = /if \(response === 'Updated'\)/.test(html);
+  assert.ok(checksUpdated, 'Should check if response is Updated');
+
+  // Should use retirement link field only for Updated
+  const usesRetireLink = /resp-link-retire/.test(html);
+  assert.ok(usesRetireLink, 'Should have retirement-specific link field');
+
+  // For other responses (Keep active, Retire, Need help), newLink should remain empty
+  const hasEmptyLinkComment = /Keep active, Retire, Need help.*newLink remains empty/.test(html);
+  assert.ok(hasEmptyLinkComment, 'Should document that other responses do not send link');
+
+  console.log('  ✓ Retirement link only sent for Updated response\n');
+}
+
 // Run all tests
 try {
   testRetirementGuardRemoved();
@@ -165,6 +199,8 @@ try {
   testButtonLabelCorrect();
   testAdminWarningUpdated();
   testKeepActivePreserved();
+  testUpdatedDoesNotTriggerRetirement();
+  testRetirementLinkOnlySentForUpdated();
   testNoDrupalApiCalls();
   testAuthorizationRequired();
   testPendingReviewValidation();
