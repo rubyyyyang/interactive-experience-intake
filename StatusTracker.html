@@ -1138,7 +1138,7 @@
     <div class="tabs">
       <button class="tab active" data-tab="my" onclick="switchTab('my')">My Submissions</button>
       <button class="tab" data-tab="all" onclick="switchTab('all')">All Submissions</button>
-      <button class="tab" data-tab="reports" onclick="switchTab('reports')">Reports</button>
+      <button class="tab" data-tab="reports" onclick="switchTab('reports')" id="reportsTab" style="display:none;">Reports</button>
     </div>
     <div class="controls-right">
       <select id="statusFilter" onchange="onStatusFilterChange()">
@@ -3037,6 +3037,12 @@
           userEmail = result.userEmail || '';
           isAdmin = result.isAdmin || false;
 
+          // Show Reports tab for admin users
+          if (isAdmin) {
+            var reportsTab = document.getElementById('reportsTab');
+            if (reportsTab) reportsTab.style.display = '';
+          }
+
           EDITABLE_FIELDS = result.editableFields || [];
           FIELD_OPTIONS_MAP = result.fieldOptions || {};
           document.querySelectorAll('.detail-row').forEach(function(r) { r.remove(); });
@@ -3348,6 +3354,12 @@
   // --- Controls ---
 
   function switchTab(tab) {
+    // Block non-admin access to Reports
+    if (tab === 'reports' && !isAdmin) {
+      console.warn('Reports tab is admin-only');
+      return;
+    }
+
     trackEvent('status_tab_switch', { tab: tab });
     activeTab = tab;
     document.querySelectorAll('.tab').forEach(function(btn) {
