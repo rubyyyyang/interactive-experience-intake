@@ -18,7 +18,7 @@ function testLifecycleResponseValues() {
       const lifecycleValues = action === 'Improve completion'
         ? ['Updated', 'Need help']
         : action === 'Consider retirement'
-          ? ['Keep active', 'Retire', 'Need help']
+          ? ['Updated', 'Keep active', 'Retire', 'Need help']
           : [];
       return lifecycleValues.indexOf(response) !== -1;
     } else {
@@ -36,6 +36,8 @@ function testLifecycleResponseValues() {
     "'Done' should NOT be accepted for lifecycle Improve completion");
 
   // Retirement review responses
+  assert.strictEqual(validateResponse('Updated', 'Consider retirement', true), true,
+    "'Updated' should be accepted for Consider retirement");
   assert.strictEqual(validateResponse('Keep active', 'Consider retirement', true), true,
     "'Keep active' should be accepted for Consider retirement");
   assert.strictEqual(validateResponse('Retire', 'Consider retirement', true), true,

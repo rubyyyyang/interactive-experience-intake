@@ -237,7 +237,8 @@ Only lifecycle responses are supported. Metadata editing is not available in Sta
 - **Optional**: Additional notes
 
 **Consider retirement** (`Recommended action = 'Consider retirement'`):
-- **Response values**: `Keep active`, `Retire`, `Need help`
+- **Response values**: `Updated`, `Keep active`, `Retire`, `Need help`
+- **Optional**: New Creation Link (when response is Updated)
 - **Optional**: Additional notes
 
 ### Validation Rules
@@ -292,6 +293,7 @@ Only lifecycle responses are supported. Metadata editing is not available in Sta
 - Each creator resubmission creates a **new Queue row** (history-preserving model)
 - Latest pending entry for a demo is identified by `Demo Number` + `Review Status = 'Pending review'`
 - **Retirement special case**: When approving a retirement response (`Action Taken = 'Retire'`), admin approval also updates `Status → 'Retired'` and `Status Retired Timestamp → current timestamp` in Master
+- **Updated response**: When approving an updated demo response (`Action Taken = 'Updated'`) for Consider retirement, `Action Status → 'Complete'`, `Status` remains unchanged (Published), and `Creation Link` is updated if new link was provided. No retirement triggered.
 - **Write order**:
   - **Approval**: Master first (line 1103), then Queue (line 1131). Rollback Master if Queue fails (line 1143).
   - **Request changes**: Queue first (line 1247), then Master (line 1254). Rollback Queue if Master fails (line 1259).

@@ -114,6 +114,22 @@ function testKeepActivePreserved() {
   console.log('  ✓ "Keep active" workflow preserved\n');
 }
 
+function testUpdatedDoesNotTriggerRetirement() {
+  console.log('Test: "Updated" response does not trigger retirement');
+
+  // isRetirement check should ONLY be for 'Retire', not 'Updated'
+  const retirementCheck = serverJs.match(/const isRetirement = \(actionTaken === '([^']+)'\)/);
+
+  assert.ok(retirementCheck, 'Should have isRetirement check');
+  assert.strictEqual(retirementCheck[1], 'Retire', 'isRetirement should only be true for "Retire"');
+
+  // Retirement logic (Status = Retired) should be scoped to isRetirement
+  const retirementBlock = /if \(isRetirement\) \{[\s\S]+?setValue\('Retired'\)/.test(serverJs);
+  assert.ok(retirementBlock, 'Retirement status change should be inside isRetirement block');
+
+  console.log('  ✓ "Updated" does not trigger retirement\n');
+}
+
 function testNoDrupalApiCalls() {
   console.log('Test: No automatic Drupal API calls');
 
@@ -165,6 +181,7 @@ try {
   testButtonLabelCorrect();
   testAdminWarningUpdated();
   testKeepActivePreserved();
+  testUpdatedDoesNotTriggerRetirement();
   testNoDrupalApiCalls();
   testAuthorizationRequired();
   testPendingReviewValidation();

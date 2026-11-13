@@ -2323,14 +2323,19 @@
           '<h4 style="margin:0 0 16px 0;font-size:0.9rem;font-weight:600;color:#202124;">What\'s your next step?</h4>' +
           '<div class="form-row">' +
             '<label>Your decision *</label>' +
-            '<select id="resp-sel-' + num + '" onchange="showHelperText(this, \'helper-text-retire-' + num + '\', {\'Keep active\': \'The review team will confirm your decision.\', \'Retire\': \'This sends a retirement request for review. It will not retire or unpublish the demo.\', \'Need help\': \'Add any context or questions below and the review team will follow up.\'})" onclick="event.stopPropagation();">' +
+            '<select id="resp-sel-' + num + '" onchange="showHelperText(this, \'helper-text-retire-' + num + '\', {\'Updated\': \'The review team will confirm your update. The demo will remain published.\', \'Keep active\': \'The review team will confirm your decision.\', \'Retire\': \'This sends a retirement request for review. It will not retire or unpublish the demo.\', \'Need help\': \'Add any context or questions below and the review team will follow up.\'})" onclick="event.stopPropagation();">' +
               '<option value="">Select...</option>' +
+              '<option value="Updated">I\'ve updated it</option>' +
               '<option value="Keep active">Keep active</option>' +
               '<option value="Retire">Retire</option>' +
               '<option value="Need help">I need help</option>' +
             '</select>' +
           '</div>' +
           '<div id="helper-text-retire-' + num + '" style="font-size:0.8rem;color:#5f6368;margin-top:8px;display:none;"></div>' +
+          '<div class="form-row" id="resp-link-row-retire-' + num + '" style="display:none;">' +
+            '<label>Updated demo link</label>' +
+            '<input type="url" id="resp-link-retire-' + num + '" placeholder="https://app.arcade.software/share/..." onclick="event.stopPropagation();">' +
+          '</div>' +
           '<div class="form-row">' +
             '<label>Notes</label>' +
             '<textarea id="resp-notes-' + num + '" placeholder="Add any context for the review team..." onclick="event.stopPropagation();"></textarea>' +
@@ -2738,6 +2743,15 @@
     } else {
       helper.style.display = 'none';
     }
+
+    // Show link field for Updated response in retirement form
+    if (helperId.indexOf('helper-text-retire-') === 0) {
+      var num = helperId.replace('helper-text-retire-', '');
+      var linkRow = document.getElementById('resp-link-row-retire-' + num);
+      if (linkRow) {
+        linkRow.style.display = (selectedValue === 'Updated') ? '' : 'none';
+      }
+    }
   }
 
   function handleUpdateNeededSelection(selectElement, num) {
@@ -2780,13 +2794,18 @@
       return;
     }
 
+    // For Consider retirement, check retirement-specific link field if present
+    var linkFieldId = action === 'Consider retirement' && document.getElementById('resp-link-retire-' + num)
+      ? 'resp-link-retire-' + num
+      : 'resp-link-' + num;
+
     var payload = {
       number: num,
       title: sub.title || '',
       type: 'lifecycle_response',
       action: action,
       response: response,
-      newLink: (document.getElementById('resp-link-' + num) || {}).value || '',
+      newLink: (document.getElementById(linkFieldId) || {}).value || '',
       notes: (document.getElementById('resp-notes-' + num) || {}).value || '',
       metadataChanges: {}
     };

@@ -659,7 +659,7 @@ function submitCreatorResponse(payload) {
       const lifecycleValues = payload.action === 'Improve completion'
         ? ['Updated', 'Need help']
         : payload.action === 'Consider retirement'
-          ? ['Keep active', 'Retire', 'Need help']
+          ? ['Updated', 'Keep active', 'Retire', 'Need help']
           : [];
       hasResponse = lifecycleValues.indexOf(payload.response) !== -1;
     }
