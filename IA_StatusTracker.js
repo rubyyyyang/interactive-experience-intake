@@ -1099,32 +1099,49 @@ function approveResponse(queueRowIndex, adminNotes) {
       const masterRow = masterRowIdx + 2;
       const timestamp = new Date().toISOString();
 
-      try {
-        // Write Master updates
-        masterSheet.getRange(masterRow, actionStatusIdx + 1).setValue('Complete');
+      // CRITICAL: Read physical Master headers to get correct column indices
+      // getRequestMasterData_() returns compacted headers (excludes Guide Extraction JSON)
+      // Must use physical headers for getRange() writes to avoid column mismatch
+      const physicalHeaders = masterSheet.getRange(1, 1, 1, masterSheet.getLastColumn()).getValues()[0]
+        .map(h => String(h || '').trim());
 
-        if (completedDateIdx != null) {
-          masterSheet.getRange(masterRow, completedDateIdx + 1).setValue(timestamp);
+      const physicalActionStatusIdx = physicalHeaders.indexOf(STATUS_TRACKER_COLUMNS.ACTION_STATUS);
+      const physicalCompletedDateIdx = physicalHeaders.indexOf(STATUS_TRACKER_COLUMNS.ACTION_COMPLETED_DATE);
+      const physicalCreationLinkIdx = physicalHeaders.indexOf(STATUS_TRACKER_COLUMNS.CREATION_LINK);
+      const physicalStatusIdx = physicalHeaders.indexOf(STATUS_TRACKER_COLUMNS.STATUS);
+      const physicalRetiredTsIdx = physicalHeaders.indexOf(STATUS_TRACKER_COLUMNS.STATUS_RETIRED_TS);
+
+      // Fail-closed validation: verify column headers match expected fields
+      if (physicalActionStatusIdx < 0) {
+        throw new Error('Action Status column not found in physical Master headers');
+      }
+      if (physicalHeaders[physicalActionStatusIdx] !== STATUS_TRACKER_COLUMNS.ACTION_STATUS) {
+        throw new Error('Physical Action Status column header mismatch');
+      }
+
+      try {
+        // Write Master updates using physical indices
+        masterSheet.getRange(masterRow, physicalActionStatusIdx + 1).setValue('Complete');
+
+        if (physicalCompletedDateIdx >= 0) {
+          masterSheet.getRange(masterRow, physicalCompletedDateIdx + 1).setValue(timestamp);
         }
 
         // If this is a retirement, update Status and Status Retired Timestamp
         if (isRetirement) {
-          const statusIdx = headerMap[STATUS_TRACKER_COLUMNS.STATUS];
-          const retiredTsIdx = headerMap[STATUS_TRACKER_COLUMNS.STATUS_RETIRED_TS];
-
-          if (statusIdx != null) {
-            masterSheet.getRange(masterRow, statusIdx + 1).setValue('Retired');
+          if (physicalStatusIdx >= 0) {
+            masterSheet.getRange(masterRow, physicalStatusIdx + 1).setValue('Retired');
           }
 
-          if (retiredTsIdx != null) {
-            masterSheet.getRange(masterRow, retiredTsIdx + 1).setValue(timestamp);
+          if (physicalRetiredTsIdx >= 0) {
+            masterSheet.getRange(masterRow, physicalRetiredTsIdx + 1).setValue(timestamp);
           }
         }
 
         const newLinkColIdx = col('New Creation Link');
         const newLink = newLinkColIdx >= 0 ? String(queueRow[newLinkColIdx] || '').trim() : '';
-        if (newLink && creationLinkIdx != null) {
-          masterSheet.getRange(masterRow, creationLinkIdx + 1).setValue(newLink);
+        if (newLink && physicalCreationLinkIdx >= 0) {
+          masterSheet.getRange(masterRow, physicalCreationLinkIdx + 1).setValue(newLink);
         }
 
         // Write Queue updates
@@ -1140,10 +1157,11 @@ function approveResponse(queueRowIndex, adminNotes) {
 
       } catch (writeErr) {
         // Rollback: attempt to restore Master to Pending review if Queue write failed
+        // Use physical indices for rollback
         try {
-          masterSheet.getRange(masterRow, actionStatusIdx + 1).setValue('Pending review');
-          if (completedDateIdx != null) {
-            masterSheet.getRange(masterRow, completedDateIdx + 1).setValue('');
+          masterSheet.getRange(masterRow, physicalActionStatusIdx + 1).setValue('Pending review');
+          if (physicalCompletedDateIdx >= 0) {
+            masterSheet.getRange(masterRow, physicalCompletedDateIdx + 1).setValue('');
           }
         } catch (rollbackErr) {
           Logger.log('Rollback failed after partial write: ' + rollbackErr.message);
@@ -1242,6 +1260,22 @@ function requestChanges(queueRowIndex, adminNotes) {
       const masterSheet = getTargetSpreadsheet_().getSheetByName('Request_Master');
       const masterRow = masterRowIdx + 2;
 
+      // CRITICAL: Read physical Master headers to get correct column indices
+      // getRequestMasterData_() returns compacted headers (excludes Guide Extraction JSON)
+      // Must use physical headers for getRange() writes to avoid column mismatch
+      const physicalHeaders = masterSheet.getRange(1, 1, 1, masterSheet.getLastColumn()).getValues()[0]
+        .map(h => String(h || '').trim());
+
+      const physicalActionStatusIdx = physicalHeaders.indexOf(STATUS_TRACKER_COLUMNS.ACTION_STATUS);
+
+      // Fail-closed validation: verify column header matches expected field
+      if (physicalActionStatusIdx < 0) {
+        throw new Error('Action Status column not found in physical Master headers');
+      }
+      if (physicalHeaders[physicalActionStatusIdx] !== STATUS_TRACKER_COLUMNS.ACTION_STATUS) {
+        throw new Error('Physical Action Status column header mismatch');
+      }
+
       try {
         // Write Queue updates first
         sheet.getRange(queueRowIndex, reviewStatusIdx + 1).setValue('Follow-up needed');
@@ -1250,8 +1284,8 @@ function requestChanges(queueRowIndex, adminNotes) {
           sheet.getRange(queueRowIndex, adminNotesIdx + 1).setValue(adminNotes.trim());
         }
 
-        // Write Master update
-        masterSheet.getRange(masterRow, actionStatusIdx + 1).setValue('Follow-up needed');
+        // Write Master update using physical index
+        masterSheet.getRange(masterRow, physicalActionStatusIdx + 1).setValue('Follow-up needed');
 
       } catch (writeErr) {
         // Rollback: attempt to restore Queue to Pending review if Master write failed
